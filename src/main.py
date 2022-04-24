@@ -8,6 +8,7 @@ import fpld
 def main() -> None:
     app = QApplication(sys.argv)
     home = gui.HomeScrn()
+    home.show()
     sys.exit(app.exec_())
 
 
