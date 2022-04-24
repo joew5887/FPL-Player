@@ -126,3 +126,68 @@ class Element(ABC, Generic[elem_type]):
                 elements_found.append(elem)
 
         return [cls(**elem) for elem in elements_found]
+
+    @classmethod
+    def top_n_elements(cls, col_by: str, n: int, filters: dict[str, Any], descending: bool = True) -> list[elem_type]:
+        """Gets the highest (or lowest) n ranked elements by a given column and filters.
+
+        Example
+        -------
+
+        ```
+        > fpld.Player.top_n_elements("total_points", 10, {"team": 17})
+        [Son, Kane, Lloris, Dier, Reguilón]
+        ```
+
+        Parameters
+        ----------
+        col_by : str
+            Attribute to order by.
+        n : int
+            Number of elements to return. If elements found is less than n, it returns all elements found.
+        filters: dict[str, Any]
+            Filters to apply to top n elements where the attribute is the key and the requested value is the value
+        descending : bool, optional
+            How to sort list, by default True
+
+        Returns
+        -------
+        list[elem_type]
+            Top n elements found.
+        """
+
+        filtered_elems = cls.get_from_api(**filters)
+        sorted_filtered_elems = \
+            sorted(filtered_elems, key=lambda e: getattr(
+                e, col_by), reverse=descending)
+
+        return sorted_filtered_elems[:n]
+
+    @classmethod
+    def top_n_all_elements(cls, col_by: str, n: int, descending: bool = True) -> list[elem_type]:
+        """Gets the highest (or lowest) n ranked elements by a given column.
+
+        Example
+        -------
+
+        ```
+        > fpld.Player.top_n_all_elements("goals_scored", 10)
+        [Salah, Son, Ronaldo, Jota, Mané, Toney, Kane, Saka, Zaha, De Bruyne]
+        ```
+
+        Parameters
+        ----------
+        col_by : str
+            Attribute to order by.
+        n : int
+            Number of elements to return. If elements found is less than n, it returns all elements found.
+        descending : bool, optional
+            How to sort list, by default True
+
+        Returns
+        -------
+        list[elem_type]
+            Top n elements found.
+        """
+
+        return cls.top_n_elements(col_by, n, dict(), descending=descending)

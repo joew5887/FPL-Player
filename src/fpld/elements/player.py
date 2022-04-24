@@ -81,6 +81,8 @@ class BasePlayer(Element[baseplayer], Generic[baseplayer]):
         """news_added = attr_to_value["news_added"]
         attr_to_value["news_added"] = datetime.strptime(
             news_added, STR_TO_DATETIME)"""
+        attr_to_value["selected_by_percent"] = \
+            float(attr_to_value["selected_by_percent"])
         super().__init__(**attr_to_value)
 
     def __str__(self) -> str:
