@@ -76,7 +76,6 @@ class API:
         utf8 = response.text.encode("utf8")
         json_data = utf8.decode("unicode_escape")
         self.__data = loads(json_data)
-        print("foo")
 
     @property
     def df(self) -> pd.DataFrame:

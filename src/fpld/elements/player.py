@@ -1,7 +1,8 @@
 from abc import ABC, abstractmethod
 from .element import Element
 from typing import Optional, TypeVar, Generic
-from ..util import API_URL, API, STR_TO_DATETIME
+from ..util import API
+from ..constants import STR_TO_DATETIME, API_URL
 from datetime import datetime
 
 
@@ -89,7 +90,6 @@ class BasePlayer(Element[baseplayer], Generic[baseplayer]):
         return f"{self.web_name}"
 
     def __repr__(self) -> str:
-        return f"{self.web_name}"
         return (
             f"Player(id='{self.unique_id}', "
             f"web_name='{self.web_name}', team='{self.team}')"

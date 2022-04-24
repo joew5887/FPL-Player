@@ -99,6 +99,26 @@ class Element(ABC, Generic[elem_type]):
 
     @classmethod
     def get_from_api(cls, method_: str = "all", **attr_to_value: dict[str, Any]) -> list[elem_type]:
+        """Get all elements from the relevant API by filters.
+
+        Parameters
+        ----------
+        method_ : str, optional
+            Return elements that satisfy all the filters or any of them, by default "all"
+
+        Returns
+        -------
+        list[elem_type]
+            All elements found in search.
+
+        Raises
+        ------
+        Exception
+            Invalid method choice.
+        KeyError
+            If any attribute name passed as kwargs is not an attribute.
+        """
+
         METHOD_CHOICES = ["all", "or"]
 
         if method_ not in METHOD_CHOICES:

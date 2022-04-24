@@ -1,6 +1,7 @@
 from typing import TypeVar, Generic
 from .element import Element
-from ..util import API_URL, API
+from ..util import API
+from ..constants import API_URL
 
 
 baseteam = TypeVar("baseteam", bound="BaseTeam")

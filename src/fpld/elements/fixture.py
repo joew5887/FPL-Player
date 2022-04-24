@@ -1,6 +1,7 @@
 from typing import Generic, TypeVar
 from .element import Element
-from ..util import API_URL, API, STR_TO_DATETIME
+from ..util import API
+from ..constants import STR_TO_DATETIME, API_URL
 from datetime import datetime
 
 

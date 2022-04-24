@@ -1,7 +1,8 @@
 from .element import Element
 from datetime import datetime
 from typing import Generic, TypeVar, Union
-from ..util import STR_TO_DATETIME, API, API_URL
+from ..util import API
+from ..constants import STR_TO_DATETIME, API_URL
 
 
 baseevent = TypeVar("baseevent", bound="BaseEvent")
