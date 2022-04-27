@@ -1,9 +1,9 @@
 from __future__ import annotations
 from typing import Any, Optional
-from .util import API
+from .util import API, attrs_sorted
 from .constants import API_URL
 from functools import cache
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 
 
 @dataclass(frozen=True)
@@ -13,7 +13,9 @@ class Label:
 
     @classmethod
     def from_dict(cls, attr: dict[str, str]) -> Label:
-        return cls(attr["label"], attr["name"])
+        values = attrs_sorted(cls, attr)
+
+        return cls(*values)
 
     @classmethod
     @cache
@@ -36,18 +38,23 @@ class Position:
     squad_select: int = field(hash=False, repr=False)
     squad_min_play: int = field(hash=False, repr=False)
     squad_max_play: int = field(hash=False, repr=False)
-    ui_shirt_specfic: bool = field(hash=False, repr=False)
+    ui_shirt_specific: bool = field(hash=False, repr=False)
     sub_positions_locked: list = field(hash=False, repr=False)
     element_count: int = field(hash=False, repr=False)
 
-    @staticmethod
+    @classmethod
+    def from_dict(cls, attr: dict[str, str]) -> Label:
+        values = attrs_sorted(cls, attr)
+
+        return cls(*values)
+
+    @classmethod
     @cache
-    def get_all() -> list[Position]:
+    def get_all(cls) -> list[Position]:
         api = API(API_URL + "/bootstrap-static/")
         positions = api.data["element_types"]
 
-        # not adaptable to changing column order
-        pos_ref = [Position(*position.values()) for position in positions]
+        pos_ref = [cls.from_dict(position) for position in positions]
 
         return pos_ref
 
