@@ -1,69 +1,16 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from typing import Any, TypeVar, overload, Union, Generic
-from ..util import API
+from typing import Any, TypeVar, Union, Generic, Optional, overload
+from dataclasses import fields
+from ..util import all_attributes_present
+from functools import cache
 
 
 elem_type = TypeVar("elem_type", bound="Element")
 
 
 class Element(ABC, Generic[elem_type]):
-    _DEFAULT_ID = "code"
-
-    def __init__(self, **attr_to_value):
-        for col, attr in attr_to_value.items():
-            setattr(self, col, attr)
-
-    @overload
-    def __eq__(self, other: Element) -> bool: ...
-
-    def __eq__(self, other: Any) -> NotImplementedError:
-        if isinstance(other, type(self)):
-            return self.unique_id == other.unique_id
-
-        return NotImplementedError
-
-    @overload
-    def __lt__(self, other: Element) -> bool: ...
-
-    def __lt__(self, other: Any) -> NotImplementedError:
-        if isinstance(other, type(self)):
-            return self.unique_id < other.unique_id
-
-        return NotImplementedError
-
-    @overload
-    def __gt__(self, other: Element) -> bool: ...
-
-    def __gt__(self, other: Any) -> NotImplementedError:
-        if isinstance(other, type(self)):
-            return self.unique_id > other.unique_id
-
-        return NotImplementedError
-
-    @overload
-    def __le__(self, other: Element) -> bool: ...
-
-    def __le__(self, other: Any) -> NotImplementedError:
-        if isinstance(other, type(self)):
-            return self.unique_id <= other.unique_id
-
-        return NotImplementedError
-
-    @overload
-    def __ge__(self, other: Element) -> bool: ...
-
-    def __ge__(self, other: Any) -> NotImplementedError:
-        if isinstance(other, type(self)):
-            return self.unique_id >= other.unique_id
-
-        return NotImplementedError
-
-    def __str__(self) -> str:
-        return f"{self.unique_id}"
-
-    def __repr__(self) -> str:
-        return f"{self.__class__.__name__}(unique_id='{self.unique_id}')"
+    _DEFAULT_ID = "id"
 
     @ property
     def unique_id(self) -> Union[int, AttributeError]:
@@ -79,6 +26,10 @@ class Element(ABC, Generic[elem_type]):
             )
 
         return id_
+
+    @classmethod
+    def __pre_init__(cls, new_instance: dict[str, Any]) -> dict[str, Any]:
+        return new_instance
 
     @ classmethod
     @ property
@@ -98,7 +49,62 @@ class Element(ABC, Generic[elem_type]):
         return
 
     @classmethod
-    def get_from_api(cls, method_: str = "all", **attr_to_value: dict[str, Any]) -> list[elem_type]:
+    def from_dict(cls, new_instance: dict[str, Any]) -> elem_type:
+        class_fields = fields(cls)
+        field_names = {f.name for f in class_fields}
+
+        if all_attributes_present(cls, new_instance):
+            required_attrs = {attr: new_instance[attr]
+                              for attr in field_names}
+            edited_attrs = cls.__pre_init__(required_attrs)
+            return cls(**edited_attrs)
+
+        raise KeyError(
+            f"Missing: {field_names.difference(set(new_instance.keys()))}")
+
+    @classmethod
+    @cache
+    @overload
+    def get_by_id(cls, id_: int) -> Optional[elem_type]: ...
+
+    @classmethod
+    @cache
+    @overload
+    def get_by_id(cls, id_: str) -> Optional[elem_type]: ...
+
+    @classmethod
+    @cache
+    def get_by_id(cls, id_: Any) -> Optional[elem_type]:
+        """Get an element by their unique id.
+
+        Parameters
+        ----------
+        id_ : Any
+            ID of element to find.
+
+        Returns
+        -------
+        Optional[elem_type]
+            The found element. May return None if no element has been found.
+
+        Raises
+        ------
+        Exception
+            If more than one element was found, ID should be unique.
+        """
+        filter_ = {cls.unique_id_col: id_}
+        element = cls.get(**filter_)
+
+        if len(element) > 1:
+            raise Exception(f"Expected only one element, got {len(element)}.")
+        elif len(element) == 0:
+            return None
+        else:
+            return element[0]
+
+    @classmethod
+    @cache
+    def get(cls, *, method_: str = "all", **attr_to_value: dict[str, Any]) -> list[elem_type]:
         """Get all elements from the relevant API by filters.
 
         Parameters
@@ -145,7 +151,7 @@ class Element(ABC, Generic[elem_type]):
             if func(conditions):
                 elements_found.append(elem)
 
-        return [cls(**elem) for elem in elements_found]
+        return [cls.from_dict(elem) for elem in elements_found]
 
     @classmethod
     def top_n_elements(cls, col_by: str, n: int, filters: dict[str, Any], descending: bool = True) -> list[elem_type]:
@@ -176,7 +182,7 @@ class Element(ABC, Generic[elem_type]):
             Top n elements found.
         """
 
-        filtered_elems = cls.get_from_api(**filters)
+        filtered_elems = cls.get(**filters)
         sorted_filtered_elems = \
             sorted(filtered_elems, key=lambda e: getattr(
                 e, col_by), reverse=descending)

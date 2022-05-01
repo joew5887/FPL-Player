@@ -1,99 +1,86 @@
-from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
 from .element import Element
 from typing import Optional, TypeVar, Generic
 from ..util import API
-from ..constants import STR_TO_DATETIME, API_URL
-from datetime import datetime
+from ..constants import API_URL
 
 
 baseplayer = TypeVar("baseplayer", bound="BasePlayer")
 
 
+@dataclass(frozen=True, order=True, kw_only=True)
 class BasePlayer(Element[baseplayer], Generic[baseplayer]):
-    chance_of_playing_next_round: Optional[int]
-    chance_of_playing_this_round: Optional[int]
-    code: int
-    cost_change_event: int
-    cost_change_event_fall: int
-    cost_change_start: int
-    cost_change_start_fall: int
-    dreamteam_count: int
-    element_type: int
-    ep_next: float
-    ep_this: float
-    event_points: int
-    first_name: str
-    form: float
-    id: int
-    in_dreamteam: bool
-    news: str
-    news_added: datetime
-    now_cost: int
-    photo: str
-    points_per_game: float
-    second_name: str
-    selected_by_percent: float
-    special: bool
-    squad_number: Optional[int]
-    status: str
-    team: int
-    team_code: int
-    total_points: int
-    transfers_in: int
-    transfers_in_event: int
-    transfers_out: int
-    transfers_out_event: int
-    value_form: float
-    value_season: float
-    web_name: str  # foo
-    minutes: int
-    goals_scored: int
-    assists: int
-    clean_sheets: int
-    goals_conceded: int
-    own_goals: int
-    penalties_saved: int
-    penalties_missed: int
-    yellow_cards: int
-    red_cards: int
-    saves: int
-    bonus: int
-    bps: int
-    influence: float
-    creativity: float
-    threat: float
-    ict_index: float
-    influence_rank: int
-    influence_rank_type: int
-    creativity_rank: int
-    creativity_rank_type: int
-    threat_rank: int
-    threat_rank_type: int
-    ict_index_rank: int
-    ict_index_rank_type: int
-    corners_and_indirect_freekicks_order: Optional[int]
-    corners_and_indirect_freekicks_text: str
-    direct_freekicks_order: Optional[int]
-    direct_freekicks_text: str
-    penalties_order: Optional[int]
-    penalties_text: str
-
-    def __init__(self, **attr_to_value):
-        """news_added = attr_to_value["news_added"]
-        attr_to_value["news_added"] = datetime.strptime(
-            news_added, STR_TO_DATETIME)"""
-        attr_to_value["selected_by_percent"] = \
-            float(attr_to_value["selected_by_percent"])
-        super().__init__(**attr_to_value)
+    chance_of_playing_next_round: Optional[int] = field(hash=False, repr=False)
+    chance_of_playing_this_round: Optional[int] = field(hash=False, repr=False)
+    code: int = field(repr=False)
+    cost_change_event: int = field(hash=False, repr=False)
+    cost_change_event_fall: int = field(hash=False, repr=False)
+    cost_change_start: int = field(hash=False, repr=False)
+    cost_change_start_fall: int = field(hash=False, repr=False)
+    dreamteam_count: int = field(hash=False, repr=False)
+    element_type: int = field(hash=False)
+    ep_next: float = field(hash=False, repr=False)
+    ep_this: float = field(hash=False, repr=False)
+    event_points: int = field(hash=False, repr=False)
+    first_name: str = field(hash=False, repr=False)
+    form: float = field(hash=False, repr=False)
+    id: int = field(compare=True)
+    in_dreamteam: bool = field(hash=False, repr=False)
+    news: str = field(hash=False, repr=False)
+    news_added: str = field(hash=False, repr=False)
+    now_cost: int = field(hash=False)
+    photo: str = field(hash=False, repr=False)
+    points_per_game: float = field(hash=False, repr=False)
+    second_name: str = field(hash=False, repr=False)
+    selected_by_percent: float = field(hash=False, repr=False)
+    special: bool = field(hash=False, repr=False)
+    squad_number: Optional[int] = field(hash=False, repr=False)
+    status: str = field(hash=False, repr=False)
+    team: int = field(hash=False)
+    team_code: int = field(hash=False, repr=False)
+    total_points: int = field(hash=False, repr=False)
+    transfers_in: int = field(hash=False, repr=False)
+    transfers_in_event: int = field(hash=False, repr=False)
+    transfers_out: int = field(hash=False, repr=False)
+    transfers_out_event: int = field(hash=False, repr=False)
+    value_form: float = field(hash=False, repr=False)
+    value_season: float = field(hash=False, repr=False)
+    web_name: str = field(hash=False)  # foo
+    minutes: int = field(hash=False, repr=False)
+    goals_scored: int = field(hash=False, repr=False)
+    assists: int = field(hash=False, repr=False)
+    clean_sheets: int = field(hash=False, repr=False)
+    goals_conceded: int = field(hash=False, repr=False)
+    own_goals: int = field(hash=False, repr=False)
+    penalties_saved: int = field(hash=False, repr=False)
+    penalties_missed: int = field(hash=False, repr=False)
+    yellow_cards: int = field(hash=False, repr=False)
+    red_cards: int = field(hash=False, repr=False)
+    saves: int = field(hash=False, repr=False)
+    bonus: int = field(hash=False, repr=False)
+    bps: int = field(hash=False, repr=False)
+    influence: float = field(hash=False, repr=False)
+    creativity: float = field(hash=False, repr=False)
+    threat: float = field(hash=False, repr=False)
+    ict_index: float = field(hash=False, repr=False)
+    influence_rank: int = field(hash=False, repr=False)
+    influence_rank_type: int = field(hash=False, repr=False)
+    creativity_rank: int = field(hash=False, repr=False)
+    creativity_rank_type: int = field(hash=False, repr=False)
+    threat_rank: int = field(hash=False, repr=False)
+    threat_rank_type: int = field(hash=False, repr=False)
+    ict_index_rank: int = field(hash=False, repr=False)
+    ict_index_rank_type: int = field(hash=False, repr=False)
+    corners_and_indirect_freekicks_order: Optional[int] = field(
+        hash=False, repr=False)
+    corners_and_indirect_freekicks_text: str = field(hash=False, repr=False)
+    direct_freekicks_order: Optional[int] = field(hash=False, repr=False)
+    direct_freekicks_text: str = field(hash=False, repr=False)
+    penalties_order: Optional[int] = field(hash=False, repr=False)
+    penalties_text: str = field(hash=False, repr=False)
 
     def __str__(self) -> str:
-        return f"{self.web_name}"
-
-    def __repr__(self) -> str:
-        return (
-            f"Player(id='{self.unique_id}', "
-            f"web_name='{self.web_name}', team='{self.team}')"
-        )
+        return self.web_name
 
     @ property
     def ppm(self) -> float:
