@@ -1,51 +1,49 @@
 from .element import Element
 from datetime import datetime
-from typing import Generic, TypeVar, Union
+from typing import Generic, TypeVar, Union, Any
 from ..util import API
-from ..constants import STR_TO_DATETIME, API_URL
+from ..constants import str_to_datetime, API_URL
+from dataclasses import dataclass, field
 
 
 baseevent = TypeVar("baseevent", bound="BaseEvent")
 
 
+@dataclass(frozen=True, order=True, kw_only=True)
 class BaseEvent(Element[baseevent], Generic[baseevent]):
-    _DEFAULT_ID = "id"
+    id: int = field(compare=True)
+    name: str = field(hash=False)
+    deadline_time: datetime = field(hash=False)
+    average_entry_score: int = field(hash=False, repr=False)
+    finished: bool = field(hash=False, repr=False)
+    data_checked: bool = field(hash=False, repr=False)
+    highest_scoring_entry: int = field(hash=False, repr=False)
+    is_previous: bool = field(hash=False, repr=False)
+    is_current: bool = field(hash=False, repr=False)
+    is_next: bool = field(hash=False, repr=False)
+    cup_leagues_created: bool = field(hash=False, repr=False)
+    h2h_ko_matches_created: bool = field(hash=False, repr=False)
+    chip_plays: list[dict[str, Union[str, int]]
+                     ] = field(hash=False, repr=False)
+    most_selected: int = field(hash=False, repr=False)
+    most_transferred_in: int = field(hash=False, repr=False)
+    top_element: int = field(hash=False, repr=False)
+    top_element_info: dict[str, int] = field(hash=False, repr=False)
+    transfers_made: int = field(hash=False, repr=False)
+    most_captained: int = field(hash=False, repr=False)
+    most_vice_captained: int = field(hash=False, repr=False)
 
-    id: int
-    name: str
-    deadline_time: datetime
-    average_entry_score: int
-    finished: bool
-    data_checked: bool
-    highest_scoring_entry: int
-    is_previous: bool
-    is_current: bool
-    is_next: bool
-    cup_leagues_created: bool
-    h2h_ko_matches_created: bool
-    chip_plays: list[dict[str, Union[str, int]]]
-    most_selected: int
-    most_transferred_in: int
-    top_element: int
-    top_element_info: dict[str, int]
-    transfers_made: int
-    most_captained: int
-    most_vice_captained: int
+    @classmethod
+    def __pre_init__(cls, new_instance: dict[str, Any]) -> dict[str, Any]:
+        new_instance = super().__pre_init__(new_instance)
 
-    def __init__(self, **attr_to_value):
-        deadline_time = attr_to_value["deadline_time"]
-        attr_to_value["deadline_time"] = datetime.strptime(
-            deadline_time, STR_TO_DATETIME)
-        super().__init__(**attr_to_value)
+        new_instance["deadline_time"] = \
+            str_to_datetime(new_instance["deadline_time"])
+
+        return new_instance
 
     def __str__(self) -> str:
-        return f"Gameweek {self.id}"
-
-    def __repr__(self) -> str:
-        return (
-            f"Event(id='{self.unique_id}', "
-            f"deadline='{self.deadline_time}')"
-        )
+        return self.name
 
     @property
     def started(self) -> bool: return datetime.now() > self.deadline_time

@@ -1,37 +1,42 @@
-from typing import Generic, TypeVar
+from typing import Generic, TypeVar, Any
 from .element import Element
 from ..util import API
-from ..constants import STR_TO_DATETIME, API_URL
+from ..constants import str_to_datetime, API_URL
 from datetime import datetime
+from dataclasses import dataclass, field
 
 
 basefixture = TypeVar("basefixture", bound="BaseFixture")
 
 
+@dataclass(frozen=True, order=True, kw_only=True)
 class BaseFixture(Element[basefixture], Generic[basefixture]):
-    code: int
-    event: int
-    finished: bool
-    finished_provisional: bool
-    id: int
-    kickoff_time: datetime
-    minutes: int
-    provisional_start_time: bool
-    started: bool
-    team_a: int
-    team_a_score: int
-    team_h: int
-    team_h_score: int
-    stats: list[dict]
-    team_h_difficulty: int
-    team_a_difficulty: int
-    pulse_id: int
+    code: int = field(repr=False)
+    event: int = field(hash=False)
+    finished: bool = field(hash=False, repr=False)
+    finished_provisional: bool = field(hash=False, repr=False)
+    id: int = field(compare=True)
+    kickoff_time: datetime = field(hash=False, repr=False)
+    minutes: int = field(hash=False, repr=False)
+    provisional_start_time: bool = field(hash=False, repr=False)
+    started: bool = field(hash=False, repr=False)
+    team_a: int = field(hash=False)
+    team_a_score: int = field(hash=False, repr=False)
+    team_h: int = field(hash=False)
+    team_h_score: int = field(hash=False, repr=False)
+    stats: list[dict] = field(hash=False, repr=False)
+    team_h_difficulty: int = field(hash=False, repr=False)
+    team_a_difficulty: int = field(hash=False, repr=False)
+    pulse_id: int = field(repr=False)
 
-    def __init__(self, **col_to_attr):
-        kickoff_time = col_to_attr["kickoff_time"]
-        col_to_attr["kickoff_time"] = datetime.strptime(
-            kickoff_time, STR_TO_DATETIME)
-        super().__init__(**col_to_attr)
+    @classmethod
+    def __pre_init__(cls, new_instance: dict[str, Any]) -> dict[str, Any]:
+        new_instance = super().__pre_init__(new_instance)
+
+        new_instance["kickoff_time"] = \
+            str_to_datetime(new_instance["kickoff_time"])
+
+        return new_instance
 
     @classmethod
     @property

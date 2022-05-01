@@ -1,2 +1,2 @@
 from .external import Database, API
-from .attribute import attrs_sorted
+from .attribute import all_attributes_present
