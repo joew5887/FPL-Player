@@ -1,11 +1,11 @@
-import gui
+from gui import HomeScrn
 import sys
 from PyQt5.QtWidgets import QApplication
 
 
 def main() -> None:
     app = QApplication(sys.argv)
-    home = gui.HomeScrn()
+    home = HomeScrn()
     home.show()
     sys.exit(app.exec_())
 
