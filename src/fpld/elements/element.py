@@ -31,6 +31,10 @@ class Element(ABC, Generic[elem_type]):
     def __pre_init__(cls, new_instance: dict[str, Any]) -> dict[str, Any]:
         return new_instance
 
+    @classmethod
+    def _add_attrs(cls, new_instance: dict[str, Any]) -> dict[str, Any]:
+        return new_instance
+
     @ classmethod
     @ property
     def unique_id_col(cls) -> str:
@@ -52,6 +56,7 @@ class Element(ABC, Generic[elem_type]):
     def from_dict(cls, new_instance: dict[str, Any]) -> elem_type:
         class_fields = fields(cls)
         field_names = {f.name for f in class_fields}
+        new_instance = cls._add_attrs(new_instance)
 
         if all_attributes_present(cls, new_instance):
             required_attrs = {attr: new_instance[attr]

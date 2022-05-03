@@ -87,6 +87,10 @@ class BasePlayer(Element[baseplayer], Generic[baseplayer]):
         raise NotImplementedError
         return self.total_points / self.now_cost
 
+    @property
+    def goal_contributions(self) -> int:
+        return self.goals_scored + self.assists
+
     @ property
     def transfer_diff(self) -> int:
         return self.transfers_in_event - self.transfers_out_event
