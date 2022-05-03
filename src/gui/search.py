@@ -23,12 +23,22 @@ class SearchScrn(FPLWindow):
         # Team filter
         self.team_lbl.setText("Team")
         self.__set_team_box()
+        self.__set_position_box()
 
     def __set_team_box(self) -> None:
-        all_teams = fpld.Team.get_from_api()
+        all_teams = fpld.Team.get()
 
         team: fpld.Team
         for team in all_teams:
             self.team_box.addItem(team.name)
 
         self.team_box.addItem("All")
+
+    def __set_position_box(self) -> None:
+        all_positions = fpld.Position.get()
+
+        position: fpld.Position
+        for position in all_positions:
+            self.position_box.addItem(position.singular_name)
+
+        self.position_box.addItem("All")

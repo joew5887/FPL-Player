@@ -1,8 +1,6 @@
-from multiprocessing import Event
 import gui
 import sys
 from PyQt5.QtWidgets import QApplication
-import fpld
 
 
 def main() -> None:
