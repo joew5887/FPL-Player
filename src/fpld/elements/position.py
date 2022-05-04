@@ -25,6 +25,9 @@ class Position(Element[position]):
     sub_positions_locked: list = field(hash=False, repr=False)
     element_count: int = field(hash=False, repr=False)
 
+    def __str__(self) -> str:
+        return self.singular_name
+
     @classmethod
     @property
     def api_link(cls) -> str:

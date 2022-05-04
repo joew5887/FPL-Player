@@ -13,7 +13,19 @@ class Element(ABC, Generic[elem_type]):
     _DEFAULT_ID = "id"
 
     @ property
-    def unique_id(self) -> Union[int, AttributeError]:
+    def unique_id(self) -> int:
+        """Returns unique ID for an object.
+
+        Returns
+        -------
+        int
+            Unique ID.
+
+        Raises
+        ------
+        AttributeError
+            If the ID cannot be found from the `unique_id_col`.
+        """
         id_col = type(self).unique_id_col
         id_ = getattr(self, id_col, None)
 
@@ -29,34 +41,86 @@ class Element(ABC, Generic[elem_type]):
 
     @classmethod
     def __pre_init__(cls, new_instance: dict[str, Any]) -> dict[str, Any]:
-        return new_instance
+        """Edit current attributes from `new_instance` to the correct datatype
+        for the object of the class it will become.
 
-    @classmethod
-    def _add_attrs(cls, new_instance: dict[str, Any]) -> dict[str, Any]:
+        Used before instantiating the object.
+
+        Parameters
+        ----------
+        new_instance : dict[str, Any]
+            All attributes of the new object.
+
+        Returns
+        -------
+        dict[str, Any]
+            Updated `new_instance` with the correct data types.
+        """
         return new_instance
 
     @ classmethod
     @ property
     def unique_id_col(cls) -> str:
+        """Attribute name that is a unique ID for any object of that class.
+
+        Returns
+        -------
+        str
+            Attribute name.
+        """
         return cls._DEFAULT_ID
 
     @classmethod
     @property
     @abstractmethod
     def api_link(cls) -> str:
+        """URL of API for objects of that class.
+
+        Used in `cls.get_api` property.
+
+        Returns
+        -------
+        str
+            API URL.
+        """
         return
 
     @classmethod
     @property
     @abstractmethod
     def get_api(cls) -> dict:
+        """Data from API.
+
+        Used by `get()` to find results.
+
+        Returns
+        -------
+        dict
+            Data for the clas.
+        """
         return
 
     @classmethod
     def from_dict(cls, new_instance: dict[str, Any]) -> elem_type:
-        class_fields = fields(cls)
+        """Converts dictionary of attributes to an object of the class.
+
+        Parameters
+        ----------
+        new_instance : dict[str, Any]
+            All attributes of the new object.
+
+        Returns
+        -------
+        elem_type
+            Object based on attributes and values from `new_instance`.
+
+        Raises
+        ------
+        KeyError
+            If `new_instance` is missing attributes from class.
+        """
+        class_fields = fields(cls)  # `cls` must be a dataclass.
         field_names = {f.name for f in class_fields}
-        new_instance = cls._add_attrs(new_instance)
 
         if all_attributes_present(cls, new_instance):
             required_attrs = {attr: new_instance[attr]
@@ -129,7 +193,6 @@ class Element(ABC, Generic[elem_type]):
         KeyError
             If any attribute name passed as kwargs is not an attribute.
         """
-
         METHOD_CHOICES = ["all", "or"]
 
         if method_ not in METHOD_CHOICES:
@@ -186,7 +249,6 @@ class Element(ABC, Generic[elem_type]):
         list[elem_type]
             Top n elements found.
         """
-
         filtered_elems = cls.get(**filters)
         sorted_filtered_elems = \
             sorted(filtered_elems, key=lambda e: getattr(
@@ -220,5 +282,4 @@ class Element(ABC, Generic[elem_type]):
         list[elem_type]
             Top n elements found.
         """
-
         return cls.top_n_elements(col_by, n, dict(), descending=descending)

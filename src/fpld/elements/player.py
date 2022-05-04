@@ -1,8 +1,9 @@
 from dataclasses import dataclass, field
 from .element import Element
-from typing import Optional, TypeVar, Generic
+from typing import Optional, TypeVar, Generic, Any
 from ..util import API
 from ..constants import API_URL
+from .position import Position
 
 
 baseplayer = TypeVar("baseplayer", bound="BasePlayer")
@@ -18,7 +19,7 @@ class BasePlayer(Element[baseplayer], Generic[baseplayer]):
     cost_change_start: int = field(hash=False, repr=False)
     cost_change_start_fall: int = field(hash=False, repr=False)
     dreamteam_count: int = field(hash=False, repr=False)
-    element_type: int = field(hash=False)
+    element_type: Position = field(hash=False)
     ep_next: float = field(hash=False, repr=False)
     ep_this: float = field(hash=False, repr=False)
     event_points: int = field(hash=False, repr=False)
@@ -78,6 +79,15 @@ class BasePlayer(Element[baseplayer], Generic[baseplayer]):
     direct_freekicks_text: str = field(hash=False, repr=False)
     penalties_order: Optional[int] = field(hash=False, repr=False)
     penalties_text: str = field(hash=False, repr=False)
+
+    @classmethod
+    def __pre_init__(cls, new_instance: dict[str, Any]) -> dict[str, Any]:
+        new_instance = super().__pre_init__(new_instance)
+
+        new_instance["element_type"] = Position.get_by_id(
+            new_instance["element_type"])
+
+        return new_instance
 
     def __str__(self) -> str:
         return self.web_name

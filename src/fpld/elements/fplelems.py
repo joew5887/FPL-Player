@@ -4,7 +4,7 @@ from .team import BaseTeam
 from .player import BasePlayer
 from .fixture import BaseFixture
 from .event import BaseEvent
-from functools import cache
+from .position import Position
 from dataclasses import dataclass, field
 
 
@@ -30,11 +30,19 @@ class Team(BaseTeam[team]):
     def players(self) -> list[Player]:
         return Player.get(team=self.id)
 
-    def player_total(self, *cols: tuple[str]) -> Union[float, int]:
+    def players_by_pos(self, position: Position) -> list[Player]:
+        return [player for player in self.players if player.element_type == position]
+
+    def player_total(self, *cols: tuple[str], by_position: Position = None) -> Union[float, int]:
+        if by_position is not None:
+            players = self.players_by_pos(by_position)
+        else:
+            players = self.players
+
         total = 0
 
         player: Player
-        for player in self.players:
+        for player in players:
             for col in cols:
                 try:
                     value = getattr(player, col)
@@ -49,7 +57,7 @@ class Team(BaseTeam[team]):
 
         return total
 
-    def total_goal_contributions(self, *, include_goals: bool = True, include_assists: bool = True) -> int:
+    def total_goal_contributions(self, *, by_position: Position = None, include_goals: bool = True, include_assists: bool = True) -> int:
         cols = []
         if include_goals:
             cols.append("goals_scored")
@@ -57,7 +65,7 @@ class Team(BaseTeam[team]):
         if include_assists:
             cols.append("assists")
 
-        return self.player_total(*cols)
+        return self.player_total(*cols, by_position=by_position)
 
 
 @dataclass(frozen=True, order=True, kw_only=True)
@@ -71,6 +79,32 @@ class Player(BasePlayer[player]):
         new_instance["team"] = Team.get_by_id(new_instance["team"])
 
         return new_instance
+
+    def percent_pos(self, *, include_goals: bool = True, include_assists: bool = True) -> float:
+        position_total = self.team.total_goal_contributions(
+            by_position=self.element_type, include_goals=include_goals, include_assists=include_assists)
+
+        return self.__percent_of(position_total, include_goals=include_goals, include_assists=include_assists)
+
+    def percent_team(self, *, include_goals: bool = True, include_assists: bool = True) -> float:
+        team_total = self.team.total_goal_contributions(
+            include_goals=include_goals, include_assists=include_assists)
+
+        return self.__percent_of(team_total, include_goals=include_goals, include_assists=include_assists)
+
+    def __percent_of(self, denominator: int, *, include_goals: bool = True, include_assists: bool = True) -> float:
+        individual_total = 0
+
+        if include_goals:
+            individual_total += self.goals_scored
+
+        if include_assists:
+            individual_total += self.assists
+
+        if denominator == 0:
+            return 0
+
+        return (individual_total / denominator) * 100
 
 
 @dataclass(frozen=True, order=True, kw_only=True)

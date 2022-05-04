@@ -2,5 +2,6 @@ import fpld
 
 
 if __name__ == "__main__":
-    x = fpld.Team.get_by_id(1)
-    print(x.total_goal_contributions())
+    x = fpld.Player.get(web_name="Kane")[0]
+    print(x.percent_pos())
+    print(x.percent_team())
