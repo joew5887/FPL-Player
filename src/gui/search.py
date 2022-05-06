@@ -1,4 +1,4 @@
-from .parent import FPLWindow
+from .parent import FPLWindow, set_dropbox
 from PyQt5.QtWidgets import (
     QGridLayout, QComboBox, QLabel, QLineEdit, QTableWidget)
 import fpld
@@ -27,18 +27,10 @@ class SearchScrn(FPLWindow):
 
     def __set_team_box(self) -> None:
         all_teams = fpld.Team.get()
-
-        team: fpld.Team
-        for team in all_teams:
-            self.team_box.addItem(team.name)
-
-        self.team_box.addItem("All")
+        all_names = [team.name for team in all_teams]
+        set_dropbox(self.team_box, all_names)
 
     def __set_position_box(self) -> None:
         all_positions = fpld.Position.get()
-
-        position: fpld.Position
-        for position in all_positions:
-            self.position_box.addItem(position.singular_name)
-
-        self.position_box.addItem("All")
+        all_names = [position.singular_name for position in all_positions]
+        set_dropbox(self.position_box, all_names)

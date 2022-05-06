@@ -1,6 +1,6 @@
 from .element import Element
 from datetime import datetime
-from typing import Generic, TypeVar, Union, Any
+from typing import Generic, Optional, TypeVar, Union, Any
 from ..util import API
 from ..constants import str_to_datetime, API_URL
 from dataclasses import dataclass, field
@@ -58,3 +58,28 @@ class BaseEvent(Element[baseevent], Generic[baseevent]):
     def get_api(cls) -> dict:
         api = API(cls.api_link)
         return api.data["events"]
+
+    @classmethod
+    @property
+    def previous_gw(cls) -> baseevent:
+        return cls.__find_until_true("is_previous")
+
+    @classmethod
+    @property
+    def current_gw(cls) -> baseevent:
+        return cls.__find_until_true("is_current")
+
+    @classmethod
+    @property
+    def next_gw(cls) -> baseevent:
+        return cls.__find_until_true("is_next")
+
+    @classmethod
+    def __find_until_true(cls, attr: str) -> Optional[baseevent]:
+        all_events = cls.get()
+
+        for event in all_events:
+            if getattr(event, attr):
+                return event
+
+        return None
