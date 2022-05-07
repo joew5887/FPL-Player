@@ -1,6 +1,7 @@
 from __future__ import annotations
 from abc import abstractmethod
-from PyQt5.QtWidgets import QMainWindow, QLabel, QVBoxLayout, QComboBox
+from PyQt5.QtWidgets import QMainWindow, QLabel, QVBoxLayout, QComboBox, QMessageBox
+from PyQt5.QtCore import Qt
 from PyQt5.uic import loadUi
 from PyQt5.QtGui import QFont
 
@@ -36,6 +37,7 @@ def _title_label_wrapper(label: QLabel) -> None:
 
     font = QFont(FONT_TYPE, SIZE)
     font.setBold(True)
+    label.setAlignment(Qt.AlignCenter)
     label_wrapper(label, font)
 
 
@@ -57,3 +59,11 @@ def set_dropbox(box: QComboBox, items: list[str], *, all_option: bool = True) ->
         items.insert(0, "All")
 
     box.addItems(items)
+
+
+def create_msg(icon: QMessageBox, title: str, text: str) -> None:
+    msg = QMessageBox()
+    msg.setIcon(icon)
+    msg.setWindowTitle(title)
+    msg.setText(text)
+    msg.exec_()
