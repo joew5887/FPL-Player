@@ -31,13 +31,24 @@ class HomeScrn(FPLWindow):
         self.title_lbl.setText("Home")
 
     def __set_info1_lbl(self) -> None:
+        curr_gw = Event.current_gw
+        if curr_gw is not None:
+            msg = curr_gw.id
+        else:
+            msg = "UNKNOWN"
+
         set_text_label(
-            self.info1_lbl, f"Current Gameweek: {Event.current_gw.id}")
+            self.info1_lbl, f"Current Gameweek: {msg}")
 
     def __set_info2_lbl(self) -> None:
+        next_gw = Event.next_gw
+        if next_gw is not None:
+            msg = next_gw.deadline_time
+        else:
+            msg = "UNKNOWN"
+
         set_text_label(
-            self.info2_lbl, f"Next gameweek starts: {Event.next_gw.deadline_time}")
+            self.info2_lbl, f"Next gameweek starts: {msg}")
 
     def open_search(self) -> None:
         page = SearchScrn()
-        page.show()

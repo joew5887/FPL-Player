@@ -2,6 +2,7 @@ from .parent import FPLWindow, set_dropbox
 from PyQt5.QtWidgets import (
     QGridLayout, QComboBox, QLabel, QLineEdit, QTableWidget)
 import fpld
+from .thread import LongTask
 
 
 class SearchScrn(FPLWindow):
@@ -19,11 +20,14 @@ class SearchScrn(FPLWindow):
 
     def _set_widgets(self) -> None:  # Add thread support
         self.position_lbl.setText("Position")
-
-        # Team filter
         self.team_lbl.setText("Team")
-        self.__set_team_box()
-        self.__set_position_box()
+
+        tasks = {
+            "Getting all teams": self.__set_team_box,
+            "Getting all player positions": self.__set_position_box
+        }
+        x = LongTask(tasks, self.show)
+        x.start()
 
     def __set_team_box(self) -> None:
         all_teams = fpld.Team.get()

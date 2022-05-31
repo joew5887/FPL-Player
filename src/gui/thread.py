@@ -1,7 +1,9 @@
+from ast import Call
 from typing import Callable
 from .parent import FPLWindow, set_text_label, create_msg
 from PyQt5.QtCore import QThread, pyqtSignal, QObject, pyqtSlot
-from PyQt5.QtWidgets import QProgressBar, QLabel
+from PyQt5.QtWidgets import QProgressBar, QLabel, QMessageBox
+from traceback import format_tb  # Creating error message on loading screen.
 
 
 class _LoadingScrn(FPLWindow):
@@ -39,7 +41,7 @@ class _LoadingScrn(FPLWindow):
 
 
 class _WorkerThread(QThread):
-    finished_signal = pyqtSignal()
+    finished_signal = pyqtSignal(bool)
     info_signal = pyqtSignal(str)
     progress_signal = pyqtSignal(float)
     error_signal = pyqtSignal(Exception)
@@ -59,22 +61,38 @@ class _WorkerThread(QThread):
             percent_on = (tasks_completed / num_tasks) * 100
             self.progress_signal.emit(percent_on)
 
-            try:
-                task()
-            except Exception as error:
-                self.error_signal.emit(error)
-            else:
-                tasks_completed += 1
+            error_found = self.__complete_task(task)
+            if error_found:
+                return
+
+            tasks_completed += 1
 
         percent_on = 1
         self.progress_signal.emit(percent_on)
 
-        self.__task_finished()
+        self.finished_signal.emit(True)
 
-    def __task_finished(self) -> None:
-        """Runs any extra code when the tasks have been completed.
+    def __complete_task(self, task: Callable) -> bool:
+        """Runs individual task. If error is found, thread immediately ends.
+
+        Parameters
+        ----------
+        task : Callable
+            Subtask to complete.
+
+        Returns
+        -------
+        bool
+            True if an error has been raised, false otherwise.
         """
-        self.finished_signal.emit()
+        try:
+            task()
+        except Exception as error:
+            self.error_signal.emit(error)
+            self.finished_signal.emit(False)
+            return True
+        else:
+            return False
 
 
 class LongTask(QObject):
@@ -97,28 +115,38 @@ class LongTask(QObject):
         """
         self.__thread.info_signal.connect(self.__scrn.update_info)
         self.__thread.progress_signal.connect(self.__scrn.update_progress)
-        self.__thread.error_signal.connect(self.__error_raised)
+        self.__thread.error_signal.connect(
+            lambda err: self.__error_raised(err))
 
         self.__thread.finished_signal.connect(self.__exit_task)
 
     def __error_raised(self, error: Exception) -> None:
         """If an error is raised, the task is not completed.
 
+        Outputs an error message in a message box with the traceback and class of error.
+
         Parameters
         ----------
         error : Exception
             Type of error raised.
         """
-        # create_msg()
+        error_list = []
+        error_list.append(f"Class: {error.__class__}")
+        error_list.append(f"Error: {error}")
+        traceback_str = "".join(format_tb(error.__traceback__))
+        error_list.append(traceback_str)
+        error_msg = "\n\n".join(error_list)
+        create_msg(QMessageBox.Critical, "Error", error_msg)
+
+    def __exit_task(self, task_successful: bool) -> None:
+        """Exit task after it has been sucessfully completed.
+        """
+
         self.__scrn.close()
         self.__end_thread()
 
-    def __exit_task(self) -> None:
-        """Exit task after it has been sucessfully completed.
-        """
-        self.__scrn.close()
-        self.__end_thread()
-        self.__end_task()
+        if task_successful:
+            self.__end_task()
 
     def __end_thread(self) -> None:
         """Kill the worker thread.
