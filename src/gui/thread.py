@@ -1,10 +1,10 @@
 from typing import Callable
-from .parent import FPLWindow, set_text_label
+from .parent import FPLWindow, set_text_label, create_msg
 from PyQt5.QtCore import QThread, pyqtSignal, QObject, pyqtSlot
 from PyQt5.QtWidgets import QProgressBar, QLabel
 
 
-class _LoadingScreen(FPLWindow):
+class _LoadingScrn(FPLWindow):
     info_lbl: QLabel
     progress_bar: QProgressBar
 
@@ -17,10 +17,24 @@ class _LoadingScreen(FPLWindow):
 
     @pyqtSlot(float)
     def update_progress(self, percent: float) -> None:
+        """Update progress bar to show status of task.
+
+        Parameters
+        ----------
+        percent : float
+            New percent of progress.
+        """
         self.progress_bar.setValue(int(percent))
 
     @pyqtSlot(str)
     def update_info(self, info: str) -> None:
+        """String description of the task the worker thread is currently on.
+
+        Parameters
+        ----------
+        info : str
+            String description of current task.
+        """
         self.info_lbl.setText(info)
 
 
@@ -30,11 +44,13 @@ class _WorkerThread(QThread):
     progress_signal = pyqtSignal(float)
     error_signal = pyqtSignal(Exception)
 
-    def __init__(self, loading_scrn: _LoadingScreen, tasks: dict[str, Callable]):
+    def __init__(self, loading_scrn: _LoadingScrn, tasks: dict[str, Callable]):
         super().__init__(loading_scrn)
         self.__tasks = tasks
 
     def run(self) -> None:
+        """Runs thread and calculates percent of progress.
+        """
         tasks_completed = 0
         num_tasks = len(self.__tasks)
 
@@ -56,40 +72,56 @@ class _WorkerThread(QThread):
         self.__task_finished()
 
     def __task_finished(self) -> None:
+        """Runs any extra code when the tasks have been completed.
+        """
         self.finished_signal.emit()
 
 
 class LongTask(QObject):
-    def __init__(self, tasks: dict[str, Callable]):
+    def __init__(self, tasks: dict[str, Callable], end_task: Callable):
         super().__init__()
         self.__tasks = tasks
-        self.__scrn = _LoadingScreen()
-        self.fini = False
+        self.__end_task = end_task
+        self.__scrn = _LoadingScrn()
 
     def start(self) -> None:
+        """Run the thread and open loading screen.
+        """
         self.__thread = _WorkerThread(self.__scrn, self.__tasks)
         self.__link_signals()
         self.__scrn.show()
         self.__thread.start()
 
     def __link_signals(self) -> None:
+        """Sets up all signals.
+        """
         self.__thread.info_signal.connect(self.__scrn.update_info)
         self.__thread.progress_signal.connect(self.__scrn.update_progress)
         self.__thread.error_signal.connect(self.__error_raised)
 
-        self.__thread.finished_signal.connect(lambda: self.__exit_task(True))
+        self.__thread.finished_signal.connect(self.__exit_task)
 
-    def __error_raised(self, error) -> None:
-        pass
+    def __error_raised(self, error: Exception) -> None:
+        """If an error is raised, the task is not completed.
 
-    def __exit_task(self, task_successful: bool) -> None:
-        self.fini = True
+        Parameters
+        ----------
+        error : Exception
+            Type of error raised.
+        """
+        # create_msg()
         self.__scrn.close()
         self.__end_thread()
 
+    def __exit_task(self) -> None:
+        """Exit task after it has been sucessfully completed.
+        """
+        self.__scrn.close()
+        self.__end_thread()
+        self.__end_task()
+
     def __end_thread(self) -> None:
+        """Kill the worker thread.
+        """
         self.__thread.quit()
         self.__thread.deleteLater()
-
-    def is_running(self) -> bool:
-        return self.__thread.isRunning()

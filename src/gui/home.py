@@ -25,7 +25,7 @@ class HomeScrn(FPLWindow):
             "Getting current gameweek": self.__set_info1_lbl,
             "Getting next gameweek": self.__set_info2_lbl
         }
-        x = LongTask(tasks)
+        x = LongTask(tasks, self.show)
         x.start()
 
         self.title_lbl.setText("Home")
