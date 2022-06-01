@@ -45,3 +45,8 @@ class BaseTeam(Element[baseteam], Generic[baseteam]):
     def get_api(cls) -> dict:
         api = API(cls.api_link)
         return api.data["teams"]
+
+    @classmethod
+    def get_all_names(cls) -> list[str]:
+        all_teams = cls.get()
+        return [team.name for team in all_teams]

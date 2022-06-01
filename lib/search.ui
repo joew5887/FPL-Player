@@ -78,7 +78,7 @@
        <item>
         <layout class="QVBoxLayout" name="verticalLayout">
          <item>
-          <widget class="QTreeWidget" name="treeWidget">
+          <widget class="QTreeWidget" name="columns_tree">
            <column>
             <property name="text">
              <string notr="true">1</string>
@@ -87,7 +87,7 @@
           </widget>
          </item>
          <item>
-          <widget class="QTreeWidget" name="treeWidget_2">
+          <widget class="QTreeWidget" name="order_by_tree">
            <column>
             <property name="text">
              <string notr="true">1</string>

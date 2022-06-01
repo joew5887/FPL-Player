@@ -38,3 +38,8 @@ class Position(Element[position]):
     def get_api(cls) -> dict:
         api = API(cls.api_link)
         return api.data["element_types"]
+
+    @classmethod
+    def get_all_names(cls) -> list[str]:
+        all_positions = cls.get()
+        return [position.singular_name for position in all_positions]
