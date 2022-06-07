@@ -26,3 +26,9 @@ class Label(Element[label]):
     def get_api(cls) -> dict:
         api = API(cls.api_link)
         return api.data["element_stats"]
+
+    @classmethod
+    def get_all_labels(cls) -> list[str]:
+        all_labels = cls.get_from_api()
+
+        return [label.label for label in all_labels]

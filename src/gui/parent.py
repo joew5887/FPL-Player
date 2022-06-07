@@ -1,9 +1,14 @@
 from __future__ import annotations
 from abc import abstractmethod
-from PyQt5.QtWidgets import QMainWindow, QLabel, QVBoxLayout, QComboBox, QMessageBox
+from typing import Callable
+from PyQt5.QtWidgets import (
+    QMainWindow, QLabel, QVBoxLayout, QComboBox, QMessageBox, QWidget,
+    QTableWidget, QTableWidgetItem
+)
 from PyQt5.QtCore import Qt
 from PyQt5.uic import loadUi
 from PyQt5.QtGui import QFont
+import pandas as pd
 
 
 GUI_STEM = ".//lib//"
@@ -24,34 +29,99 @@ class FPLWindow(QMainWindow):
         pass
 
     def __set_common_widgets(self) -> None:
-        _title_label_wrapper(self.title_lbl)
+        title_label_wrapper(self.title_lbl)
 
 
-def label_wrapper(label: QLabel, font: QFont) -> None:
-    label.setFont(font)
+class Filter:
+    def __init__(self, label: QLabel, box: QComboBox,
+                 label_str: str, box_list: Callable[..., list[str]],
+                 *, all_option: bool = True):
+
+        self.__label = label
+        self.__box = box
+        self.__box_list = box_list
+        self.__all_option = all_option
+        label_wrapper(self.__label, label_str)
+        combo_box_wrapper(self.__box)
+
+    @property
+    def current_option(self) -> str:
+        return self.__box.currentText()
+
+    def setup(self) -> None:
+        items = self.__box_list()
+        set_dropbox(self.__box, items, all_option=self.__all_option)
 
 
-def _title_label_wrapper(label: QLabel) -> None:
-    SIZE = 18
-    FONT_TYPE = "Arial Rounded MT Bold"
-
-    font = QFont(FONT_TYPE, SIZE)
-    font.setBold(True)
-    label.setAlignment(Qt.AlignCenter)
-    label_wrapper(label, font)
+class Widget:
+    def __init__(self, widget: QWidget, font: QFont):
+        self._widget = widget
+        self._widget.setFont(font)
 
 
-def _text_label_wrapper(label: QLabel) -> None:
-    SIZE = 14
+class Label(Widget):
+    _widget: QLabel
+
+    def __init__(self, label: QLabel, font: QFont, text: str = None):
+        super().__init__(label, font)
+        label.setText(text)
+
+
+class TitleLabel(Label):
+    def __init__(self, label: QLabel, font: QFont, text: str = None):
+        super().__init__(label, font, text)
+        self._widget.setAlignment(Qt.AlignCenter)
+
+
+class ComboBox(Widget):
+    _widget: QComboBox
+
+    def __init__(self, combo_box: QComboBox, font: QFont):
+        super().__init__(combo_box, font)
+
+
+class Table(Widget):
+    _widget: QTableWidget
+
+    def __init__(self, table: QTableWidget, font: QFont):
+        super().__init__(table, font)
+
+
+def label_wrapper(label: QLabel, text: str = None) -> None:
+    FONT_SIZE = 14
     FONT_TYPE = "Arial"
 
-    font = QFont(FONT_TYPE, SIZE)
-    label_wrapper(label, font)
+    font = QFont(FONT_TYPE, FONT_SIZE)
+
+    Label(label, font, text=text)
 
 
-def set_text_label(label: QLabel, text: str) -> None:
-    label.setText(text)
-    _text_label_wrapper(label)
+def combo_box_wrapper(combo_box: QComboBox) -> None:
+    FONT_SIZE = 12
+    FONT_TYPE = "Arial"
+
+    font = QFont(FONT_TYPE, FONT_SIZE)
+
+    ComboBox(combo_box, font)
+
+
+def title_label_wrapper(label: QLabel, text: str = None) -> None:
+    FONT_SIZE = 18
+    FONT_TYPE = "Arial Rounded MT Bold"
+
+    font = QFont(FONT_TYPE, FONT_SIZE)
+    font.setBold(True)
+
+    TitleLabel(label, font, text=text)
+
+
+def table_wrapper(table: QTableWidget) -> None:
+    FONT_SIZE = 12
+    FONT_TYPE = "Arial"
+
+    font = QFont(FONT_TYPE, FONT_SIZE)
+
+    Table(table, font)
 
 
 def set_dropbox(box: QComboBox, items: list[str], *, all_option: bool = True) -> None:
@@ -59,6 +129,21 @@ def set_dropbox(box: QComboBox, items: list[str], *, all_option: bool = True) ->
         items.insert(0, "All")
 
     box.addItems(items)
+
+
+def set_table(table: QTableWidget, data: pd.DataFrame) -> None:
+    data_dim = data.shape
+    columns = data_dim[1]
+    rows = data_dim[0]
+
+    table.setRowCount(rows)
+    table.setColumnCount(columns)
+
+    for row_num, row in enumerate(data.itertuples()):
+        row_no_index = row[1:]
+
+        for col_num, value in enumerate(row_no_index):
+            table.setItem(row_num, col_num, QTableWidgetItem(str(value)))
 
 
 def create_msg(icon: QMessageBox, title: str, text: str) -> None:

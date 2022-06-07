@@ -1,8 +1,9 @@
-from .parent import FPLWindow, set_dropbox
+from .parent import FPLWindow, Filter, set_dropbox, label_wrapper, combo_box_wrapper, set_table
 from PyQt5.QtWidgets import (
-    QGridLayout, QComboBox, QLabel, QLineEdit, QTableWidget, QHBoxLayout, QVBoxLayout, QTreeWidget)
+    QGridLayout, QComboBox, QLabel, QTableWidget, QHBoxLayout, )
 import fpld
 from .thread import LongTask
+import pandas as pd
 
 
 class SearchScrn(FPLWindow):
@@ -11,84 +12,77 @@ class SearchScrn(FPLWindow):
     position_lbl: QLabel
     team_box: QComboBox
     team_lbl: QLabel
-    output_sort_layout: QHBoxLayout
-    sort_layout: QVBoxLayout
-    columns_tree: QTreeWidget
-    order_by_tree: QTreeWidget
-    input_txt: QLineEdit
+    order_by_layout: QHBoxLayout
+    order_by_box: QComboBox
+    order_by_lbl: QLabel
     output_tbl: QTableWidget
     title_lbl: QLabel
-    __current_teams: list[fpld.Team]
-    __current_positions: list[fpld.Position]
+    __teams: list[fpld.Team]
+    __positions: list[fpld.Position]
     __players: list[fpld.Player]
+    __order_by: fpld.Label
+    __position_filter: Filter
+    __team_filter: Filter
+    __order_by_filter: Filter
 
     def __init__(self):
         super().__init__("search.ui")
+
+    def __bar(self):
         self.team_box.currentIndexChanged.connect(
-            lambda: self.__team_search(self.team_box.currentText())
+            self.__edit_filters
         )
         self.position_box.currentIndexChanged.connect(
-            lambda: self.__position_search(self.position_box.currentText())
+            self.__edit_filters
         )
-        self.__current_teams = []
-        self.__current_positions = []
-        self.__players = []
+        self.order_by_box.currentIndexChanged.connect(
+            self.__edit_filters
+        )
+        self.__edit_filters()
+        self.show()
 
-    def _set_widgets(self) -> None:  # Add thread support
-        self.position_lbl.setText("Position")
-        self.team_lbl.setText("Team")
+    def _set_widgets(self) -> None:
+        self.__position_filter = Filter(
+            self.position_lbl, self.position_box, "Position", fpld.Position.get_all_names)
+        self.__team_filter = Filter(self.team_lbl, self.team_box,
+                                    "Team", fpld.Team.get_all_names)
+        self.__order_by_filter = Filter(self.order_by_lbl, self.order_by_box,
+                                        "Order by", fpld.Label.get_all_labels, all_option=False)
 
         tasks = {
-            "Getting all teams": self.__set_team_box,
-            "Getting all player positions": self.__set_position_box
+            "Getting all teams": self.__team_filter.setup,
+            "Getting all player positions": self.__position_filter.setup,
+            "Getting attributes": self.__order_by_filter.setup,
         }
-        x = LongTask(tasks, self.show)
+        setup_thread = LongTask(tasks, self.__bar)
+        setup_thread.start()
+
+    def __update_current_teams(self) -> None:
+        self.__teams = fpld.Team.gui_get(
+            self.__team_filter.current_option)
+
+    def __update_current_positions(self) -> None:
+        self.__positions = fpld.Position.gui_get(
+            self.__position_filter.current_option)
+
+    def __update_order_by(self) -> None:
+        self.__order_by = fpld.Label.get_from_api(
+            label=self.__order_by_filter.current_option)[0]
+
+    def __edit_filters(self) -> None:
+        tasks = {
+            "Updating team search": self.__update_current_teams,
+            "Updating position search": self.__update_current_positions,
+            "Updating sort function": self.__update_order_by
+        }
+        x = LongTask(tasks, self.__update_search)
         x.start()
 
-    def __set_team_box(self) -> None:
-        all_names = fpld.Team.get_all_names()
-        set_dropbox(self.team_box, all_names)
-
-    def __set_position_box(self) -> None:
-        all_names = fpld.Position.get_all_names()
-        set_dropbox(self.position_box, all_names)
-
-    def __team_search(self, team_name: str) -> None:
-        task = {
-            "Updating team search": lambda: self.__update_current_teams(team_name)}
-        x = LongTask(task, self.__edit_search)
-        x.start()
-
-    def __update_current_teams(self, team_name: str) -> None:
-        if team_name == "All":
-            self.__current_teams = fpld.Team.get()
-        else:
-            self.__current_teams = fpld.Team.get(name=team_name)
-
-    def __position_search(self, position_name: str) -> None:
-        task = {"Updating position search": lambda: self.__update_current_positions(
-            position_name)}
-        x = LongTask(task, self.__edit_search)
-        x.start()
-
-    def __update_current_positions(self, position_name: str) -> None:
-        if position_name == "All":
-            self.__current_positions = fpld.Position.get()
-        else:
-            self.__current_positions = fpld.Position.get(
-                singular_name=position_name)
-
-    def __edit_search(self) -> None:
-        self.__players = []
-
-        for team in self.__current_teams:
-            for player in team.players:
-                if player.element_type in self.__current_positions:
-                    self.__players.append(player)
-
+    def __update_search(self) -> None:
+        self.__players = fpld.player_search(
+            self.__teams, self.__positions, sort_by=self.__order_by.name)
         self.__display_search()
 
     def __display_search(self) -> None:
-        print("")
-        for p in self.__players:
-            print(p)
+        set_table(self.output_tbl, pd.DataFrame(
+            [[p, getattr(p, self.__order_by.name)] for p in self.__players]))

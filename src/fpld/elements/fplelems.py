@@ -16,19 +16,15 @@ fixture = TypeVar("fixture", bound="Fixture")
 
 @dataclass(frozen=True, order=True, kw_only=True)
 class Team(BaseTeam[team]):
-    #players: list[Player] = field(hash=False, repr=False)
-
     @classmethod
     def __pre_init__(cls, new_instance: dict[str, Any]) -> dict[str, Any]:
         new_instance = super().__pre_init__(new_instance)
-
-        #new_instance["players"] = Player.get(team=new_instance["id"])
 
         return new_instance
 
     @property
     def players(self) -> list[Player]:
-        return Player.get(team=self.id)
+        return Player.get_from_api(team=self.id)
 
     def players_by_pos(self, position: Position) -> list[Player]:
         return [player for player in self.players if player.element_type == position]

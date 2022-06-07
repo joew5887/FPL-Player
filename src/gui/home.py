@@ -1,4 +1,4 @@
-from .parent import FPLWindow, set_text_label
+from .parent import FPLWindow, label_wrapper
 from .search import SearchScrn
 from PyQt5.QtWidgets import (QGridLayout, QPushButton, QLabel)
 from fpld import Event
@@ -37,7 +37,7 @@ class HomeScrn(FPLWindow):
         else:
             msg = "UNKNOWN"
 
-        set_text_label(
+        label_wrapper(
             self.info1_lbl, f"Current Gameweek: {msg}")
 
     def __set_info2_lbl(self) -> None:
@@ -47,7 +47,7 @@ class HomeScrn(FPLWindow):
         else:
             msg = "UNKNOWN"
 
-        set_text_label(
+        label_wrapper(
             self.info2_lbl, f"Next gameweek starts: {msg}")
 
     def open_search(self) -> None:

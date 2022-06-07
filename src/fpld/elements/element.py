@@ -4,6 +4,7 @@ from typing import Any, TypeVar, Union, Generic, Optional, overload
 from dataclasses import fields
 from ..util import all_attributes_present
 from functools import cache
+from random import choice
 
 
 elem_type = TypeVar("elem_type", bound="Element")
@@ -38,6 +39,15 @@ class Element(ABC, Generic[elem_type]):
             )
 
         return id_
+
+    """@abstractmethod
+    def info(self, *columns: tuple[str]) -> list:
+        if len(columns) == 0:
+            pass
+            # Use default columns.
+
+        return
+        # Attributes from columns for element."""
 
     @classmethod
     def __pre_init__(cls, new_instance: dict[str, Any]) -> dict[str, Any]:
@@ -91,7 +101,7 @@ class Element(ABC, Generic[elem_type]):
     def get_api(cls) -> dict:
         """Data from API.
 
-        Used by `get()` to find results.
+        Used by `get_from_api()` to find results.
 
         Returns
         -------
@@ -162,7 +172,7 @@ class Element(ABC, Generic[elem_type]):
             If more than one element was found, ID should be unique.
         """
         filter_ = {cls.unique_id_col: id_}
-        element = cls.get(**filter_)
+        element = cls.get_from_api(**filter_)
 
         if len(element) > 1:
             raise Exception(f"Expected only one element, got {len(element)}.")
@@ -173,7 +183,7 @@ class Element(ABC, Generic[elem_type]):
 
     @classmethod
     @cache
-    def get(cls, *, method_: str = "all", **attr_to_value: dict[str, Any]) -> list[elem_type]:
+    def get_from_api(cls, *, method_: str = "all", **attr_to_value: dict[str, Any]) -> list[elem_type]:
         """Get all elements from the relevant API by filters.
 
         Parameters
@@ -249,7 +259,7 @@ class Element(ABC, Generic[elem_type]):
         list[elem_type]
             Top n elements found.
         """
-        filtered_elems = cls.get(**filters)
+        filtered_elems = cls.get_from_api(**filters)
         sorted_filtered_elems = \
             sorted(filtered_elems, key=lambda e: getattr(
                 e, col_by), reverse=descending)
@@ -283,3 +293,27 @@ class Element(ABC, Generic[elem_type]):
             Top n elements found.
         """
         return cls.top_n_elements(col_by, n, dict(), descending=descending)
+
+    @classmethod
+    def random(cls, **attr_to_value: dict[str, Any]) -> elem_type:
+        """Gets random element based on filters passed.
+
+        Returns
+        -------
+        elem_type
+            Random element selected. May return None if filters produce no element.
+        """
+
+        choices = cls.get_from_api(**attr_to_value)
+
+        if len(choices) == 0:
+            return None
+
+        return choice(choices)
+
+    @classmethod
+    def sort(cls, elements: list[elem_type], sort_by: str, *, reverse: bool = True) -> list[elem_type]:
+        elements_sorted = sorted(elements, key=lambda elem: getattr(
+            elem, sort_by), reverse=reverse)
+
+        return elements_sorted

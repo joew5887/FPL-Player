@@ -1,6 +1,6 @@
 from ast import Call
 from typing import Callable
-from .parent import FPLWindow, set_text_label, create_msg
+from .parent import FPLWindow, label_wrapper, create_msg
 from PyQt5.QtCore import QThread, pyqtSignal, QObject, pyqtSlot
 from PyQt5.QtWidgets import QProgressBar, QLabel, QMessageBox
 from traceback import format_tb  # Creating error message on loading screen.
@@ -14,7 +14,7 @@ class _LoadingScrn(FPLWindow):
         super().__init__("loading.ui")
 
     def _set_widgets(self) -> None:
-        set_text_label(self.info_lbl, "foo")
+        label_wrapper(self.info_lbl, "foo")
         self.title_lbl.setText("Loading")
 
     @pyqtSlot(float)

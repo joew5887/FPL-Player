@@ -41,5 +41,12 @@ class Position(Element[position]):
 
     @classmethod
     def get_all_names(cls) -> list[str]:
-        all_positions = cls.get()
+        all_positions = cls.get_from_api()
         return [position.singular_name for position in all_positions]
+
+    @classmethod
+    def gui_get(cls, position_name: str) -> list[position]:
+        if position_name == "All":
+            return cls.get_from_api()
+
+        return cls.get_from_api(singular_name=position_name)
