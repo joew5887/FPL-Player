@@ -24,7 +24,7 @@ class Team(BaseTeam[team]):
 
     @property
     def players(self) -> list[Player]:
-        return Player.get_from_api(team=self.id)
+        return Player.get(team=self.id)
 
     def players_by_pos(self, position: Position) -> list[Player]:
         return [player for player in self.players if player.element_type == position]

@@ -1,6 +1,6 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from typing import Any, TypeVar, Union, Generic, Optional, overload
+from typing import Any, TypeVar, Union, Generic, Optional, overload, Callable
 from dataclasses import fields
 from ..util import all_attributes_present
 from functools import cache
@@ -101,7 +101,7 @@ class Element(ABC, Generic[elem_type]):
     def get_api(cls) -> dict:
         """Data from API.
 
-        Used by `get_from_api()` to find results.
+        Used by `get()` to find results.
 
         Returns
         -------
@@ -172,7 +172,7 @@ class Element(ABC, Generic[elem_type]):
             If more than one element was found, ID should be unique.
         """
         filter_ = {cls.unique_id_col: id_}
-        element = cls.get_from_api(**filter_)
+        element = cls.get(**filter_)
 
         if len(element) > 1:
             raise Exception(f"Expected only one element, got {len(element)}.")
@@ -183,7 +183,17 @@ class Element(ABC, Generic[elem_type]):
 
     @classmethod
     @cache
-    def get_from_api(cls, *, method_: str = "all", **attr_to_value: dict[str, Any]) -> list[elem_type]:
+    def get(cls, *, method_: str = "all", **
+            attr_to_value: dict[str, Any]) -> list[elem_type]: ...
+
+    @classmethod
+    @cache
+    def get(cls, *, method_: str = "all", **
+            attr_to_value: dict[str, tuple[Any]]) -> list[elem_type]: ...
+
+    @classmethod
+    @cache
+    def get(cls, *, method_: str = "all", **attr_to_value: Any) -> list[elem_type]:
         """Get all elements from the relevant API by filters.
 
         Parameters
@@ -198,20 +208,27 @@ class Element(ABC, Generic[elem_type]):
 
         Raises
         ------
-        Exception
-            Invalid method choice.
         KeyError
             If any attribute name passed as kwargs is not an attribute.
         """
-        METHOD_CHOICES = ["all", "or"]
 
-        if method_ not in METHOD_CHOICES:
-            raise Exception(f"method_ must be in {METHOD_CHOICES}")
+        # Method check
+        func = _method_choice(method_)
 
-        if method_ == "all":
-            func = all
-        elif method_ == "or":
-            func = any
+        # Attr_to_value check
+        for attr, values in attr_to_value.items():
+            if not isinstance(values, tuple):
+                attr_to_value[attr] = [values]
+
+            temp = []
+
+            for value in attr_to_value[attr]:
+                if isinstance(value, Element):
+                    temp.append(value.unique_id)
+                else:
+                    temp.append(value)
+
+            attr_to_value[attr] = tuple(temp)
 
         elements = cls.get_api
         elements_found = []
@@ -219,12 +236,20 @@ class Element(ABC, Generic[elem_type]):
         for elem in elements:
             conditions = []
 
-            for col, attr in attr_to_value.items():
-                if col not in elem:
+            for attr, values in attr_to_value.items():
+                if attr not in elem:
                     raise KeyError(
-                        f"'{col}' not in attributes.\nUse: {elem.keys()}")
+                        f"'{attr}' not in attributes.\nUse: {elem.keys()}")
 
-                conditions.append(elem[col] == attr)
+                sub_conditions = []
+
+                for value in values:
+                    sub_conditions.append(elem[attr] == value)
+
+                if any(sub_conditions):
+                    conditions.append(True)
+                else:
+                    conditions.append(False)
 
             if func(conditions):
                 elements_found.append(elem)
@@ -259,7 +284,7 @@ class Element(ABC, Generic[elem_type]):
         list[elem_type]
             Top n elements found.
         """
-        filtered_elems = cls.get_from_api(**filters)
+        filtered_elems = cls.get(**filters)
         sorted_filtered_elems = \
             sorted(filtered_elems, key=lambda e: getattr(
                 e, col_by), reverse=descending)
@@ -304,7 +329,7 @@ class Element(ABC, Generic[elem_type]):
             Random element selected. May return None if filters produce no element.
         """
 
-        choices = cls.get_from_api(**attr_to_value)
+        choices = cls.get(**attr_to_value)
 
         if len(choices) == 0:
             return None
@@ -313,7 +338,54 @@ class Element(ABC, Generic[elem_type]):
 
     @classmethod
     def sort(cls, elements: list[elem_type], sort_by: str, *, reverse: bool = True) -> list[elem_type]:
+        """Sorts a list of like elements by an attribute.
+
+        Parameters
+        ----------
+        elements : list[elem_type]
+            Elements to sort.
+        sort_by : str
+            Attribute name to sort `elements` by.
+        reverse : bool, optional
+            True if in descending order, by default True
+
+        Returns
+        -------
+        list[elem_type]
+            `elements` sorted by `sort_by`.
+        """
         elements_sorted = sorted(elements, key=lambda elem: getattr(
             elem, sort_by), reverse=reverse)
 
         return elements_sorted
+
+
+def _method_choice(method_: str) -> Callable:
+    """Checks if method choice passed from `get` is acceptable.
+
+    Parameters
+    ----------
+    method_ : str
+        Choice of applying conditions. E.g. `all()`,  `any()`.
+
+    Returns
+    -------
+    Callable
+        Either `any()` or `all()`.
+
+    Raises
+    ------
+    Exception
+        If a method choice is not recognised.
+    """
+    METHOD_CHOICES = ["all", "or"]
+
+    if method_ not in METHOD_CHOICES:
+        raise Exception(f"method_ must be in {METHOD_CHOICES}")
+
+    if method_ == "all":
+        func = all
+    elif method_ == "or":
+        func = any
+
+    return func

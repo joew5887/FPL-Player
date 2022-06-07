@@ -76,7 +76,7 @@ class BaseEvent(Element[baseevent], Generic[baseevent]):
 
     @classmethod
     def __find_until_true(cls, attr: str) -> Optional[baseevent]:
-        all_events = cls.get_from_api()
+        all_events = cls.get()
 
         for event in all_events:
             if getattr(event, attr):

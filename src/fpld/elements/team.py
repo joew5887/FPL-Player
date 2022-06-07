@@ -48,12 +48,12 @@ class BaseTeam(Element[baseteam], Generic[baseteam]):
 
     @classmethod
     def get_all_names(cls) -> list[str]:
-        all_teams = cls.get_from_api()
+        all_teams = cls.get()
         return [team.name for team in all_teams]
 
     @classmethod
     def gui_get(cls, team_name: str) -> list[baseteam]:
         if team_name == "All":
-            return cls.get_from_api()
+            return cls.get()
 
-        return cls.get_from_api(name=team_name)
+        return cls.get(name=team_name)

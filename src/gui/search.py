@@ -66,7 +66,7 @@ class SearchScrn(FPLWindow):
             self.__position_filter.current_option)
 
     def __update_order_by(self) -> None:
-        self.__order_by = fpld.Label.get_from_api(
+        self.__order_by = fpld.Label.get(
             label=self.__order_by_filter.current_option)[0]
 
     def __edit_filters(self) -> None:
@@ -79,8 +79,10 @@ class SearchScrn(FPLWindow):
         x.start()
 
     def __update_search(self) -> None:
-        self.__players = fpld.player_search(
-            self.__teams, self.__positions, sort_by=self.__order_by.name)
+        self.__players = fpld.Player.get(team=tuple(
+            self.__teams), element_type=tuple(self.__positions))
+        self.__players = fpld.Player.sort(
+            self.__players, self.__order_by.name)
         self.__display_search()
 
     def __display_search(self) -> None:

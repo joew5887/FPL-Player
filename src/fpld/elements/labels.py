@@ -29,6 +29,6 @@ class Label(Element[label]):
 
     @classmethod
     def get_all_labels(cls) -> list[str]:
-        all_labels = cls.get_from_api()
+        all_labels = cls.get()
 
         return [label.label for label in all_labels]

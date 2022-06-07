@@ -94,7 +94,6 @@ class BasePlayer(Element[baseplayer], Generic[baseplayer]):
 
     @ property
     def ppm(self) -> float:
-        raise NotImplementedError
         return self.total_points / self.now_cost
 
     @property
