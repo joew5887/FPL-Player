@@ -5,6 +5,7 @@ from dataclasses import fields
 from ..util import all_attributes_present
 from functools import cache
 from random import choice
+import pandas as pd
 
 
 elem_type = TypeVar("elem_type", bound="Element")
@@ -358,6 +359,16 @@ class Element(ABC, Generic[elem_type]):
             elem, sort_by), reverse=reverse)
 
         return elements_sorted
+
+    @classmethod
+    def as_df(cls, elements: list[elem_type], *attributes: tuple[str]) -> pd.DataFrame:
+        df_rows = [[getattr(element, attr) for attr in attributes]
+                   for element in elements]
+
+        df = pd.DataFrame(df_rows, index=list(
+            range(1, len(elements) + 1)), columns=attributes)
+
+        return df
 
 
 def _method_choice(method_: str) -> Callable:

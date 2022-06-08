@@ -86,5 +86,6 @@ class SearchScrn(FPLWindow):
         self.__display_search()
 
     def __display_search(self) -> None:
-        set_table(self.output_tbl, pd.DataFrame(
-            [[p, getattr(p, self.__order_by.name)] for p in self.__players]))
+        df = fpld.Player.as_df(self.__players, "web_name",
+                               "team", self.__order_by.name)
+        set_table(self.output_tbl, df)

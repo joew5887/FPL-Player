@@ -145,6 +145,9 @@ def set_table(table: QTableWidget, data: pd.DataFrame) -> None:
         for col_num, value in enumerate(row_no_index):
             table.setItem(row_num, col_num, QTableWidgetItem(str(value)))
 
+    table.setHorizontalHeaderLabels(data.columns)
+    table.setVerticalHeaderLabels([str(idx) for idx in data.index])
+
 
 def create_msg(icon: QMessageBox, title: str, text: str) -> None:
     msg = QMessageBox()

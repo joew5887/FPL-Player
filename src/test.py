@@ -2,6 +2,5 @@ import fpld
 
 
 if __name__ == "__main__":
-    foo = fpld.Position.get_by_id(1)
-    y = fpld.Player.get(element_type=foo, team=1)
-    print(y)
+    y = fpld.Player.get(team=17)
+    print(fpld.Player.as_df(y, "web_name", "team", "goals_scored", "ppm"))
