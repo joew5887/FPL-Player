@@ -5,7 +5,7 @@ from PyQt5.QtWidgets import (
     QMainWindow, QLabel, QVBoxLayout, QComboBox, QMessageBox, QWidget,
     QTableWidget, QTableWidgetItem
 )
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QRect
 from PyQt5.uic import loadUi
 from PyQt5.QtGui import QFont
 import pandas as pd
@@ -30,6 +30,13 @@ class FPLWindow(QMainWindow):
 
     def __set_common_widgets(self) -> None:
         title_label_wrapper(self.title_lbl)
+        self._resize()
+
+    def _resize(self) -> None:
+        self.resize(1200, 800)
+        widget = QWidget()
+        widget.setLayout(self.screen_layout)
+        self.setCentralWidget(widget)
 
 
 class Filter:

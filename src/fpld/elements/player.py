@@ -104,13 +104,6 @@ class BasePlayer(Element[baseplayer], Generic[baseplayer]):
     def transfer_diff(self) -> int:
         return self.transfers_in_event - self.transfers_out_event
 
-    """def info(self, *columns: tuple[str]) -> list:
-        if len(columns) == 0:
-            columns = tuple(["web_name", "goals_scored",
-                            "assists", "transfer_diff"])
-
-        return [getattr(self, attr) for attr in columns]"""
-
     @ classmethod
     @ property
     def api_link(cls) -> str:

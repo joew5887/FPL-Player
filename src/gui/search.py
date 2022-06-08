@@ -42,6 +42,8 @@ class SearchScrn(FPLWindow):
         self.show()
 
     def _set_widgets(self) -> None:
+        self.title_lbl.setText("Search")
+
         self.__position_filter = Filter(
             self.position_lbl, self.position_box, "Position", fpld.Position.get_all_names)
         self.__team_filter = Filter(self.team_lbl, self.team_box,
@@ -87,5 +89,5 @@ class SearchScrn(FPLWindow):
 
     def __display_search(self) -> None:
         df = fpld.Player.as_df(self.__players, "web_name",
-                               "team", self.__order_by.name)
+                               "team", self.__order_by.name, "percent_pos", "percent_team")
         set_table(self.output_tbl, df)

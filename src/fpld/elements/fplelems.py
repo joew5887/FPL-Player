@@ -1,5 +1,7 @@
 from __future__ import annotations
 from typing import TypeVar, Any, Union
+
+from fpld.util.percent import percent
 from .team import BaseTeam
 from .player import BasePlayer
 from .fixture import BaseFixture
@@ -53,13 +55,8 @@ class Team(BaseTeam[team]):
 
         return total
 
-    def total_goal_contributions(self, *, by_position: Position = None, include_goals: bool = True, include_assists: bool = True) -> int:
-        cols = []
-        if include_goals:
-            cols.append("goals_scored")
-
-        if include_assists:
-            cols.append("assists")
+    def total_goal_contributions(self, *, by_position: Position = None) -> int:
+        cols = ["goals_scored", "assists"]
 
         return self.player_total(*cols, by_position=by_position)
 
@@ -76,31 +73,16 @@ class Player(BasePlayer[player]):
 
         return new_instance
 
-    def percent_pos(self, *, include_goals: bool = True, include_assists: bool = True) -> float:
+    @property
+    def percent_pos(self) -> float:
         position_total = self.team.total_goal_contributions(
-            by_position=self.element_type, include_goals=include_goals, include_assists=include_assists)
+            by_position=self.element_type)
+        return percent(self.goal_contributions, position_total)
 
-        return self.__percent_of(position_total, include_goals=include_goals, include_assists=include_assists)
-
-    def percent_team(self, *, include_goals: bool = True, include_assists: bool = True) -> float:
-        team_total = self.team.total_goal_contributions(
-            include_goals=include_goals, include_assists=include_assists)
-
-        return self.__percent_of(team_total, include_goals=include_goals, include_assists=include_assists)
-
-    def __percent_of(self, denominator: int, *, include_goals: bool = True, include_assists: bool = True) -> float:
-        individual_total = 0
-
-        if include_goals:
-            individual_total += self.goals_scored
-
-        if include_assists:
-            individual_total += self.assists
-
-        if denominator == 0:
-            return 0
-
-        return (individual_total / denominator) * 100
+    @property
+    def percent_team(self) -> float:
+        team_total = self.team.total_goal_contributions()
+        return percent(self.goal_contributions, team_total)
 
 
 @dataclass(frozen=True, order=True, kw_only=True)

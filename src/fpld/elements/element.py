@@ -362,6 +362,20 @@ class Element(ABC, Generic[elem_type]):
 
     @classmethod
     def as_df(cls, elements: list[elem_type], *attributes: tuple[str]) -> pd.DataFrame:
+        """Gets a list of like elements and puts them into a dataframe.
+
+        With the chosen attributes as columns.
+
+        Parameters
+        ----------
+        elements : list[elem_type]
+            Elements to put in dataframe.
+
+        Returns
+        -------
+        pd.DataFrame
+            `elements` data in a dataframe.
+        """
         df_rows = [[getattr(element, attr) for attr in attributes]
                    for element in elements]
 

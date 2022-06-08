@@ -17,6 +17,9 @@ class _LoadingScrn(FPLWindow):
         label_wrapper(self.info_lbl, "foo")
         self.title_lbl.setText("Loading")
 
+    def _resize(self):
+        pass
+
     @pyqtSlot(float)
     def update_progress(self, percent: float) -> None:
         """Update progress bar to show status of task.
