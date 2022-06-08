@@ -1,4 +1,4 @@
-from typing import TypeVar, Generic
+from typing import TypeVar, Generic, Any
 from .element import Element
 from ..util import API
 from ..constants import API_URL
@@ -42,7 +42,7 @@ class BaseTeam(Element[baseteam], Generic[baseteam]):
 
     @classmethod
     @property
-    def get_api(cls) -> dict:
+    def get_api(cls) -> list[dict[str, Any]]:
         api = API(cls.api_link)
         return api.data["teams"]
 

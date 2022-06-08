@@ -1,6 +1,6 @@
 from __future__ import annotations
 from dataclasses import dataclass
-from typing import TypeVar
+from typing import Any, TypeVar
 from ..util import API
 from ..constants import API_URL
 from .element import Element
@@ -23,9 +23,20 @@ class Label(Element[label]):
 
     @classmethod
     @property
-    def get_api(cls) -> dict:
+    def get_api(cls) -> list[dict[str, Any]]:
         api = API(cls.api_link)
-        return api.data["element_stats"]
+        data: list
+        data = api.data["element_stats"]
+
+        # New labels
+        data.append({"label": "Goal Contributions",
+                    "name": "goal_contributions"})
+        data.append({"label": "Percent Position",
+                    "name": "percent_pos"})
+        data.append({"label": "Percent Team",
+                    "name": "percent_team"})
+
+        return data
 
     @classmethod
     def get_all_labels(cls) -> list[str]:

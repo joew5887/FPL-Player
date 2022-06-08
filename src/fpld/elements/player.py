@@ -111,6 +111,6 @@ class BasePlayer(Element[baseplayer], Generic[baseplayer]):
 
     @ classmethod
     @ property
-    def get_api(cls) -> dict:
+    def get_api(cls) -> list[dict[str, Any]]:
         api = API(cls.api_link)
         return api.data["elements"]

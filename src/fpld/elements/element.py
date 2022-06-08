@@ -99,15 +99,15 @@ class Element(ABC, Generic[elem_type]):
     @classmethod
     @property
     @abstractmethod
-    def get_api(cls) -> dict:
+    def get_api(cls) -> list[dict[str, Any]]:
         """Data from API.
 
         Used by `get()` to find results.
 
         Returns
         -------
-        dict
-            Data for the clas.
+        list[dict[str, Any]]
+            Data for the class.
         """
         return
 

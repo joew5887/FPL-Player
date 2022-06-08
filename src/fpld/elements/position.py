@@ -1,6 +1,6 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
-from typing import TypeVar
+from typing import TypeVar, Any
 from ..util import API
 from ..constants import API_URL
 from .element import Element
@@ -35,7 +35,7 @@ class Position(Element[position]):
 
     @classmethod
     @property
-    def get_api(cls) -> dict:
+    def get_api(cls) -> list[dict[str, Any]]:
         api = API(cls.api_link)
         return api.data["element_types"]
 

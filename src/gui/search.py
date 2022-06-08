@@ -88,6 +88,6 @@ class SearchScrn(FPLWindow):
         self.__display_search()
 
     def __display_search(self) -> None:
-        df = fpld.Player.as_df(self.__players, "web_name",
-                               "team", self.__order_by.name, "percent_pos", "percent_team")
+        df = fpld.Player.as_df(self.__players, "element_type", "team", "web_name",
+                               self.__order_by.name)
         set_table(self.output_tbl, df)
