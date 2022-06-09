@@ -2,6 +2,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Any, TypeVar, Union, Generic, Optional, overload, Callable
 from dataclasses import fields
+from PyQt5.QtWidgets import QPushButton
 from ..util import all_attributes_present
 from functools import cache
 from random import choice
@@ -41,14 +42,16 @@ class Element(ABC, Generic[elem_type]):
 
         return id_
 
-    """@abstractmethod
-    def info(self, *columns: tuple[str]) -> list:
-        if len(columns) == 0:
-            pass
-            # Use default columns.
+      # No type to prevent circular import
+    def create_button(self, window) -> QPushButton:
+        button = QPushButton()
+        button.setText(str(self))
+        button.clicked.connect(lambda: self.open_gui(window))
 
-        return
-        # Attributes from columns for element."""
+        return button
+
+    def open_gui(self, window) -> None:
+        window(self)
 
     @classmethod
     def __pre_init__(cls, new_instance: dict[str, Any]) -> dict[str, Any]:

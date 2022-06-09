@@ -1,4 +1,5 @@
 from .parent import FPLWindow, Filter, set_dropbox, label_wrapper, combo_box_wrapper, set_table
+from .element import PlayerScrn
 from PyQt5.QtWidgets import (
     QGridLayout, QComboBox, QLabel, QTableWidget, QHBoxLayout, )
 import fpld
@@ -88,6 +89,8 @@ class SearchScrn(FPLWindow):
         self.__display_search()
 
     def __display_search(self) -> None:
-        df = fpld.Player.as_df(self.__players, "element_type", "team", "web_name",
+        df = fpld.Player.as_df(self.__players, "element_type", "team",
                                self.__order_by.name)
+        df["web_name"] = [p.create_button(PlayerScrn)
+                          for p in self.__players]
         set_table(self.output_tbl, df)

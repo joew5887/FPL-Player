@@ -5,7 +5,7 @@ from PyQt5.QtWidgets import (
     QMainWindow, QLabel, QVBoxLayout, QComboBox, QMessageBox, QWidget,
     QTableWidget, QTableWidgetItem
 )
-from PyQt5.QtCore import Qt, QRect
+from PyQt5.QtCore import Qt
 from PyQt5.uic import loadUi
 from PyQt5.QtGui import QFont
 import pandas as pd
@@ -150,7 +150,10 @@ def set_table(table: QTableWidget, data: pd.DataFrame) -> None:
         row_no_index = row[1:]
 
         for col_num, value in enumerate(row_no_index):
-            table.setItem(row_num, col_num, QTableWidgetItem(str(value)))
+            if isinstance(value, QWidget):
+                table.setCellWidget(row_num, col_num, value)
+            else:
+                table.setItem(row_num, col_num, QTableWidgetItem(str(value)))
 
     table.setHorizontalHeaderLabels(data.columns)
     table.setVerticalHeaderLabels([str(idx) for idx in data.index])
