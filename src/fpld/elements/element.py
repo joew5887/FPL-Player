@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 from typing import Any, TypeVar, Union, Generic, Optional, overload, Callable
 from dataclasses import fields
 from PyQt5.QtWidgets import QPushButton
+from fpld.util.external import API
 from ..util import all_attributes_present
 from functools import cache
 from random import choice
@@ -14,6 +15,7 @@ elem_type = TypeVar("elem_type", bound="Element")
 
 class Element(ABC, Generic[elem_type]):
     _DEFAULT_ID = "id"
+    _api = None
 
     @ property
     def unique_id(self) -> int:
@@ -100,19 +102,39 @@ class Element(ABC, Generic[elem_type]):
         return
 
     @classmethod
-    @property
     @abstractmethod
-    def get_api(cls) -> list[dict[str, Any]]:
+    def get_latest_api(cls) -> list[dict[str, Any]]:
         """Data from API.
 
-        Used by `get()` to find results.
+        Used by `get_api()` to get API.
+
+        Returns
+        -------
+        list[dict[str, Any]]
+            Latest data for the class.
+        """
+        return
+
+    @classmethod
+    def get_api(cls, refresh_api: bool = False) -> list[dict[str, Any]]:
+        """Gets API either online or stored in memory from previous use.
+
+        Used by `get()` to find search results.
+
+        Parameters
+        ----------
+        refresh_api : bool, optional
+            Return the latest version from FPL website, by default False
 
         Returns
         -------
         list[dict[str, Any]]
             Data for the class.
         """
-        return
+        if (refresh_api is True) or (cls._api is None):
+            cls._api = cls.get_latest_api()
+
+        return cls._api
 
     @classmethod
     def from_dict(cls, new_instance: dict[str, Any]) -> elem_type:
@@ -234,7 +256,7 @@ class Element(ABC, Generic[elem_type]):
 
             attr_to_value[attr] = tuple(temp)
 
-        elements = cls.get_api
+        elements = cls.get_api()
         elements_found = []
 
         for elem in elements:

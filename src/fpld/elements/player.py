@@ -110,7 +110,7 @@ class BasePlayer(Element[baseplayer], Generic[baseplayer]):
         return API_URL + "bootstrap-static/"
 
     @ classmethod
-    @ property
-    def get_api(cls) -> list[dict[str, Any]]:
+    def get_latest_api(cls) -> list[dict[str, Any]]:
+        api = super().get_latest_api()
         api = API(cls.api_link)
         return api.data["elements"]

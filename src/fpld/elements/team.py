@@ -41,8 +41,8 @@ class BaseTeam(Element[baseteam], Generic[baseteam]):
         return API_URL + "bootstrap-static/"
 
     @classmethod
-    @property
-    def get_api(cls) -> list[dict[str, Any]]:
+    def get_latest_api(cls) -> list[dict[str, Any]]:
+        api = super().get_latest_api()
         api = API(cls.api_link)
         return api.data["teams"]
 

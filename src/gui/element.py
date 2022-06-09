@@ -1,6 +1,6 @@
 from fpld.elements.element import Element
 from .parent import FPLWindow, title_label_wrapper
-from fpld import Player
+import fpld
 
 
 class FPLElemWindow(FPLWindow):
@@ -14,5 +14,15 @@ class FPLElemWindow(FPLWindow):
 
 
 class PlayerScrn(FPLElemWindow):
-    def __init__(self, player: Player):
+    def __init__(self, player: fpld.Player):
         super().__init__(player)
+
+
+class TeamScrn(FPLElemWindow):
+    def __init__(self, team: fpld.Team):
+        super().__init__(team)
+
+
+class PositionScrn(FPLElemWindow):
+    def __init__(self, position: fpld.Position):
+        super().__init__(position)
