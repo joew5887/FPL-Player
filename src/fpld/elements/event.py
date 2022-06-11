@@ -2,7 +2,7 @@ from .element import Element
 from datetime import datetime
 from typing import Generic, Optional, TypeVar, Union, Any
 from ..util import API
-from ..constants import str_to_datetime, API_URL
+from ..constants import URLS, str_to_datetime
 from dataclasses import dataclass, field
 
 
@@ -51,7 +51,7 @@ class BaseEvent(Element[baseevent], Generic[baseevent]):
     @classmethod
     @property
     def api_link(cls) -> str:
-        return API_URL + "bootstrap-static/"
+        return URLS["BOOTSTRAP-STATIC"]
 
     @classmethod
     def get_latest_api(cls) -> list[dict[str, Any]]:

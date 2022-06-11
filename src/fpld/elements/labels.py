@@ -2,7 +2,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, TypeVar
 from ..util import API
-from ..constants import API_URL
+from ..constants import URLS
 from .element import Element
 
 
@@ -19,7 +19,7 @@ class Label(Element[label]):
     @classmethod
     @property
     def api_link(cls) -> str:
-        return API_URL + "/bootstrap-static/"
+        return URLS["BOOTSTRAP-STATIC"]
 
     @classmethod
     def get_latest_api(cls) -> list[dict[str, Any]]:

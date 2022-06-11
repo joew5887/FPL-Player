@@ -1,7 +1,7 @@
 from typing import Generic, TypeVar, Any
 from .element import Element
 from ..util import API
-from ..constants import str_to_datetime, API_URL
+from ..constants import URLS, str_to_datetime
 from datetime import datetime
 from dataclasses import dataclass, field
 
@@ -41,7 +41,7 @@ class BaseFixture(Element[basefixture], Generic[basefixture]):
     @classmethod
     @property
     def api_link(cls) -> str:
-        return API_URL + "fixtures/"
+        return URLS["FIXTURES"]
 
     @classmethod
     def get_latest_api(cls) -> list[dict[str, Any]]:

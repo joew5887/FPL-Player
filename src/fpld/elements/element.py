@@ -1,10 +1,9 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from typing import Any, TypeVar, Union, Generic, Optional, overload, Callable
+from typing import Any, TypeVar, Generic, Optional, overload, Callable
 from dataclasses import fields
 from PyQt5.QtWidgets import QPushButton
-from fpld.util.external import API
-from ..util import all_attributes_present
+from ..util import all_attributes_present, all_field_names
 from functools import cache
 from random import choice
 import pandas as pd
@@ -46,6 +45,18 @@ class Element(ABC, Generic[elem_type]):
 
       # No type to prevent circular import
     def create_button(self, window) -> QPushButton:
+        """Creates a QPushButton that opens a window for that element.
+
+        Parameters
+        ----------
+        window : FPLElemWindow
+            Displays element in gui.
+
+        Returns
+        -------
+        QPushButton
+            Access to `window` from another window.
+        """
         button = QPushButton()
         button.setText(str(self))
         button.clicked.connect(lambda: self.open_gui(window))
@@ -53,7 +64,27 @@ class Element(ABC, Generic[elem_type]):
         return button
 
     def open_gui(self, window) -> None:
+        """Opens `window` with `self` passed.
+
+        Parameters
+        ----------
+        window : FPLElemWindow
+            Displays element in gui.
+        """
         window(self)
+
+    @property
+    def info(self) -> str:
+        """Full info for element.
+
+        Returns
+        -------
+        str
+            Element informaiton.
+        """
+        field_names = all_field_names(type(self))
+
+        return "\n".join([f_name + ": " + str(getattr(self, f_name)) for f_name in field_names])
 
     @classmethod
     def __pre_init__(cls, new_instance: dict[str, Any]) -> dict[str, Any]:

@@ -1,6 +1,6 @@
 from __future__ import annotations
 from typing import TypeVar, Any, Union
-
+from fpld.constants import URLS
 from fpld.util.percent import percent
 from .team import BaseTeam
 from .player import BasePlayer
@@ -59,6 +59,11 @@ class Team(BaseTeam[team]):
         cols = ["goals_scored", "assists"]
 
         return self.player_total(*cols, by_position=by_position)
+
+
+@dataclass(frozen=True, order=True, kw_only=True)
+class PlayerFull:
+    pass
 
 
 @dataclass(frozen=True, order=True, kw_only=True)

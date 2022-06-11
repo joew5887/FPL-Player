@@ -2,7 +2,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TypeVar, Any
 from ..util import API
-from ..constants import API_URL
+from ..constants import URLS
 from .element import Element
 
 
@@ -31,7 +31,7 @@ class Position(Element[position]):
     @classmethod
     @property
     def api_link(cls) -> str:
-        return API_URL + "/bootstrap-static/"
+        return URLS["BOOTSTRAP-STATIC"]
 
     @classmethod
     def get_latest_api(cls) -> list[dict[str, Any]]:

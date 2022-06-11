@@ -1,7 +1,7 @@
 from typing import TypeVar, Generic, Any
 from .element import Element
 from ..util import API
-from ..constants import API_URL
+from ..constants import URLS
 from dataclasses import dataclass, field
 
 
@@ -38,7 +38,7 @@ class BaseTeam(Element[baseteam], Generic[baseteam]):
     @classmethod
     @property
     def api_link(cls) -> str:
-        return API_URL + "bootstrap-static/"
+        return URLS["BOOTSTRAP-STATIC"]
 
     @classmethod
     def get_latest_api(cls) -> list[dict[str, Any]]:
