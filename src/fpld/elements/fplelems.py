@@ -2,12 +2,14 @@ from __future__ import annotations
 from typing import TypeVar, Any, Union
 from fpld.constants import URLS
 from fpld.util.percent import percent
+from fpld.util import API
 from .team import BaseTeam
-from .player import BasePlayer
+from .player import BasePlayer, BasePlayerFull, BasePlayerHistory, BasePlayerFixtures, BasePlayerHistoryPast
 from .fixture import BaseFixture
 from .event import BaseEvent
 from .position import Position
-from dataclasses import dataclass, field
+from dataclasses import Field, dataclass, field
+from fpld.util.attribute import CategoricalVar
 
 
 team = TypeVar("team", bound="Team")
@@ -62,8 +64,59 @@ class Team(BaseTeam[team]):
 
 
 @dataclass(frozen=True, order=True, kw_only=True)
-class PlayerFull:
-    pass
+class PlayerFull(BasePlayerFull):
+    def __init__(self, fixtures: PlayerFixtures, history: PlayerHistory, history_past: BasePlayerHistoryPast):
+        self.__fixtures = fixtures
+        self.__history = history
+        self.__history_past = history_past
+
+    @property
+    def fixtures(self) -> BasePlayerFixtures:
+        return self.__fixtures
+
+    @property
+    def history(self) -> PlayerHistory:
+        return self.__history
+
+    @property
+    def history_past(self) -> BasePlayerHistoryPast:
+        return self.__history_past
+
+    @classmethod
+    def from_id(cls, player_id: int) -> BasePlayerFull:
+        url = URLS["ELEMENT-SUMMARY"].format(player_id)
+        api = API(url)  # Need to have offline feature
+        fixtures = PlayerFixtures.from_api(api.data["fixtures"])
+        history = PlayerHistory.from_api(api.data["history"])
+        history_past = BasePlayerHistoryPast.from_api(api.data["history_past"])
+        return BasePlayerFull(fixtures, history, history_past)
+
+
+@dataclass(frozen=True, kw_only=True)
+class PlayerHistory(BasePlayerHistory):
+    fixture: CategoricalVar[Fixture] = field(hash=False, repr=False)
+    opponent_team: CategoricalVar[Team] = field(hash=False, repr=False)
+
+    @classmethod
+    def _edit_stat_from_api(cls, field: Field, attr_list: list[Any]) -> dict[str, list[Any]]:
+        if field.name == "fixture":
+            attr_list = [Fixture.get_by_id(id_) for id_ in attr_list]
+        elif field.name == "opponent_team":
+            attr_list = [Team.get_by_id(id_) for id_ in attr_list]
+
+        return attr_list
+
+
+@dataclass(frozen=True, kw_only=True)
+class PlayerFixtures(BasePlayerFixtures):
+    fixture: CategoricalVar[Fixture] = field(hash=False, repr=False)
+
+    @classmethod
+    def _edit_stat_from_api(cls, field: Field, attr_list: list[Any]) -> dict[str, list[Any]]:
+        if field.name == "fixture":
+            attr_list = [Fixture.get_by_id(id_) for id_ in attr_list]
+
+        return attr_list
 
 
 @dataclass(frozen=True, order=True, kw_only=True)
@@ -88,6 +141,9 @@ class Player(BasePlayer[player]):
     def percent_team(self) -> float:
         team_total = self.team.total_goal_contributions()
         return percent(self.goal_contributions, team_total)
+
+    def in_full(self) -> PlayerFull:
+        return PlayerFull.from_id(self.id)
 
 
 @dataclass(frozen=True, order=True, kw_only=True)

@@ -85,6 +85,7 @@ class ComboBox(Widget):
 
     def __init__(self, combo_box: QComboBox, font: QFont):
         super().__init__(combo_box, font)
+        self._widget.setStyleSheet("background-color:rgb(255, 255, 255)")
 
 
 class Table(Widget):

@@ -125,37 +125,41 @@ class BasePlayer(Element[baseplayer], Generic[baseplayer]):
 
 
 class BasePlayerFull:
-    def __init__(self, fixtures: PlayerFixtures, history: PlayerHistory, history_past: PlayerHistoryPast):
+    def __init__(self, fixtures: BasePlayerFixtures, history: BasePlayerHistory, history_past: BasePlayerHistoryPast):
         self.__fixtures = fixtures
         self.__history = history
         self.__history_past = history_past
 
     @property
-    def fixtures(self) -> PlayerFixtures:
+    def fixtures(self) -> BasePlayerFixtures:
         return self.__fixtures
 
     @property
-    def history(self) -> PlayerHistory:
+    def history(self) -> BasePlayerHistory:
         return self.__history
 
     @property
-    def history_past(self) -> PlayerHistoryPast:
+    def history_past(self) -> BasePlayerHistoryPast:
         return self.__history_past
 
     @classmethod
     def from_id(cls, player_id: int) -> BasePlayerFull:
         url = URLS["ELEMENT-SUMMARY"].format(player_id)
         api = API(url)  # Need to have offline feature
-        fixtures = PlayerFixtures.from_api(api.data["fixtures"])
-        history = PlayerHistory.from_api(api.data["history"])
-        history_past = PlayerHistoryPast.from_api(api.data["history_past"])
+        fixtures = BasePlayerFixtures.from_api(api.data["fixtures"])
+        history = BasePlayerHistory.from_api(api.data["history"])
+        history_past = BasePlayerHistoryPast.from_api(api.data["history_past"])
         return BasePlayerFull(fixtures, history, history_past)
 
 
 @dataclass(frozen=True, kw_only=True)
-class PlayerStats(ABC):
+class BasePlayerStats(ABC):
     @classmethod
-    def from_api(cls, api_data: list[dict[str, Any]]) -> PlayerStats:
+    def _edit_stat_from_api(cls, field: Field, attr_list: list[Any]) -> dict[str, list[Any]]:
+        return attr_list
+
+    @classmethod
+    def from_api(cls, api_data: list[dict[str, Any]]) -> BasePlayerStats:
         stat_attributes = {}
         resolved_hints = get_type_hints(cls)
 
@@ -164,6 +168,8 @@ class PlayerStats(ABC):
 
             for state in api_data:
                 attr_list.append(state[f.name])
+
+            attr_list = cls._edit_stat_from_api(f, attr_list)
 
             stat_attributes[f.name] = resolved_hints[f.name](attr_list, f.name)
 
@@ -185,12 +191,12 @@ class PlayerStats(ABC):
 
 
 @dataclass(frozen=True, kw_only=True)
-class PlayerFixtures(PlayerStats):
+class BasePlayerFixtures(BasePlayerStats):
     fixture: CategoricalVar[int] = field(hash=False, repr=False)
 
 
 @dataclass(frozen=True, kw_only=True)
-class PlayerHistory(PlayerStats):
+class BasePlayerHistory(BasePlayerStats):
     fixture: CategoricalVar[int] = field(hash=False, repr=False)
     opponent_team: CategoricalVar[int] = field(hash=False, repr=False)
     total_points: ContinuousVar[int] = field(hash=False, repr=False)
@@ -198,7 +204,7 @@ class PlayerHistory(PlayerStats):
     kickoff_time: CategoricalVar[datetime] = field(hash=False, repr=False)
     team_h_score: ContinuousVar[int] = field(hash=False, repr=False)
     team_a_score: ContinuousVar[int] = field(hash=False, repr=False)
-    round: ContinuousVar[int] = field(hash=False, repr=False)
+    round: CategoricalVar[int] = field(hash=False, repr=False)
     minutes: ContinuousVar[int] = field(hash=False, repr=False)
     goals_scored: ContinuousVar[int] = field(hash=False, repr=False)
     assists: ContinuousVar[int] = field(hash=False, repr=False)
@@ -224,7 +230,7 @@ class PlayerHistory(PlayerStats):
 
 
 @dataclass(frozen=True, kw_only=True)
-class PlayerHistoryPast(PlayerStats):
+class BasePlayerHistoryPast(BasePlayerStats):
     season_name: CategoricalVar[str] = field(hash=False, repr=False)
     start_cost: ContinuousVar[int] = field(hash=False, repr=False)
     end_cost: ContinuousVar[int] = field(hash=False, repr=False)
