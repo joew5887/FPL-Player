@@ -8,6 +8,9 @@ class API:
         self.__link = link
         self.__set_data()
 
+    def __str__(self) -> str:
+        return str(self.data)
+
     @property
     def data(self) -> dict:
         return self.__data

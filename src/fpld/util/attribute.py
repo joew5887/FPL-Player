@@ -8,7 +8,7 @@ b = TypeVar("b", int, float)
 
 class Attribute(Generic[t]):
     def __init__(self, values: list[t], attr_name: str):
-        self.__values = values
+        self.values = values
         self.__attr_name = attr_name
 
     def __str__(self) -> str:
@@ -17,6 +17,14 @@ class Attribute(Generic[t]):
     @property
     def values(self) -> list[t]:
         return self.__values
+
+    @values.setter
+    def values(self, new_values: list[t]) -> None:
+        self.__values = new_values
+        self.__edit_values()
+
+    def __edit_values(self) -> None:
+        pass
 
 
 class CategoricalVar(Attribute[t]):
@@ -27,6 +35,13 @@ class CategoricalVar(Attribute[t]):
 class ContinuousVar(Attribute[b]):
     def __init__(self, values: list[b], attr_name: str):
         super().__init__(values, attr_name)
+
+    def __edit_values(self) -> None:
+        super().__edit_values()
+
+    @property
+    def average(self) -> float:
+        return sum(self.values) / len(self.values)
 
 
 def all_attributes_present(class_, new_instance: dict[str, Any]) -> bool:

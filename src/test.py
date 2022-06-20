@@ -4,9 +4,8 @@ import matplotlib.pyplot as plt
 
 
 if __name__ == "__main__":
-    p = fpld.Player.get(web_name="Kane")[0]
-    q = p.in_full()
-    y = q.history.goals_scored
-    x = q.history.opponent_team
-    plt.plot([f"{s.short_name}{i}" for i, s in enumerate(x.values)], y.values)
-    plt.show()
+    all_ = fpld.Player.get()
+    players = {p: [p.goals_scored] for p in all_}
+    x = [fpld.FPLTeam.random(all_) for _ in range(5)]
+    for t in x:
+        print(str(t) + "\n")

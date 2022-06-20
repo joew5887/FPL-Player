@@ -6,7 +6,8 @@ URLS = {
     "API": __API_URL_STEM,
     "BOOTSTRAP-STATIC": __API_URL_STEM + "bootstrap-static/",
     "ELEMENT-SUMMARY": __API_URL_STEM + "element-summary/{}/",
-    "FIXTURES": __API_URL_STEM + "fixtures/"}
+    "FIXTURES": __API_URL_STEM + "fixtures/"
+}
 
 
 def str_to_datetime(str_date: str, format: str = __STR_TO_DATETIME) -> datetime:
