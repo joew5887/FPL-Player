@@ -3,19 +3,19 @@ from abc import ABC, abstractmethod
 from dataclasses import Field, dataclass, field, fields
 from datetime import datetime
 from fpld.util.attribute import CategoricalVar, ContinuousVar
-from .element import Element
+from .element import Element, ElementGroup
 from typing import Optional, TypeVar, Generic, Any, get_type_hints
 from ..util import API
 from ..constants import URLS
 from .position import Position
 
 
-baseplayer = TypeVar("baseplayer", bound="BasePlayer")
+base_player = TypeVar("base_player", bound="BasePlayer")
 playerfull = TypeVar("playerfull")
 
 
 @dataclass(frozen=True, order=True, kw_only=True)
-class BasePlayer(Element[baseplayer], Generic[baseplayer]):
+class BasePlayer(Element[base_player], Generic[base_player]):
     chance_of_playing_next_round: Optional[int] = field(hash=False, repr=False)
     chance_of_playing_this_round: Optional[int] = field(hash=False, repr=False)
     code: int = field(repr=False)
@@ -148,7 +148,8 @@ class BasePlayerFull:
         api = API(url)  # Need to have offline feature
         fixtures = BasePlayerFixtures.from_api(api.data["fixtures"])
         history = BasePlayerHistory.from_api(api.data["history"])
-        history_past = BasePlayerHistoryPast.from_api(api.data["history_past"])
+        history_past = BasePlayerHistoryPast.from_api(
+            api.data["history_past"])
         return BasePlayerFull(fixtures, history, history_past)
 
 

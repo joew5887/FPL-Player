@@ -1,0 +1,1 @@
+from .fplteam import Squad

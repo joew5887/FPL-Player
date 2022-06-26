@@ -1,18 +1,18 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from typing import Any, TypeVar, Generic, Optional, overload, Callable
+from typing import Any, Iterator, SupportsIndex, TypeVar, Generic, Optional, overload, Callable
 from dataclasses import fields
 from PyQt5.QtWidgets import QPushButton
-from ..util import all_attributes_present, all_field_names
+from ..util import all_attributes_present, all_field_names, Percentile
 from functools import cache
 from random import choice
 import pandas as pd
 
 
-elem_type = TypeVar("elem_type", bound="Element")
+element = TypeVar("element", bound="Element")
 
 
-class Element(ABC, Generic[elem_type]):
+class Element(ABC, Generic[element]):
     _DEFAULT_ID = "id"
     _api = None
 
@@ -168,7 +168,7 @@ class Element(ABC, Generic[elem_type]):
         return cls._api
 
     @classmethod
-    def from_dict(cls, new_instance: dict[str, Any]) -> elem_type:
+    def from_dict(cls, new_instance: dict[str, Any]) -> element:
         """Converts dictionary of attributes to an object of the class.
 
         Parameters
@@ -178,7 +178,7 @@ class Element(ABC, Generic[elem_type]):
 
         Returns
         -------
-        elem_type
+        element
             Object based on attributes and values from `new_instance`.
 
         Raises
@@ -201,16 +201,16 @@ class Element(ABC, Generic[elem_type]):
     @classmethod
     @cache
     @overload
-    def get_by_id(cls, id_: int) -> Optional[elem_type]: ...
+    def get_by_id(cls, id_: int) -> Optional[element]: ...
 
     @classmethod
     @cache
     @overload
-    def get_by_id(cls, id_: str) -> Optional[elem_type]: ...
+    def get_by_id(cls, id_: str) -> Optional[element]: ...
 
     @classmethod
     @cache
-    def get_by_id(cls, id_: Any) -> Optional[elem_type]:
+    def get_by_id(cls, id_: Any) -> Optional[element]:
         """Get an element by their unique id.
 
         Parameters
@@ -220,7 +220,7 @@ class Element(ABC, Generic[elem_type]):
 
         Returns
         -------
-        Optional[elem_type]
+        Optional[element]
             The found element. May return None if no element has been found.
 
         Raises
@@ -229,28 +229,29 @@ class Element(ABC, Generic[elem_type]):
             If more than one element was found, ID should be unique.
         """
         filter_ = {cls.unique_id_col: id_}
-        element = cls.get(**filter_)
+        element_group = cls.get(**filter_)
 
-        if len(element) > 1:
-            raise Exception(f"Expected only one element, got {len(element)}.")
-        elif len(element) == 0:
+        if len(element_group) > 1:
+            raise Exception(
+                f"Expected only one element, got {len(element_group)}.")
+        elif len(element_group) == 0:
             return None
         else:
-            return element[0]
+            return element_group[0]
 
     @classmethod
     @cache
     def get(cls, *, method_: str = "all", **
-            attr_to_value: dict[str, Any]) -> list[elem_type]: ...
+            attr_to_value: dict[str, Any]) -> ElementGroup[element]: ...
 
     @classmethod
     @cache
     def get(cls, *, method_: str = "all", **
-            attr_to_value: dict[str, tuple[Any]]) -> list[elem_type]: ...
+            attr_to_value: dict[str, tuple[Any]]) -> ElementGroup[element]: ...
 
     @classmethod
     @cache
-    def get(cls, *, method_: str = "all", **attr_to_value: Any) -> list[elem_type]:
+    def get(cls, *, method_: str = "all", **attr_to_value: Any) -> ElementGroup[element]:
         """Get all elements from the relevant API by filters.
 
         Parameters
@@ -260,7 +261,7 @@ class Element(ABC, Generic[elem_type]):
 
         Returns
         -------
-        list[elem_type]
+        list[element]
             All elements found in search.
 
         Raises
@@ -311,96 +312,78 @@ class Element(ABC, Generic[elem_type]):
             if func(conditions):
                 elements_found.append(elem)
 
-        return [cls.from_dict(elem) for elem in elements_found]
+        return ElementGroup([cls.from_dict(elem) for elem in elements_found])
 
-    @classmethod
-    def top_n_elements(cls, col_by: str, n: int, filters: dict[str, Any], descending: bool = True) -> list[elem_type]:
-        """Gets the highest (or lowest) n ranked elements by a given column and filters.
 
-        Example
-        -------
+class ElementGroup(ABC, Generic[element]):
+    def __init__(self, objects: list[element]):
+        self.__objects = objects
 
-        ```
-        > fpld.Player.top_n_elements("total_points", 10, {"team": 17})
-        [Son, Kane, Lloris, Dier, Reguilón]
-        ```
+    def __str__(self) -> str:
+        return f"{self.__class__.__name__} of {len(self)} elements."
 
-        Parameters
-        ----------
-        col_by : str
-            Attribute to order by.
-        n : int
-            Number of elements to return. If elements found is less than n, it returns all elements found.
-        filters: dict[str, Any]
-            Filters to apply to top n elements where the attribute is the key and the requested value is the value
-        descending : bool, optional
-            How to sort list, by default True
+    def __iter__(self) -> Iterator[element]:
+        return iter(self.__objects)
 
-        Returns
-        -------
-        list[elem_type]
-            Top n elements found.
-        """
-        filtered_elems = cls.get(**filters)
-        sorted_filtered_elems = \
-            sorted(filtered_elems, key=lambda e: getattr(
-                e, col_by), reverse=descending)
+    def __len__(self) -> int:
+        return len(self.__objects)
 
-        return sorted_filtered_elems[:n]
+    @overload
+    def __getitem__(self, idx: SupportsIndex) -> element: ...
+    @overload
+    def __getitem__(self, idx: slice) -> ElementGroup[element]: ...
 
-    @classmethod
-    def top_n_all_elements(cls, col_by: str, n: int, descending: bool = True) -> list[elem_type]:
-        """Gets the highest (or lowest) n ranked elements by a given column.
+    def __getitem__(self, idx: Any) -> Any:
+        if isinstance(idx, slice):
+            return ElementGroup(self.__objects[idx])
+        elif isinstance(idx, SupportsIndex):
+            return self.__objects[idx]
+        else:
+            raise NotImplementedError
 
-        Example
-        -------
+    def string_list(self) -> list[str]:
+        output = [str(elem) for elem in self]
 
-        ```
-        > fpld.Player.top_n_all_elements("goals_scored", 10)
-        [Salah, Son, Ronaldo, Jota, Mané, Toney, Kane, Saka, Zaha, De Bruyne]
-        ```
+        return output
 
-        Parameters
-        ----------
-        col_by : str
-            Attribute to order by.
-        n : int
-            Number of elements to return. If elements found is less than n, it returns all elements found.
-        descending : bool, optional
-            How to sort list, by default True
+    def top_n_elements(self, col_by: str, n: int, reverse: bool = True) -> ElementGroup:
+        return ElementGroup(self.sort(col_by, reverse=reverse)[:n])
+
+    def random(self) -> element:
+        """Gets random element from objects list.
 
         Returns
         -------
-        list[elem_type]
-            Top n elements found.
+        element
+            Random element selected.
         """
-        return cls.top_n_elements(col_by, n, dict(), descending=descending)
 
-    @classmethod
-    def random(cls, **attr_to_value: dict[str, Any]) -> elem_type:
-        """Gets random element based on filters passed.
+        return choice(self.__objects)
+
+    def as_df(self, *attributes: tuple[str]) -> pd.DataFrame:
+        """Gets a list of like elements and puts them into a dataframe.
+
+        With the chosen attributes as columns.
 
         Returns
         -------
-        elem_type
-            Random element selected. May return None if filters produce no element.
+        pd.DataFrame
+            `elements` data in a dataframe.
         """
 
-        choices = cls.get(**attr_to_value)
+        df_rows = [[getattr(element, attr) for attr in attributes]
+                   for element in self]
 
-        if len(choices) == 0:
-            return None
+        df = pd.DataFrame(df_rows, index=list(
+            range(1, len(self) + 1)), columns=attributes)
 
-        return choice(choices)
+        return df
 
-    @classmethod
-    def sort(cls, elements: list[elem_type], sort_by: str, *, reverse: bool = True) -> list[elem_type]:
+    def sort(self, sort_by: str, *, reverse: bool = True) -> ElementGroup[element]:
         """Sorts a list of like elements by an attribute.
 
         Parameters
         ----------
-        elements : list[elem_type]
-            Elements to sort.
         sort_by : str
             Attribute name to sort `elements` by.
         reverse : bool, optional
@@ -408,37 +391,22 @@ class Element(ABC, Generic[elem_type]):
 
         Returns
         -------
-        list[elem_type]
+        list[element]
             `elements` sorted by `sort_by`.
         """
-        elements_sorted = sorted(elements, key=lambda elem: getattr(
+        elements_sorted = sorted(self.__objects, key=lambda elem: getattr(
             elem, sort_by), reverse=reverse)
 
-        return elements_sorted
+        return ElementGroup(elements_sorted)
 
-    @classmethod
-    def as_df(cls, elements: list[elem_type], *attributes: tuple[str]) -> pd.DataFrame:
-        """Gets a list of like elements and puts them into a dataframe.
+    def percentile(self, attr: str) -> Percentile:
+        elements_to_attr = {elem: getattr(elem, attr) for elem in self}
 
-        With the chosen attributes as columns.
+        for attr_value in elements_to_attr.values():
+            if not isinstance(attr_value, (int, float)):
+                raise TypeError("Must be int or float.")
 
-        Parameters
-        ----------
-        elements : list[elem_type]
-            Elements to put in dataframe.
-
-        Returns
-        -------
-        pd.DataFrame
-            `elements` data in a dataframe.
-        """
-        df_rows = [[getattr(element, attr) for attr in attributes]
-                   for element in elements]
-
-        df = pd.DataFrame(df_rows, index=list(
-            range(1, len(elements) + 1)), columns=attributes)
-
-        return df
+        return Percentile(elements_to_attr)
 
 
 def _method_choice(method_: str) -> Callable:
@@ -466,7 +434,7 @@ def _method_choice(method_: str) -> Callable:
 
     if method_ == "all":
         func = all
-    elif method_ == "or":
+    else:
         func = any
 
     return func

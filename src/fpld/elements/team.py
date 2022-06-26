@@ -1,15 +1,15 @@
 from typing import TypeVar, Generic, Any
-from .element import Element
+from .element import Element, ElementGroup
 from ..util import API
 from ..constants import URLS
 from dataclasses import dataclass, field
 
 
-baseteam = TypeVar("baseteam", bound="BaseTeam")
+base_team = TypeVar("base_team", bound="BaseTeam")
 
 
 @dataclass(frozen=True, order=True, kw_only=True)
-class BaseTeam(Element[baseteam], Generic[baseteam]):
+class BaseTeam(Element[base_team], Generic[base_team]):
     code: int = field(repr=False)
     draw: int = field(hash=False, repr=False)
     form: None = field(hash=False, repr=False)
@@ -52,7 +52,7 @@ class BaseTeam(Element[baseteam], Generic[baseteam]):
         return [team.name for team in all_teams]
 
     @classmethod
-    def gui_get(cls, team_name: str) -> list[baseteam]:
+    def gui_get(cls, team_name: str) -> ElementGroup[base_team]:
         if team_name == "All":
             return cls.get()
 
