@@ -29,6 +29,9 @@ class BaseFixture(Element[basefixture], Generic[basefixture]):
     team_a_difficulty: int = field(hash=False, repr=False)
     pulse_id: int = field(repr=False)
 
+    def __str__(self) -> str:
+        return f"{self.team_h} ({self.team_h_score}) v {self.team_a} ({self.team_a_score})"
+
     @classmethod
     def __pre_init__(cls, new_instance: dict[str, Any]) -> dict[str, Any]:
         new_instance = super().__pre_init__(new_instance)
@@ -37,6 +40,10 @@ class BaseFixture(Element[basefixture], Generic[basefixture]):
             str_to_datetime(new_instance["kickoff_time"])
 
         return new_instance
+
+    @property
+    def total_goals(self) -> int:
+        return self.team_h_score + self.team_a_score
 
     @classmethod
     @property

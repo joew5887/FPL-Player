@@ -1,12 +1,42 @@
-from ast import Call
 from typing import Callable
-from .parent import FPLWindow, label_wrapper, create_msg
+from .widgets import create_msg
+from .format_widgets import label_wrapper, title_label_wrapper
 from PyQt5.QtCore import QThread, pyqtSignal, QObject, pyqtSlot
-from PyQt5.QtWidgets import QProgressBar, QLabel, QMessageBox
+from PyQt5.QtWidgets import QProgressBar, QLabel, QMessageBox, QMainWindow, QVBoxLayout, QWidget
 from traceback import format_tb  # Creating error message on loading screen.
+from PyQt5.uic import loadUi
+from abc import abstractmethod
 
 
-class _LoadingScrn(FPLWindow):
+GUI_STEM = ".//lib//"
+
+
+class FPLWindowOLD(QMainWindow):
+    title_lbl: QLabel
+    screen_layout: QVBoxLayout
+
+    def __init__(self, window_name: str):
+        super().__init__()
+        self.__ui = loadUi(GUI_STEM + window_name, self)
+        self.__set_common_widgets()
+        self._set_widgets()
+
+    @abstractmethod
+    def _set_widgets(self) -> None:
+        pass
+
+    def __set_common_widgets(self) -> None:
+        title_label_wrapper(self.title_lbl)
+        self._resize()
+
+    def _resize(self) -> None:
+        self.resize(1200, 800)
+        widget = QWidget()
+        widget.setLayout(self.screen_layout)
+        self.setCentralWidget(widget)
+
+
+class _LoadingScrn(FPLWindowOLD):
     info_lbl: QLabel
     progress_bar: QProgressBar
 

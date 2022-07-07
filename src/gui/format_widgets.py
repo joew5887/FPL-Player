@@ -1,63 +1,7 @@
-from __future__ import annotations
-from abc import abstractmethod
-from typing import Callable
-from PyQt5.QtWidgets import (
-    QMainWindow, QLabel, QVBoxLayout, QComboBox, QMessageBox, QWidget,
-    QTableWidget, QTableWidgetItem
-)
-from PyQt5.QtCore import Qt
-from PyQt5.uic import loadUi
+from PyQt5.QtWidgets import QLabel, QComboBox, QWidget, QTableWidget, QTableWidgetItem
 from PyQt5.QtGui import QFont
+from PyQt5.QtCore import Qt
 import pandas as pd
-
-
-GUI_STEM = ".//lib//"
-
-
-class FPLWindow(QMainWindow):
-    title_lbl: QLabel
-    screen_layout: QVBoxLayout
-
-    def __init__(self, window_name: str):
-        super().__init__()
-        self.__ui = loadUi(GUI_STEM + window_name, self)
-        self.__set_common_widgets()
-        self._set_widgets()
-
-    @abstractmethod
-    def _set_widgets(self) -> None:
-        pass
-
-    def __set_common_widgets(self) -> None:
-        title_label_wrapper(self.title_lbl)
-        self._resize()
-
-    def _resize(self) -> None:
-        self.resize(1200, 800)
-        widget = QWidget()
-        widget.setLayout(self.screen_layout)
-        self.setCentralWidget(widget)
-
-
-class Filter:
-    def __init__(self, label: QLabel, box: QComboBox,
-                 label_str: str, box_list: Callable[..., list[str]],
-                 *, all_option: bool = True):
-
-        self.__label = label
-        self.__box = box
-        self.__box_list = box_list
-        self.__all_option = all_option
-        label_wrapper(self.__label, label_str)
-        combo_box_wrapper(self.__box)
-
-    @property
-    def current_option(self) -> str:
-        return self.__box.currentText()
-
-    def setup(self) -> None:
-        items = self.__box_list()
-        set_dropbox(self.__box, items, all_option=self.__all_option)
 
 
 class Widget:
@@ -158,11 +102,3 @@ def set_table(table: QTableWidget, data: pd.DataFrame) -> None:
 
     table.setHorizontalHeaderLabels(data.columns)
     table.setVerticalHeaderLabels([str(idx) for idx in data.index])
-
-
-def create_msg(icon: QMessageBox, title: str, text: str) -> None:
-    msg = QMessageBox()
-    msg.setIcon(icon)
-    msg.setWindowTitle(title)
-    msg.setText(text)
-    msg.exec_()
