@@ -1,16 +1,22 @@
-from PyQt5.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QLabel
-from .titles import Title, FPLWindowTitle
-from .widgets import VerticalTabWidget
-from typing import Callable
+from PyQt5.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QLabel, QTabWidget
+from .thread import set_complex_widget
+from .widgets import TitleWidget, HomeWindowTitle
+from time import sleep
 
 
 class DefaultWindow(QMainWindow):
-    def __init__(self, title_widget: Title, menu_options: dict[str, Callable[..., QWidget]]):
+    DIST_X = 1200
+    DIST_Y = 800
+
+    def __init__(self, title_widget: TitleWidget, content_widget: QWidget, dist_x: int = DIST_X, dist_y: int = DIST_Y):
         super().__init__()
 
         self.__title_widget = title_widget
-        self.__content_widget = VerticalTabWidget(menu_options)
+        set_complex_widget(self.__title_widget)
+        self.__content_widget = content_widget
+
         self._set_widgets()
+        self.__set_size(dist_x, dist_y)
         self.show()
 
     def _set_widgets(self) -> None:
@@ -22,7 +28,9 @@ class DefaultWindow(QMainWindow):
 
         self.__window.setLayout(self.__screen_layout)
         self.setCentralWidget(self.__window)
-        self.resize(1200, 800)
+
+    def __set_size(self, dist_x: int, dist_y: int) -> None:
+        self.resize(dist_x, dist_y)
 
     def __get_window(self) -> QWidget:
         window = QWidget()
@@ -30,13 +38,20 @@ class DefaultWindow(QMainWindow):
         return window
 
 
-class FPLWindow(DefaultWindow):
+class HomeWindow(DefaultWindow):
     def __init__(self):
-        super().__init__(FPLWindowTitle(), {t: lambda _=True, x=t: self.label_test(x) for t in ["Home", "Players",
-                                                                                                "Teams", "Fixtures", "Events"]})
+        main_widget = self.__get_home()
+        super().__init__(HomeWindowTitle(), main_widget)
 
-    def label_test(self, txt: str) -> QLabel:
-        x = QLabel()
-        x.setText(txt)
+    def __get_home(self) -> QWidget:
+        x = QTabWidget()
+        for i in ["Home", "Players", "Teams", "Fixtures", "Events"]:
+            z = QLabel()
+            z.setText(i)
+            x.addTab(z, i)
 
         return x
+
+
+class ElementWindow(DefaultWindow):
+    pass

@@ -1,6 +1,5 @@
 from typing import Callable
-from .widgets import create_msg
-from .format_widgets import label_wrapper, title_label_wrapper
+from .widgets import create_msg, Label, Title, ComplexWidget
 from PyQt5.QtCore import QThread, pyqtSignal, QObject, pyqtSlot
 from PyQt5.QtWidgets import QProgressBar, QLabel, QMessageBox, QMainWindow, QVBoxLayout, QWidget
 from traceback import format_tb  # Creating error message on loading screen.
@@ -26,7 +25,7 @@ class FPLWindowOLD(QMainWindow):
         pass
 
     def __set_common_widgets(self) -> None:
-        title_label_wrapper(self.title_lbl)
+        Title.wrap(self.title_lbl)
         self._resize()
 
     def _resize(self) -> None:
@@ -44,7 +43,7 @@ class _LoadingScrn(FPLWindowOLD):
         super().__init__("loading.ui")
 
     def _set_widgets(self) -> None:
-        label_wrapper(self.info_lbl, "foo")
+        Label.wrap(self.info_lbl, "foo")
         self.title_lbl.setText("Loading")
 
     def _resize(self):
@@ -186,3 +185,9 @@ class LongTask(QObject):
         """
         self.__thread.quit()
         self.__thread.deleteLater()
+
+
+def set_complex_widget(widget: ComplexWidget) -> None:
+    task = {f"Setting up {widget.__class__.__name__}": widget.setup}
+    thread_ = LongTask(task, widget.display)
+    thread_.start()

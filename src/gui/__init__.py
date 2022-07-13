@@ -1,1 +1,1 @@
-from .windows import FPLWindow
+from .windows import HomeWindow
