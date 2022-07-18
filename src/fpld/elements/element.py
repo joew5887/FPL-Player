@@ -15,6 +15,10 @@ element = TypeVar("element", bound="Element")
 class Element(ABC, Generic[element]):
     _DEFAULT_ID = "id"
     _api = None
+    _DEFAULT_NAME = "name"
+
+    def __str__(self) -> str:
+        return getattr(self, type(self)._DEFAULT_NAME, None)
 
     @ property
     def unique_id(self) -> int:
@@ -261,7 +265,7 @@ class Element(ABC, Generic[element]):
 
         Returns
         -------
-        list[element]
+        ElementGroup[element]
             All elements found in search.
 
         Raises

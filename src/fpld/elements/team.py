@@ -32,9 +32,6 @@ class BaseTeam(Element[base_team], Generic[base_team]):
     strength_defence_away: int = field(hash=False, repr=False)
     pulse_id: int = field(repr=False)
 
-    def __str__(self) -> str:
-        return self.name
-
     @classmethod
     @property
     def api_link(cls) -> str:

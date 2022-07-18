@@ -16,6 +16,8 @@ playerfull = TypeVar("playerfull")
 
 @dataclass(frozen=True, order=True, kw_only=True)
 class BasePlayer(Element[base_player], Generic[base_player]):
+    _DEFAULT_NAME = "web_name"
+
     chance_of_playing_next_round: Optional[int] = field(hash=False, repr=False)
     chance_of_playing_this_round: Optional[int] = field(hash=False, repr=False)
     code: int = field(repr=False)
@@ -93,9 +95,6 @@ class BasePlayer(Element[base_player], Generic[base_player]):
             new_instance["element_type"])
 
         return new_instance
-
-    def __str__(self) -> str:
-        return self.web_name
 
     @ property
     def ppm(self) -> float:

@@ -42,9 +42,6 @@ class BaseEvent(Element[baseevent], Generic[baseevent]):
 
         return new_instance
 
-    def __str__(self) -> str:
-        return self.name
-
     @property
     def started(self) -> bool: return datetime.now() > self.deadline_time
 

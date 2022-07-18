@@ -11,6 +11,8 @@ basefixture = TypeVar("basefixture", bound="BaseFixture")
 
 @dataclass(frozen=True, order=True, kw_only=True)
 class BaseFixture(Element[basefixture], Generic[basefixture]):
+    _DEFAULT_NAME = None
+
     code: int = field(repr=False)
     event: int = field(hash=False)
     finished: bool = field(hash=False, repr=False)
@@ -40,6 +42,10 @@ class BaseFixture(Element[basefixture], Generic[basefixture]):
             str_to_datetime(new_instance["kickoff_time"])
 
         return new_instance
+
+    @property
+    def desc(self) -> str:
+        return f"{self.team_h} v {self.team_a}"
 
     @property
     def total_goals(self) -> int:

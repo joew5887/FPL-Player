@@ -12,6 +12,7 @@ label = TypeVar("label", bound="Label")
 @dataclass(frozen=True, kw_only=True)
 class Label(Element[label]):
     _DEFAULT_ID = "name"
+    _DEFAULT_NAME = "label"
 
     label: str
     name: str
@@ -37,9 +38,3 @@ class Label(Element[label]):
                     "name": "percent_team"})
 
         return data
-
-    @classmethod
-    def get_all_labels(cls) -> list[str]:
-        all_labels = cls.get()
-
-        return [label.label for label in all_labels]
