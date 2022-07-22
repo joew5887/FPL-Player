@@ -1,5 +1,5 @@
 from typing import Generic, TypeVar, Any
-from .element import Element
+from .element import Element, ElementGroup
 from ..util import API
 from ..constants import URLS, str_to_datetime
 from datetime import datetime
@@ -61,3 +61,12 @@ class BaseFixture(Element[basefixture], Generic[basefixture]):
         api = super().get_latest_api()
         api = API(cls.api_link)
         return api.data
+
+    @classmethod
+    def get_team_fixtures(cls, team: int) -> ElementGroup[basefixture]:
+        home_fixtures = cls.get(team_a=team)
+        away_fixtures = cls.get(team_h=team)
+
+        team_fixtures = home_fixtures + away_fixtures
+
+        return team_fixtures.sort("kickoff_time", reverse=False)

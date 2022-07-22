@@ -1,6 +1,6 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from typing import Any, Iterator, SupportsIndex, TypeVar, Generic, Optional, overload, Callable
+from typing import Any, Iterable, Iterator, SupportsIndex, TypeVar, Generic, Optional, overload, Callable
 from dataclasses import fields
 from PyQt5.QtWidgets import QPushButton
 from ..util import all_attributes_present, all_field_names, Percentile
@@ -320,8 +320,9 @@ class Element(ABC, Generic[element]):
 
 
 class ElementGroup(ABC, Generic[element]):
-    def __init__(self, objects: list[element]):
-        self.__objects = objects
+    def __init__(self, objects: Iterable[element]):
+        objects_no_duplicates = set(objects)
+        self.__objects = list(objects_no_duplicates)
 
     def __str__(self) -> str:
         return f"{self.__class__.__name__} of {len(self)} elements."
@@ -331,6 +332,18 @@ class ElementGroup(ABC, Generic[element]):
 
     def __len__(self) -> int:
         return len(self.__objects)
+
+    @overload
+    def __add__(self, obj: ElementGroup[element]) -> ElementGroup[element]: ...
+
+    def __add__(self, obj: Any) -> Any:
+        if isinstance(obj, ElementGroup):
+            if not self.is_compatible(obj):
+                raise Exception("ElementGroups must have same type.")
+
+            return ElementGroup[element](self.as_list() + obj.as_list())
+        else:
+            raise NotImplementedError
 
     @overload
     def __getitem__(self, idx: SupportsIndex) -> element: ...
@@ -344,6 +357,9 @@ class ElementGroup(ABC, Generic[element]):
             return self.__objects[idx]
         else:
             raise NotImplementedError
+
+    def as_list(self) -> list[element]:
+        return [elem for elem in self]
 
     def string_list(self) -> list[str]:
         output = [str(elem) for elem in self]
@@ -411,6 +427,20 @@ class ElementGroup(ABC, Generic[element]):
                 raise TypeError("Must be int or float.")
 
         return Percentile(elements_to_attr)
+
+    def is_compatible(self, other: ElementGroup) -> bool:
+        subtypes_found = []
+
+        full_list = self.as_list() + other.as_list()
+
+        for elem in full_list:
+            if type(elem) not in subtypes_found:
+                subtypes_found.append(type(elem))
+
+                if len(subtypes_found) > 1:
+                    return False
+
+        return True
 
 
 def _method_choice(method_: str) -> Callable:

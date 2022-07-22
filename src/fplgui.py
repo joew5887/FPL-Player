@@ -132,10 +132,12 @@ class FixtureSearchTable(SearchTable):
     __fixtures: ElementGroup[fpld.Fixture]
 
     def __init__(self):
-        super().__init__([FilterBoxes.events()], FilterBoxes.fixture_sort())
+        super().__init__([FilterBoxes.events(),
+                          FilterBoxes.teams()], FilterBoxes.fixture_sort())
 
     def get_query(self) -> None:
         event = self._filters[0].get_current_option()
+        team = self._filters[1].get_current_option()
 
         if event == "All":
             self.__events = fpld.Event.get()

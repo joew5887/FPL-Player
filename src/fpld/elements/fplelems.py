@@ -10,6 +10,7 @@ from .event import BaseEvent
 from .position import Position
 from dataclasses import Field, dataclass, field
 from fpld.util.attribute import CategoricalVar
+from .element import ElementGroup
 
 
 team = TypeVar("team", bound="Team")
@@ -187,3 +188,7 @@ class Fixture(BaseFixture[fixture]):
         new_instance["team_a"] = Team.get_by_id(new_instance["team_a"])
 
         return new_instance
+
+    @classmethod
+    def get_team_fixtures(cls, team: Team) -> ElementGroup[fixture]:
+        return super().get_team_fixtures(team.id)
