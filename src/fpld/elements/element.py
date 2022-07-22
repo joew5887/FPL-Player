@@ -419,14 +419,21 @@ class ElementGroup(ABC, Generic[element]):
 
         return ElementGroup(elements_sorted)
 
-    def percentile(self, attr: str) -> Percentile:
+    def percentile(self, attr: str) -> Percentile[element]:
         elements_to_attr = {elem: getattr(elem, attr) for elem in self}
 
         for attr_value in elements_to_attr.values():
             if not isinstance(attr_value, (int, float)):
                 raise TypeError("Must be int or float.")
 
-        return Percentile(elements_to_attr)
+        return Percentile[element](elements_to_attr)
+
+    def split(self) -> tuple[ElementGroup[element], ElementGroup[element]]:
+        self.filter()
+        # work out difference
+
+    def filter(self) -> ElementGroup[element]:
+        pass
 
     def is_compatible(self, other: ElementGroup) -> bool:
         subtypes_found = []

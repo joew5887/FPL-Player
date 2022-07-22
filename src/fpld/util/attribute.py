@@ -4,10 +4,11 @@ from typing import Any, Generic, TypeVar, Union
 
 t = TypeVar("t")
 b = TypeVar("b", int, float)
+_KT = TypeVar("_KT")
 
 
-class Percentile:
-    def __init__(self, name_to_value: dict[Any, Union[float, int]]):
+class Percentile(Generic[_KT]):
+    def __init__(self, name_to_value: dict[_KT, Union[float, int]]):
         self.__set_name_to_value(name_to_value)
 
     def __str__(self) -> str:
@@ -63,7 +64,7 @@ class Percentile:
     def get_value(self, key: Any) -> int:
         return Percentile.__get_value(key, self.__name_to_value)
 
-    def name_at_rank(self, rank: int) -> Any:
+    def name_at_rank(self, rank: int) -> _KT:
         try:
             name = self.__rank_to_name[rank]
 
@@ -103,7 +104,7 @@ class Percentile:
         return x, y
 
     @staticmethod
-    def __get_value(key: Any, name_to_value: dict) -> Any:
+    def __get_value(key: Any, name_to_value: dict) -> _KT:
         try:
             value = name_to_value[key]
         except KeyError:
