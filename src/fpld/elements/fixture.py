@@ -44,7 +44,7 @@ class BaseFixture(Element[basefixture], Generic[basefixture]):
         return new_instance
 
     @property
-    def desc(self) -> str:
+    def fixture(self) -> str:
         return f"{self.team_h} v {self.team_a}"
 
     @property
@@ -63,10 +63,13 @@ class BaseFixture(Element[basefixture], Generic[basefixture]):
         return api.data
 
     @classmethod
-    def get_team_fixtures(cls, team: int) -> ElementGroup[basefixture]:
-        home_fixtures = cls.get(team_a=team)
-        away_fixtures = cls.get(team_h=team)
+    def get_all_team_fixtures(cls, team: int) -> ElementGroup[basefixture]:
+        foo = cls.get(method_="or", team_h=team, team_a=team)
 
-        team_fixtures = home_fixtures + away_fixtures
+        return foo.sort("kickoff_time", reverse=False)
 
-        return team_fixtures.sort("kickoff_time", reverse=False)
+    @classmethod
+    def past_and_future(cls) -> tuple[ElementGroup[basefixture], ElementGroup[basefixture]]:
+        all_fixtures = cls.get_all()
+
+        return all_fixtures.split(finished=True)

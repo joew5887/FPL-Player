@@ -3,6 +3,8 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import Qt
 from abc import abstractmethod
+
+from matplotlib.pyplot import table
 from .simple import Title, Label, ComboBox, Table
 
 
@@ -81,22 +83,44 @@ class FilterBox(ComplexWidget):
         self.__current_option = self.filter_box.currentText()
 
 
-class SearchTable(ComplexWidget):
+class TableWithTitle(ComplexWidget):
+    def __init__(self, table_name: str, **kwargs):
+        kwargs["table_name"] = table_name
+        super().__init__(**kwargs)
+
+    def define_widgets(self, **kwargs) -> None:
+        self._layout = QVBoxLayout()
+        self._title_lbl = Label.get(kwargs["table_name"])
+        self._table = Table.get()
+
+    def setup(self) -> None:
+        self._title_lbl.setAlignment(Qt.AlignCenter)
+
+    def add_widgets(self) -> None:
+        self._layout.addWidget(self._title_lbl)
+        self._layout.addWidget(self._table)
+        self.setLayout(self._layout)
+
+
+class SearchTable(TableWithTitle):
     _filters: list[FilterBox]
     _sort: FilterBox
 
-    def __init__(self, filters: list[FilterBox], sort_by: FilterBox):
-        super().__init__(filters=filters, sort_by=sort_by)
+    def __init__(self, table_name: str, filters: list[FilterBox], sort_by: FilterBox):
+        super().__init__(table_name, filters=filters, sort_by=sort_by)
 
     def define_widgets(self, **kwargs) -> None:
-        self.__layout = QVBoxLayout()
+        super().define_widgets(**kwargs)
+        #self.__layout = QVBoxLayout()
         self.__filter_layout = QHBoxLayout()
         self._filters = kwargs["filters"]
         self._sort = kwargs["sort_by"]
         self.__filters_widget = QWidget()
-        self._table = Table.get()
+        #self._table = Table.get()
 
     def setup(self) -> None:
+        super().setup()
+
         for filter in self._filters:
             filter.filter_box.currentIndexChanged.connect(self.get_query)
 
@@ -110,11 +134,12 @@ class SearchTable(ComplexWidget):
 
         self.__filters_widget.setLayout(self.__filter_layout)
 
-        self.__layout.addWidget(self.__filters_widget)
-        self.__layout.addWidget(self._table)
-        self.__layout.addWidget(self._sort)
+        self._layout.addWidget(self._title_lbl)
+        self._layout.addWidget(self.__filters_widget)
+        self._layout.addWidget(self._table)
+        self._layout.addWidget(self._sort)
 
-        self.setLayout(self.__layout)
+        self.setLayout(self._layout)
 
     @abstractmethod
     def get_query(self) -> None:

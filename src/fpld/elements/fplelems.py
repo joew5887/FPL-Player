@@ -28,11 +28,11 @@ class Team(BaseTeam[team]):
         return new_instance
 
     @property
-    def players(self) -> list[Player]:
+    def players(self) -> ElementGroup[Player]:
         return Player.get(team=self.id)
 
-    def players_by_pos(self, position: Position) -> list[Player]:
-        return [player for player in self.players if player.element_type == position]
+    def players_by_pos(self, position: Position) -> ElementGroup[Player]:
+        return self.players.filter(element_type=position)
 
     def player_total(self, *cols: tuple[str], by_position: Position = None) -> Union[float, int]:
         if by_position is not None:
@@ -62,6 +62,19 @@ class Team(BaseTeam[team]):
         cols = ["goals_scored", "assists"]
 
         return self.player_total(*cols, by_position=by_position)
+
+    def get_all_fixtures(self) -> ElementGroup[fixture]:
+        return Fixture.get_all_team_fixtures(self)
+
+    def get_fixtures_by_gameweek(self) -> dict[Event, ElementGroup[fixture]]:
+        all_team_fixtures = self.get_all_fixtures()
+
+        return all_team_fixtures.group_by("event")
+
+    def fixtures_from_event(self, event: Event) -> ElementGroup[fixture]:
+        all_team_fixtures = self.get_all_fixtures()
+
+        return all_team_fixtures.filter(event=event)
 
 
 @dataclass(frozen=True, order=True, kw_only=True)
@@ -172,6 +185,10 @@ class Event(BaseEvent[event]):
 
         return new_instance
 
+    @property
+    def fixtures(self) -> ElementGroup[Fixture]:
+        return Fixture.get(event=self)
+
 
 @dataclass(frozen=True, order=True, kw_only=True)
 class Fixture(BaseFixture[fixture]):
@@ -191,4 +208,4 @@ class Fixture(BaseFixture[fixture]):
 
     @classmethod
     def get_team_fixtures(cls, team: Team) -> ElementGroup[fixture]:
-        return super().get_team_fixtures(team.id)
+        return super().get_all_team_fixtures(team.id)

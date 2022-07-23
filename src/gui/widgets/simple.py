@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QLabel, QComboBox, QWidget, QTableWidget, QTableWidgetItem, QMessageBox
+from PyQt5.QtWidgets import QLabel, QComboBox, QWidget, QTableWidget, QTableWidgetItem, QMessageBox, QHeaderView
 from PyQt5.QtGui import QFont
 from PyQt5.QtCore import Qt
 import pandas as pd
@@ -122,6 +122,7 @@ class Table(Widget):
 
         table.setHorizontalHeaderLabels(data.columns)
         table.setVerticalHeaderLabels([str(idx) for idx in data.index])
+        table.resizeColumnsToContents()
 
 
 def set_table(table: QTableWidget, data: pd.DataFrame) -> None:

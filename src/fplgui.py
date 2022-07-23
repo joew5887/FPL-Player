@@ -1,11 +1,12 @@
-from logging import Filter
 import fpld
-from PyQt5.QtWidgets import QTabWidget, QWidget
+from PyQt5.QtWidgets import QTabWidget, QWidget, QHBoxLayout, QVBoxLayout, QLabel, QPushButton
 from fpld.elements.element import ElementGroup
-from gui.widgets import FilterBox, SearchTable
-from gui.widgets.simple import Table
+from gui.widgets import FilterBox, SearchTable, TableWithTitle
+from gui.widgets.complex import ComplexWidget
+from gui.widgets.simple import Label, Table
 from gui.windows import DefaultWindow
 from gui.widgets import TitleWidget
+import pandas as pd
 
 
 class HomeWindow(DefaultWindow):
@@ -15,13 +16,21 @@ class HomeWindow(DefaultWindow):
 
     def __get_home(self) -> QWidget:
         x = QTabWidget()
-        y = FixtureSearchTable()
-        x.addTab(y, "Home")
 
-        for i in ["Players", "Teams", "Fixtures", "Events"]:
-            z = FilterBox(i, ["1", "2", "3"])
-            # z = FilterBox(i, [])
+        z = QWidget()
+        layout = QHBoxLayout()
+        layout.addWidget(PlayerSearchTable())
+        layout.addWidget(FixtureSearchTable())
+        z.setLayout(layout)
+        x.addTab(z, "Home")
+
+        for i in ["Events"]:
+            z = TableWithTitle(i)
             x.addTab(z, i)
+
+        x.addTab(PlayerSearchTable(), "Players")
+        x.addTab(FixtureSearchTable(), "Fixtures")
+        x.addTab(FixtureDifficultyTable(), "Teams")
 
         return x
 
@@ -59,37 +68,47 @@ class FilterBoxes:
     @classmethod
     def teams(cls) -> FilterBox:
         name = "Team"
-        items = fpld.Team.get().string_list()
+        items = fpld.Team.get_all().string_list()
 
         return FilterBox(name, items)
 
     @classmethod
     def position(cls) -> FilterBox:
         name = "Position"
-        items = fpld.Position.get().string_list()
+        items = fpld.Position.get_all().string_list()
 
         return FilterBox(name, items)
 
     @classmethod
     def events(cls) -> FilterBox:
         name = "Gameweek"
-        items = fpld.Event.get().string_list()
+        items = fpld.Event.get_all().string_list()
 
         return FilterBox(name, items)
 
     @classmethod
-    def player_sort(cls) -> FilterBox:
+    def __sort(cls, items: list[str]) -> FilterBox:
         name = "Sort By"
-        items = fpld.Label.get().string_list()
 
         return FilterBox(name, items, all_option=False)
 
     @classmethod
+    def player_sort(cls) -> FilterBox:
+        items = fpld.Label.get_all().string_list()
+
+        return cls.__sort(items)
+
+    @classmethod
     def fixture_sort(cls) -> FilterBox:
-        name = "Sort By"
         items = ["kickoff_time", "team_h_difficulty", "team_a_difficulty"]
 
-        return FilterBox(name, items, all_option=False)
+        return cls.__sort(items)
+
+    @classmethod
+    def fixture_difficulty_sort(cls) -> FilterBox:
+        items = ["Team", "Overall Difficulty"]
+
+        return cls.__sort(items)
 
 
 class PlayerSearchTable(SearchTable):
@@ -98,8 +117,8 @@ class PlayerSearchTable(SearchTable):
     __players: ElementGroup[fpld.Player]
 
     def __init__(self):
-        super().__init__([FilterBoxes.teams(),
-                          FilterBoxes.position()], FilterBoxes.player_sort())
+        super().__init__("Player Search", [FilterBoxes.teams(),
+                                           FilterBoxes.position()], FilterBoxes.player_sort())
 
     def get_query(self) -> None:
         team = self._filters[0].get_current_option()
@@ -132,10 +151,12 @@ class FixtureSearchTable(SearchTable):
     __fixtures: ElementGroup[fpld.Fixture]
 
     def __init__(self):
-        super().__init__([FilterBoxes.events(),
-                          FilterBoxes.teams()], FilterBoxes.fixture_sort())
+        super().__init__("Fixture Search", [FilterBoxes.events(),
+                                            FilterBoxes.teams()], FilterBoxes.fixture_sort())
 
     def get_query(self) -> None:
+        self.__events = fpld.Event.get_all()
+
         event = self._filters[0].get_current_option()
         team = self._filters[1].get_current_option()
 
@@ -146,6 +167,11 @@ class FixtureSearchTable(SearchTable):
 
         self.__fixtures = fpld.Fixture.get(event=tuple(self.__events))
 
+        if team != "All":
+            team_obj = fpld.Team.get(name=team)[0]
+            self.__fixtures = self.__fixtures.filter(
+                method_="or", team_h=team_obj, team_a=team_obj)
+
         sort_by_name = self._sort.get_current_option()
 
         if sort_by_name == "kickoff_time":
@@ -155,5 +181,78 @@ class FixtureSearchTable(SearchTable):
         # label = fpld.Label.get(label=sort_by_name)[0]
         self.__fixtures = self.__fixtures.sort(sort_by_name, reverse=reverse_)
 
-        df = self.__fixtures.as_df("desc", "event", sort_by_name)
+        df = self.__fixtures.as_df("fixture", "event", sort_by_name)
         Table.set_data(self._table, df)
+
+
+class FixtureDifficultyTable(TableWithTitle):
+    def __init__(self):
+        super().__init__("Fixture Difficulty")
+
+    def setup(self) -> None:
+        super().setup()
+
+        all_teams = fpld.Team.get_all()
+        events = fpld.Event.past_and_future()[1]
+
+        content = []
+
+        team: fpld.Team
+        for team in all_teams:
+            row = [str(team)]
+
+            for event in events:
+                fixtures_from_team = team.fixtures_from_event(event)
+                widget = QWidget()
+                widget = FixtureDifficultyTable.get_widget(
+                    fixtures_from_team, team)
+
+                row.append(widget)
+
+            content.append(row)
+
+        df = pd.DataFrame(content)
+        df.columns = ["Team"] + events.string_list()
+        Table.set_data(self._table, df)
+
+    @ staticmethod
+    def get_widget(fixtures: ElementGroup[fpld.Fixture], team: fpld.Team) -> QPushButton:
+        DIFF_TO_COLOUR = {1: "#8ace7e", 2: "#309143",
+                          3: "#f0bd27", 4: "#ff684c", 5: "#b60a1c"}
+
+        widget = QWidget()
+        layout = QHBoxLayout()
+
+        for fixture in fixtures:
+            if fixture.team_h == team:
+                diff = fixture.team_h_difficulty
+            elif fixture.team_a == team:
+                diff = fixture.team_a_difficulty
+            else:
+                raise ValueError("Team not in fixture")
+
+            colour = DIFF_TO_COLOUR[diff]
+
+            diff_widget = QPushButton()
+            diff_widget.setText(str(diff))
+            diff_widget.setStyleSheet(f"background-color: {colour}")
+
+            layout.addWidget(diff_widget)
+
+        layout.setSpacing(0)
+        layout.setContentsMargins(0, 0, 0, 0)
+        widget.setLayout(layout)
+
+        return widget
+
+    @ staticmethod
+    def get_widget2(difficulty: int) -> QPushButton:
+        DIFF_TO_COLOUR = {1: "#8ace7e", 2: "#309143",
+                          3: "#f0bd27", 4: "#ff684c", 5: "#b60a1c"}
+        colour = DIFF_TO_COLOUR[difficulty]
+
+        widget = QPushButton()
+        widget.setText(str(difficulty))
+        widget.setStyleSheet(f"background-color: {colour}")
+
+        return widget
