@@ -1,4 +1,5 @@
 from __future__ import annotations
+import math
 from typing import TypeVar, Any, Union
 from fpld.constants import URLS
 from fpld.util.percent import percent
@@ -75,6 +76,26 @@ class Team(BaseTeam[team]):
         all_team_fixtures = self.get_all_fixtures()
 
         return all_team_fixtures.filter(event=event)
+
+    @property
+    def fixture_score(self) -> float:
+        future_events = Event.past_and_future()[1]
+        score = 0
+        multiplier = 0.9
+
+        for i, event in enumerate(future_events):
+            fixtures = self.fixtures_from_event(event)
+
+            for fixture in fixtures:
+                if fixture.team_h == self:
+                    diff = fixture.team_h_difficulty
+                elif fixture.team_a == self:
+                    diff = fixture.team_a_difficulty
+
+                score += diff * multiplier
+                multiplier = math.e ** (-0.4 * i)
+
+        return score
 
 
 @dataclass(frozen=True, order=True, kw_only=True)

@@ -1,5 +1,6 @@
 import fpld
-from PyQt5.QtWidgets import QTabWidget, QWidget, QHBoxLayout, QVBoxLayout, QLabel, QPushButton
+from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import QTabWidget, QWidget, QHBoxLayout, QVBoxLayout, QLabel, QPushButton, QScrollArea
 from fpld.elements.element import ElementGroup
 from gui.widgets import FilterBox, SearchTable, TableWithTitle
 from gui.widgets.complex import ComplexWidget
@@ -16,12 +17,17 @@ class HomeWindow(DefaultWindow):
 
     def __get_home(self) -> QWidget:
         x = QTabWidget()
+        test = QWidget()
 
-        z = QWidget()
-        layout = QHBoxLayout()
+        z = QScrollArea()
+        layout = QVBoxLayout()
         layout.addWidget(PlayerSearchTable())
         layout.addWidget(FixtureSearchTable())
-        z.setLayout(layout)
+        test.setLayout(layout)
+        z.setWidget(test)
+        z.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+        z.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        z.setWidgetResizable(True)
         x.addTab(z, "Home")
 
         for i in ["Events"]:
@@ -106,7 +112,7 @@ class FilterBoxes:
 
     @classmethod
     def fixture_difficulty_sort(cls) -> FilterBox:
-        items = ["Team", "Overall Difficulty"]
+        items = ["Team", "League Position", "Overall Difficulty"]
 
         return cls.__sort(items)
 
@@ -185,14 +191,20 @@ class FixtureSearchTable(SearchTable):
         Table.set_data(self._table, df)
 
 
-class FixtureDifficultyTable(TableWithTitle):
+class FixtureDifficultyTable(SearchTable):
     def __init__(self):
-        super().__init__("Fixture Difficulty")
+        super().__init__("Fixture Difficulty", [], FilterBoxes.fixture_difficulty_sort())
 
-    def setup(self) -> None:
-        super().setup()
+    def get_query(self) -> None:
+        sort_by_name = self._sort.get_current_option()
 
         all_teams = fpld.Team.get_all()
+
+        if sort_by_name == "League Position":
+            all_teams = all_teams.sort("position", reverse=False)
+        elif sort_by_name == "Overall Difficulty":
+            all_teams = all_teams.sort("fixture_score")
+
         events = fpld.Event.past_and_future()[1]
 
         content = []

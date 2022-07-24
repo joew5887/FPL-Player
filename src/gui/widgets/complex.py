@@ -22,7 +22,7 @@ class ComplexWidget(QWidget):
 
     @abstractmethod
     def setup(self) -> None:
-        pass
+        self.setMinimumHeight(700)
 
     @abstractmethod
     def add_widgets(self) -> None:
@@ -64,6 +64,8 @@ class FilterBox(ComplexWidget):
         self.filter_box = ComboBox.get(kwargs["filters"], kwargs["all_option"])
 
     def setup(self) -> None:
+        self.setMinimumHeight(50)
+
         self._filter_lbl.setMaximumHeight(50)
 
         self.filter_box.currentIndexChanged.connect(
@@ -94,6 +96,8 @@ class TableWithTitle(ComplexWidget):
         self._table = Table.get()
 
     def setup(self) -> None:
+        super().setup()
+
         self._title_lbl.setAlignment(Qt.AlignCenter)
 
     def add_widgets(self) -> None:
