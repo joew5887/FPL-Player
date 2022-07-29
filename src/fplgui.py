@@ -2,8 +2,9 @@ import fpld
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QTabWidget, QWidget, QHBoxLayout, QVBoxLayout, QLabel, QPushButton, QScrollArea
 from fpld.elements.element import ElementGroup
+from fpld.util.attribute import string_datetime
 from gui.widgets import FilterBox, SearchTable, TableWithTitle
-from gui.widgets.complex import ComplexWidget
+from gui.widgets.complex import ComplexWidget, GraphWithTitle, LineGraph
 from gui.widgets.simple import Label, Table
 from gui.windows import DefaultWindow
 from gui.widgets import TitleWidget
@@ -37,6 +38,8 @@ class HomeWindow(DefaultWindow):
         x.addTab(PlayerSearchTable(), "Players")
         x.addTab(FixtureSearchTable(), "Fixtures")
         x.addTab(FixtureDifficultyTable(), "Teams")
+        x.addTab(GraphWithTitle("Test", LineGraph(),
+                 FilterBoxes.events(), FilterBoxes.events()), "Test")
 
         return x
 
@@ -188,6 +191,11 @@ class FixtureSearchTable(SearchTable):
         self.__fixtures = self.__fixtures.sort(sort_by_name, reverse=reverse_)
 
         df = self.__fixtures.as_df("fixture", "event", sort_by_name)
+
+        if sort_by_name == "kickoff_time":
+            df["kickoff_time"] = df["kickoff_time"].apply(
+                lambda date_: string_datetime(date_))
+
         Table.set_data(self._table, df)
 
 

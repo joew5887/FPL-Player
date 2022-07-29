@@ -1,10 +1,11 @@
+from __future__ import annotations
 from PyQt5.QtWidgets import (
-    QWidget, QHBoxLayout, QVBoxLayout, QTableWidget
+    QWidget, QHBoxLayout, QVBoxLayout, QTableWidget, QLabel
 )
 from PyQt5.QtCore import Qt
 from abc import abstractmethod
-
-from matplotlib.pyplot import table
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
+from matplotlib.figure import Figure
 from .simple import Title, Label, ComboBox, Table
 
 
@@ -27,6 +28,40 @@ class ComplexWidget(QWidget):
     @abstractmethod
     def add_widgets(self) -> None:
         pass
+
+
+class WidgetWithTitle(ComplexWidget):
+    def __init__(self, header_txt: str, main_widget: QWidget):
+        super().__init__(header_txt=header_txt, main_widget=main_widget)
+
+    @property
+    def main(self) -> QWidget:
+        return self.__main
+
+    def define_widgets(self, **kwargs) -> None:
+        self.__layout = QVBoxLayout()
+        self._header_lbl = Label.get(kwargs["header_txt"])
+        self.__main = kwargs["main_widget"]
+
+    def setup(self) -> None:
+        super().setup()
+
+        self._header_lbl.setAlignment(Qt.AlignCenter)
+        self._header_lbl.setMaximumHeight(100)
+
+    def add_widgets(self) -> None:
+        self.__layout.addWidget(self._header_lbl)
+        self.__layout.addWidget(self.main)
+        self.setLayout(self.__layout)
+
+
+class ComplexWidgetWithTitle(WidgetWithTitle):
+    def __init__(self, header_txt: str, main_widget: ComplexWidget):
+        super().__init__(header_txt=header_txt, main_widget=main_widget)
+
+    @property
+    def main(self) -> ComplexWidget:
+        return self.__main
 
 
 class TitleWidget(ComplexWidget):
@@ -151,3 +186,36 @@ class SearchTable(TableWithTitle):
         for filter in self._filters:
             print(filter.get_current_option())
         print("")
+
+
+class GraphWithTitle(ComplexWidget):
+    def __init__(self, graph_name: str, graph_widget: FigureCanvasQTAgg, x_labels: FilterBox, y_labels: FilterBox):
+        super().__init__(graph_name=graph_name, graph_widget=graph_widget,
+                         x_labels=x_labels, y_labels=y_labels)
+
+    def define_widgets(self, **kwargs) -> None:
+        self._layout = QVBoxLayout()
+        self._title_lbl = Label.get(kwargs["graph_name"])
+        self._graph = kwargs["graph_widget"]
+
+    def setup(self) -> None:
+        super().setup()
+
+        _graph: LineGraph
+        self._graph.plot([0, 1, 2, 3, 4], [10, 1, 20, 3, 40])
+        self._title_lbl.setAlignment(Qt.AlignCenter)
+
+    def add_widgets(self) -> None:
+        self._layout.addWidget(self._title_lbl)
+        self._layout.addWidget(self._graph)
+        self.setLayout(self._layout)
+
+
+class LineGraph(FigureCanvasQTAgg):
+    def __init__(self, parent=None, width=5, height=4, dpi=100):
+        fig = Figure(figsize=(width, height), dpi=dpi)
+        self.axes = fig.add_subplot(111)
+        super().__init__(fig)
+
+    def plot(self, x: list, y: list) -> None:
+        self.axes.plot(x, y)
