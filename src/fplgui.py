@@ -3,8 +3,8 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QTabWidget, QWidget, QHBoxLayout, QVBoxLayout, QLabel, QPushButton, QScrollArea
 from fpld.elements.element import ElementGroup
 from fpld.util.attribute import string_datetime
-from gui.widgets import FilterBox, SearchTable, TableWithTitle
-from gui.widgets.complex import ComplexWidget, GraphWithTitle, LineGraph
+from gui.widgets import FilterBox, SearchTable
+from gui.widgets.complex import ComplexWidget, LineGraph, WidgetWithStrHeader
 from gui.widgets.simple import Label, Table
 from gui.windows import DefaultWindow
 from gui.widgets import TitleWidget
@@ -22,24 +22,19 @@ class HomeWindow(DefaultWindow):
 
         z = QScrollArea()
         layout = QVBoxLayout()
-        layout.addWidget(PlayerSearchTable())
-        layout.addWidget(FixtureSearchTable())
+        layout.addWidget(PlayerSearchTable.with_default_title())
+        layout.addWidget(FixtureSearchTable.with_default_title())
         test.setLayout(layout)
         z.setWidget(test)
         z.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         z.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         z.setWidgetResizable(True)
         x.addTab(z, "Home")
-
-        for i in ["Events"]:
-            z = TableWithTitle(i)
-            x.addTab(z, i)
-
-        x.addTab(PlayerSearchTable(), "Players")
-        x.addTab(FixtureSearchTable(), "Fixtures")
-        x.addTab(FixtureDifficultyTable(), "Teams")
-        x.addTab(GraphWithTitle("Test", LineGraph(),
-                 FilterBoxes.events(), FilterBoxes.events()), "Test")
+        x.addTab(EventSearchTable.with_default_title(), "Events")
+        x.addTab(PlayerSearchTable.with_default_title(), "Players")
+        x.addTab(FixtureSearchTable.with_default_title(), "Fixtures")
+        x.addTab(FixtureDifficultyTable.with_default_title(), "Teams")
+        x.addTab(LineGraph(), "Test")
 
         return x
 
@@ -126,8 +121,8 @@ class PlayerSearchTable(SearchTable):
     __players: ElementGroup[fpld.Player]
 
     def __init__(self):
-        super().__init__("Player Search", [FilterBoxes.teams(),
-                                           FilterBoxes.position()], FilterBoxes.player_sort())
+        super().__init__([FilterBoxes.teams(),
+                          FilterBoxes.position()], FilterBoxes.player_sort())
 
     def get_query(self) -> None:
         team = self._filters[0].get_current_option()
@@ -154,14 +149,18 @@ class PlayerSearchTable(SearchTable):
             "web_name", "team", "element_type", label.name)
         Table.set_data(self._table, df)
 
+    @classmethod
+    def get_default_title(cls) -> str:
+        return "Player Search"
+
 
 class FixtureSearchTable(SearchTable):
     __events: ElementGroup[fpld.Event]
     __fixtures: ElementGroup[fpld.Fixture]
 
     def __init__(self):
-        super().__init__("Fixture Search", [FilterBoxes.events(),
-                                            FilterBoxes.teams()], FilterBoxes.fixture_sort())
+        super().__init__([FilterBoxes.events(),
+                          FilterBoxes.teams()], FilterBoxes.fixture_sort())
 
     def get_query(self) -> None:
         self.__events = fpld.Event.get_all()
@@ -198,10 +197,14 @@ class FixtureSearchTable(SearchTable):
 
         Table.set_data(self._table, df)
 
+    @classmethod
+    def get_default_title(cls) -> str:
+        return "Fixture Search"
+
 
 class FixtureDifficultyTable(SearchTable):
     def __init__(self):
-        super().__init__("Fixture Difficulty", [], FilterBoxes.fixture_difficulty_sort())
+        super().__init__([], FilterBoxes.fixture_difficulty_sort())
 
     def get_query(self) -> None:
         sort_by_name = self._sort.get_current_option()
@@ -235,6 +238,10 @@ class FixtureDifficultyTable(SearchTable):
         df.columns = ["Team"] + events.string_list()
         Table.set_data(self._table, df)
 
+    @classmethod
+    def get_default_title(cls) -> str:
+        return "Fixture Difficulty"
+
     @ staticmethod
     def get_widget(fixtures: ElementGroup[fpld.Fixture], team: fpld.Team) -> QPushButton:
         DIFF_TO_COLOUR = {1: "#8ace7e", 2: "#309143",
@@ -265,14 +272,18 @@ class FixtureDifficultyTable(SearchTable):
 
         return widget
 
-    @ staticmethod
-    def get_widget2(difficulty: int) -> QPushButton:
-        DIFF_TO_COLOUR = {1: "#8ace7e", 2: "#309143",
-                          3: "#f0bd27", 4: "#ff684c", 5: "#b60a1c"}
-        colour = DIFF_TO_COLOUR[difficulty]
 
-        widget = QPushButton()
-        widget.setText(str(difficulty))
-        widget.setStyleSheet(f"background-color: {colour}")
+class EventSearchTable(SearchTable):
+    def __init__(self):
+        super().__init__([], FilterBoxes.fixture_difficulty_sort())
 
-        return widget
+    def get_query(self) -> None:
+        df = fpld.Event.get_all().as_df("name", "deadline_time",
+                                        "most_selected", "most_transferred_in", "finished")
+        df["deadline_time"] = df["deadline_time"].apply(
+            lambda date_: string_datetime(date_))
+        Table.set_data(self._table, df)
+
+    @classmethod
+    def get_default_title(cls) -> str:
+        return "Event Search"

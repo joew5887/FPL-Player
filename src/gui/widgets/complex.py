@@ -1,12 +1,22 @@
 from __future__ import annotations
+from typing import Any, Generic, TypeVar, overload
 from PyQt5.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout, QTableWidget, QLabel
 )
 from PyQt5.QtCore import Qt
 from abc import abstractmethod
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
+from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
+import matplotlib.pylab as plt
 from matplotlib.figure import Figure
+import matplotlib
 from .simple import Title, Label, ComboBox, Table
+
+
+header = TypeVar("header", bound=QWidget)
+main = TypeVar("main", bound=QWidget)
+
+matplotlib.use("Qt5Agg")
 
 
 class ComplexWidget(QWidget):
@@ -23,45 +33,87 @@ class ComplexWidget(QWidget):
 
     @abstractmethod
     def setup(self) -> None:
-        self.setMinimumHeight(700)
+        pass
 
     @abstractmethod
     def add_widgets(self) -> None:
         pass
 
 
-class WidgetWithTitle(ComplexWidget):
-    def __init__(self, header_txt: str, main_widget: QWidget):
-        super().__init__(header_txt=header_txt, main_widget=main_widget)
+class ContentWidget(ComplexWidget):
+    def setup(self) -> None:
+        super().setup()
+
+        self.setMinimumHeight(700)
+
+    @overload
+    @classmethod
+    def with_title(cls, title: str) -> WidgetWithStrHeader: ...
+
+    @overload
+    @classmethod
+    def with_title(cls, title: QWidget) -> WidgetWithWidgetHeader: ...
+
+    @classmethod
+    def with_title(cls, title: Any) -> Any:
+        if isinstance(title, str):
+            return WidgetWithStrHeader(title, cls())
+        elif isinstance(title, QWidget):
+            return WidgetWithWidgetHeader(title, cls())
+
+        raise NotImplementedError
+
+    @classmethod
+    def with_default_title(cls) -> WidgetWithStrHeader:
+        return cls.with_title(cls.get_default_title())
+
+    @classmethod
+    @abstractmethod
+    def get_default_title(cls) -> str:
+        return "Foo"
+
+
+class WidgetWithWidgetHeader(ComplexWidget, Generic[header, main]):
+    def __init__(self, header_widget: header, main_widget: main):
+        super().__init__(header_widget=header_widget, main_widget=main_widget)
 
     @property
-    def main(self) -> QWidget:
+    def header(self) -> header:
+        return self.__header
+
+    @property
+    def main(self) -> main:
         return self.__main
 
     def define_widgets(self, **kwargs) -> None:
         self.__layout = QVBoxLayout()
-        self._header_lbl = Label.get(kwargs["header_txt"])
+        self.__header = kwargs["header_widget"]
         self.__main = kwargs["main_widget"]
 
     def setup(self) -> None:
         super().setup()
 
-        self._header_lbl.setAlignment(Qt.AlignCenter)
-        self._header_lbl.setMaximumHeight(100)
+        self.header.setMaximumHeight(100)
 
     def add_widgets(self) -> None:
-        self.__layout.addWidget(self._header_lbl)
+        self.__layout.addWidget(self.header)
         self.__layout.addWidget(self.main)
         self.setLayout(self.__layout)
 
 
-class ComplexWidgetWithTitle(WidgetWithTitle):
-    def __init__(self, header_txt: str, main_widget: ComplexWidget):
-        super().__init__(header_txt=header_txt, main_widget=main_widget)
+class WidgetWithStrHeader(WidgetWithWidgetHeader):
+    def __init__(self, header_txt: str, main_widget: main):
+        label = Label.get(header_txt)
+        super().__init__(header_widget=label, main_widget=main_widget)
 
     @property
-    def main(self) -> ComplexWidget:
-        return self.__main
+    def header(self) -> QLabel:
+        return super().header
+
+    def setup(self) -> None:
+        super().setup()
+
+        self.header.setAlignment(Qt.AlignCenter)
 
 
 class TitleWidget(ComplexWidget):
@@ -100,6 +152,7 @@ class FilterBox(ComplexWidget):
 
     def setup(self) -> None:
         self.setMinimumHeight(50)
+        self.setMaximumHeight(150)
 
         self._filter_lbl.setMaximumHeight(50)
 
@@ -120,42 +173,20 @@ class FilterBox(ComplexWidget):
         self.__current_option = self.filter_box.currentText()
 
 
-class TableWithTitle(ComplexWidget):
-    def __init__(self, table_name: str, **kwargs):
-        kwargs["table_name"] = table_name
-        super().__init__(**kwargs)
-
-    def define_widgets(self, **kwargs) -> None:
-        self._layout = QVBoxLayout()
-        self._title_lbl = Label.get(kwargs["table_name"])
-        self._table = Table.get()
-
-    def setup(self) -> None:
-        super().setup()
-
-        self._title_lbl.setAlignment(Qt.AlignCenter)
-
-    def add_widgets(self) -> None:
-        self._layout.addWidget(self._title_lbl)
-        self._layout.addWidget(self._table)
-        self.setLayout(self._layout)
-
-
-class SearchTable(TableWithTitle):
+class SearchTable(ContentWidget):
     _filters: list[FilterBox]
     _sort: FilterBox
 
-    def __init__(self, table_name: str, filters: list[FilterBox], sort_by: FilterBox):
-        super().__init__(table_name, filters=filters, sort_by=sort_by)
+    def __init__(self, filters: list[FilterBox], sort_by: FilterBox):
+        super().__init__(filters=filters, sort_by=sort_by)
 
     def define_widgets(self, **kwargs) -> None:
-        super().define_widgets(**kwargs)
-        #self.__layout = QVBoxLayout()
+        self.__layout = QVBoxLayout()
         self.__filter_layout = QHBoxLayout()
         self._filters = kwargs["filters"]
         self._sort = kwargs["sort_by"]
         self.__filters_widget = QWidget()
-        #self._table = Table.get()
+        self._table = Table.get()
 
     def setup(self) -> None:
         super().setup()
@@ -173,12 +204,12 @@ class SearchTable(TableWithTitle):
 
         self.__filters_widget.setLayout(self.__filter_layout)
 
-        self._layout.addWidget(self._title_lbl)
-        self._layout.addWidget(self.__filters_widget)
-        self._layout.addWidget(self._table)
-        self._layout.addWidget(self._sort)
+        # self.__layout.addWidget(self._title_lbl)
+        self.__layout.addWidget(self.__filters_widget)
+        self.__layout.addWidget(self._table)
+        self.__layout.addWidget(self._sort)
 
-        self.setLayout(self._layout)
+        self.setLayout(self.__layout)
 
     @abstractmethod
     def get_query(self) -> None:
@@ -188,34 +219,33 @@ class SearchTable(TableWithTitle):
         print("")
 
 
-class GraphWithTitle(ComplexWidget):
-    def __init__(self, graph_name: str, graph_widget: FigureCanvasQTAgg, x_labels: FilterBox, y_labels: FilterBox):
-        super().__init__(graph_name=graph_name, graph_widget=graph_widget,
-                         x_labels=x_labels, y_labels=y_labels)
+class GraphWidget(ContentWidget):
+    def __init__(self):
+        super().__init__()
 
     def define_widgets(self, **kwargs) -> None:
         self._layout = QVBoxLayout()
-        self._title_lbl = Label.get(kwargs["graph_name"])
-        self._graph = kwargs["graph_widget"]
+        self._plot_widget = QWidget()
+        self._plot_layout = QHBoxLayout()
+
+        self._figure, self._subplots = plt.subplots()
+        self._graph = FigureCanvasQTAgg(self._figure)
 
     def setup(self) -> None:
         super().setup()
 
-        _graph: LineGraph
-        self._graph.plot([0, 1, 2, 3, 4], [10, 1, 20, 3, 40])
-        self._title_lbl.setAlignment(Qt.AlignCenter)
+        self.draw_graph()
 
     def add_widgets(self) -> None:
-        self._layout.addWidget(self._title_lbl)
         self._layout.addWidget(self._graph)
+        self._layout.addWidget(NavigationToolbar(self._graph, self))
         self.setLayout(self._layout)
 
+    @abstractmethod
+    def draw_graph(self) -> None:
+        pass
 
-class LineGraph(FigureCanvasQTAgg):
-    def __init__(self, parent=None, width=5, height=4, dpi=100):
-        fig = Figure(figsize=(width, height), dpi=dpi)
-        self.axes = fig.add_subplot(111)
-        super().__init__(fig)
 
-    def plot(self, x: list, y: list) -> None:
-        self.axes.plot(x, y)
+class LineGraph(GraphWidget):
+    def draw_graph(self) -> None:
+        self._subplots.plot([0, 1, 2, 3, 4], [10, 1, 20, 3, 40], "bo")
