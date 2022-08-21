@@ -1,12 +1,15 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from typing import Any, Iterator, SupportsIndex, TypeVar, Generic, Optional, overload, Callable
+from cmath import isinf
+from typing import Any, Iterable, Iterator, SupportsIndex, TypeVar, Generic, Optional, Union, overload, Callable
 from dataclasses import fields
 from PyQt5.QtWidgets import QPushButton
+from attr import asdict
 from ..util import all_attributes_present, all_field_names, Percentile
 from functools import cache
 from random import choice
 import pandas as pd
+from collections.abc import Iterable as isIterable
 
 
 element = TypeVar("element", bound="Element")
@@ -15,6 +18,10 @@ element = TypeVar("element", bound="Element")
 class Element(ABC, Generic[element]):
     _DEFAULT_ID = "id"
     _api = None
+    _DEFAULT_NAME = "name"
+
+    def __str__(self) -> str:
+        return getattr(self, type(self)._DEFAULT_NAME, None)
 
     @ property
     def unique_id(self) -> int:
@@ -241,83 +248,25 @@ class Element(ABC, Generic[element]):
 
     @classmethod
     @cache
-    def get(cls, *, method_: str = "all", **
-            attr_to_value: dict[str, Any]) -> ElementGroup[element]: ...
+    def get(cls, *, method_: str = "all", **attr_to_value: dict[str, Union[Any, Iterable[Any]]]) -> ElementGroup[element]:
+        all_elems = cls.get_all()
+
+        return all_elems.filter(method_=method_, **attr_to_value)
 
     @classmethod
     @cache
-    def get(cls, *, method_: str = "all", **
-            attr_to_value: dict[str, tuple[Any]]) -> ElementGroup[element]: ...
-
-    @classmethod
-    @cache
-    def get(cls, *, method_: str = "all", **attr_to_value: Any) -> ElementGroup[element]:
-        """Get all elements from the relevant API by filters.
-
-        Parameters
-        ----------
-        method_ : str, optional
-            Return elements that satisfy all the filters or any of them, by default "all"
-
-        Returns
-        -------
-        list[element]
-            All elements found in search.
-
-        Raises
-        ------
-        KeyError
-            If any attribute name passed as kwargs is not an attribute.
-        """
-
-        # Method check
-        func = _method_choice(method_)
-
-        # Attr_to_value check
-        for attr, values in attr_to_value.items():
-            if not isinstance(values, tuple):
-                attr_to_value[attr] = [values]
-
-            temp = []
-
-            for value in attr_to_value[attr]:
-                if isinstance(value, Element):
-                    temp.append(value.unique_id)
-                else:
-                    temp.append(value)
-
-            attr_to_value[attr] = tuple(temp)
-
+    def get_all(cls) -> ElementGroup[element]:
         elements = cls.get_api()
-        elements_found = []
 
-        for elem in elements:
-            conditions = []
+        objs = ElementGroup([cls.from_dict(elem) for elem in elements])
 
-            for attr, values in attr_to_value.items():
-                if attr not in elem:
-                    raise KeyError(
-                        f"'{attr}' not in attributes.\nUse: {elem.keys()}")
-
-                sub_conditions = []
-
-                for value in values:
-                    sub_conditions.append(elem[attr] == value)
-
-                if any(sub_conditions):
-                    conditions.append(True)
-                else:
-                    conditions.append(False)
-
-            if func(conditions):
-                elements_found.append(elem)
-
-        return ElementGroup([cls.from_dict(elem) for elem in elements_found])
+        return objs.sort(cls._DEFAULT_ID, reverse=False)
 
 
 class ElementGroup(ABC, Generic[element]):
-    def __init__(self, objects: list[element]):
-        self.__objects = objects
+    def __init__(self, objects: Iterable[element]):
+        #objects_no_duplicates = set(objects)
+        self.__objects = list(objects)
 
     def __str__(self) -> str:
         return f"{self.__class__.__name__} of {len(self)} elements."
@@ -327,6 +276,18 @@ class ElementGroup(ABC, Generic[element]):
 
     def __len__(self) -> int:
         return len(self.__objects)
+
+    @overload
+    def __add__(self, obj: ElementGroup[element]) -> ElementGroup[element]: ...
+
+    def __add__(self, obj: Any) -> Any:
+        if isinstance(obj, ElementGroup):
+            if not self.is_compatible(obj):
+                raise Exception("ElementGroups must have same type.")
+
+            return ElementGroup[element](self.as_list() + obj.as_list())
+        else:
+            raise NotImplementedError
 
     @overload
     def __getitem__(self, idx: SupportsIndex) -> element: ...
@@ -340,6 +301,9 @@ class ElementGroup(ABC, Generic[element]):
             return self.__objects[idx]
         else:
             raise NotImplementedError
+
+    def as_list(self) -> list[element]:
+        return [elem for elem in self]
 
     def string_list(self) -> list[str]:
         output = [str(elem) for elem in self]
@@ -399,14 +363,86 @@ class ElementGroup(ABC, Generic[element]):
 
         return ElementGroup(elements_sorted)
 
-    def percentile(self, attr: str) -> Percentile:
+    def percentile(self, attr: str) -> Percentile[element]:
         elements_to_attr = {elem: getattr(elem, attr) for elem in self}
 
         for attr_value in elements_to_attr.values():
             if not isinstance(attr_value, (int, float)):
                 raise TypeError("Must be int or float.")
 
-        return Percentile(elements_to_attr)
+        return Percentile[element](elements_to_attr)
+
+    def split(self, *, method_: bool = "all", **attr_to_value: dict[str, Union[Any, Iterable[Any]]]) -> tuple[ElementGroup[element], ElementGroup[element]]:
+        filtered_elems = self.filter(method_=method_, **attr_to_value)
+
+        not_filtered_elems = ElementGroup[element](
+            [elem for elem in self if elem not in filtered_elems.as_list()])
+
+        return filtered_elems, not_filtered_elems
+
+    def group_by(self, group_by_attr: str) -> dict[Any, ElementGroup[element]]:
+        groups: dict[Any, list[element]]
+        groups = {}
+
+        for elem in self:
+            elem_attr = getattr(elem, group_by_attr, None)
+
+            if elem_attr is None:
+                raise AttributeError(
+                    f"'{group_by_attr}' not in attributes.\nUse: {asdict(elem).keys()}")
+
+            if elem_attr not in groups:
+                groups[elem_attr] = [elem]
+            else:
+                groups[elem_attr].append(elem)
+
+        return {attr: ElementGroup[element](elems) for attr, elems in groups.items()}
+
+    def filter(self, *, method_: bool = "all", **attr_to_value: dict[str, Union[Any, Iterable[Any]]]) -> ElementGroup[element]:
+        # Method check
+        func = _method_choice(method_)
+        attr_to_value = _format_attr_to_value(attr_to_value)
+
+        elements_found = []
+
+        for elem in self:
+            conditions_by_attr = []
+
+            for attr, values in attr_to_value.items():
+                elem_attr = getattr(elem, attr, None)
+
+                if elem_attr is None:
+                    raise AttributeError(
+                        f"'{attr}' not in attributes.\nUse: {asdict(elem).keys()}")
+
+                if isinstance(elem_attr, Element):
+                    elem_attr = elem_attr.unique_id
+
+                for value in values:
+                    if elem_attr == value:
+                        conditions_by_attr.append(True)
+                        break
+                else:
+                    conditions_by_attr.append(False)
+
+            if func(conditions_by_attr):
+                elements_found.append(elem)
+
+        return ElementGroup[element](elements_found)
+
+    def is_compatible(self, other: ElementGroup) -> bool:
+        subtypes_found = []
+
+        full_list = self.as_list() + other.as_list()
+
+        for elem in full_list:
+            if type(elem) not in subtypes_found:
+                subtypes_found.append(type(elem))
+
+                if len(subtypes_found) > 1:
+                    return False
+
+        return True
 
 
 def _method_choice(method_: str) -> Callable:
@@ -438,3 +474,28 @@ def _method_choice(method_: str) -> Callable:
         func = any
 
     return func
+
+
+def _format_attr_to_value(attr_to_value: dict[str, Union[Any, tuple[Any]]]) -> dict[str, tuple[Any]]:
+    # Attr_to_value check
+    for attr, values in attr_to_value.items():
+        # If single value for attr is passed
+        if isinstance(values, tuple):
+            attr_to_value[attr] = list(values)
+        else:
+            attr_to_value[attr] = [values]
+
+    no_elem_attr_to_value = dict()
+
+    for attr, values in attr_to_value.items():
+        temp = []
+
+        for value in values:
+            if isinstance(value, Element):
+                temp.append(value.unique_id)
+            else:
+                temp.append(value)
+
+        no_elem_attr_to_value[attr] = tuple(temp)
+
+    return no_elem_attr_to_value

@@ -1,4 +1,4 @@
-from .element import Element
+from .element import Element, ElementGroup
 from datetime import datetime
 from typing import Generic, Optional, TypeVar, Union, Any
 from ..util import API
@@ -42,9 +42,6 @@ class BaseEvent(Element[baseevent], Generic[baseevent]):
 
         return new_instance
 
-    def __str__(self) -> str:
-        return self.name
-
     @property
     def started(self) -> bool: return datetime.now() > self.deadline_time
 
@@ -83,3 +80,9 @@ class BaseEvent(Element[baseevent], Generic[baseevent]):
                 return event
 
         return None
+
+    @classmethod
+    def past_and_future(cls) -> tuple[ElementGroup[baseevent], ElementGroup[baseevent]]:
+        all_events = cls.get_all()
+
+        return all_events.split(finished=True)

@@ -1,5 +1,5 @@
 from typing import Generic, TypeVar, Any
-from .element import Element
+from .element import Element, ElementGroup
 from ..util import API
 from ..constants import URLS, str_to_datetime
 from datetime import datetime
@@ -11,6 +11,8 @@ basefixture = TypeVar("basefixture", bound="BaseFixture")
 
 @dataclass(frozen=True, order=True, kw_only=True)
 class BaseFixture(Element[basefixture], Generic[basefixture]):
+    _DEFAULT_NAME = None
+
     code: int = field(repr=False)
     event: int = field(hash=False)
     finished: bool = field(hash=False, repr=False)
@@ -29,6 +31,9 @@ class BaseFixture(Element[basefixture], Generic[basefixture]):
     team_a_difficulty: int = field(hash=False, repr=False)
     pulse_id: int = field(repr=False)
 
+    def __str__(self) -> str:
+        return f"{self.team_h} ({self.team_h_score}) v {self.team_a} ({self.team_a_score})"
+
     @classmethod
     def __pre_init__(cls, new_instance: dict[str, Any]) -> dict[str, Any]:
         new_instance = super().__pre_init__(new_instance)
@@ -37,6 +42,14 @@ class BaseFixture(Element[basefixture], Generic[basefixture]):
             str_to_datetime(new_instance["kickoff_time"])
 
         return new_instance
+
+    @property
+    def fixture(self) -> str:
+        return f"{self.team_h} v {self.team_a}"
+
+    @property
+    def total_goals(self) -> int:
+        return self.team_h_score + self.team_a_score
 
     @classmethod
     @property
@@ -48,3 +61,15 @@ class BaseFixture(Element[basefixture], Generic[basefixture]):
         api = super().get_latest_api()
         api = API(cls.api_link)
         return api.data
+
+    @classmethod
+    def get_all_team_fixtures(cls, team: int) -> ElementGroup[basefixture]:
+        foo = cls.get(method_="or", team_h=team, team_a=team)
+
+        return foo.sort("kickoff_time", reverse=False)
+
+    @classmethod
+    def past_and_future(cls) -> tuple[ElementGroup[basefixture], ElementGroup[basefixture]]:
+        all_fixtures = cls.get_all()
+
+        return all_fixtures.split(finished=True)

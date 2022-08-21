@@ -1,4 +1,5 @@
 from __future__ import annotations
+import math
 from typing import TypeVar, Any, Union
 from fpld.constants import URLS
 from fpld.util.percent import percent
@@ -10,6 +11,7 @@ from .event import BaseEvent
 from .position import Position
 from dataclasses import Field, dataclass, field
 from fpld.util.attribute import CategoricalVar
+from .element import ElementGroup
 
 
 team = TypeVar("team", bound="Team")
@@ -27,11 +29,11 @@ class Team(BaseTeam[team]):
         return new_instance
 
     @property
-    def players(self) -> list[Player]:
+    def players(self) -> ElementGroup[Player]:
         return Player.get(team=self.id)
 
-    def players_by_pos(self, position: Position) -> list[Player]:
-        return [player for player in self.players if player.element_type == position]
+    def players_by_pos(self, position: Position) -> ElementGroup[Player]:
+        return self.players.filter(element_type=position)
 
     def player_total(self, *cols: tuple[str], by_position: Position = None) -> Union[float, int]:
         if by_position is not None:
@@ -61,6 +63,39 @@ class Team(BaseTeam[team]):
         cols = ["goals_scored", "assists"]
 
         return self.player_total(*cols, by_position=by_position)
+
+    def get_all_fixtures(self) -> ElementGroup[fixture]:
+        return Fixture.get_all_team_fixtures(self)
+
+    def get_fixtures_by_gameweek(self) -> dict[Event, ElementGroup[fixture]]:
+        all_team_fixtures = self.get_all_fixtures()
+
+        return all_team_fixtures.group_by("event")
+
+    def fixtures_from_event(self, event: Event) -> ElementGroup[fixture]:
+        all_team_fixtures = self.get_all_fixtures()
+
+        return all_team_fixtures.filter(event=event)
+
+    @property
+    def fixture_score(self) -> float:
+        future_events = Event.past_and_future()[1]
+        score = 0
+        multiplier = 0.9
+
+        for i, event in enumerate(future_events):
+            fixtures = self.fixtures_from_event(event)
+
+            for fixture in fixtures:
+                if fixture.team_h == self:
+                    diff = fixture.team_h_difficulty
+                elif fixture.team_a == self:
+                    diff = fixture.team_a_difficulty
+
+                score += diff * multiplier
+                multiplier = math.e ** (-0.4 * i)
+
+        return score
 
 
 @dataclass(frozen=True, order=True, kw_only=True)
@@ -171,6 +206,10 @@ class Event(BaseEvent[event]):
 
         return new_instance
 
+    @property
+    def fixtures(self) -> ElementGroup[Fixture]:
+        return Fixture.get(event=self)
+
 
 @dataclass(frozen=True, order=True, kw_only=True)
 class Fixture(BaseFixture[fixture]):
@@ -187,3 +226,7 @@ class Fixture(BaseFixture[fixture]):
         new_instance["team_a"] = Team.get_by_id(new_instance["team_a"])
 
         return new_instance
+
+    @classmethod
+    def get_team_fixtures(cls, team: Team) -> ElementGroup[fixture]:
+        return super().get_all_team_fixtures(team.id)

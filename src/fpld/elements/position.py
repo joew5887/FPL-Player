@@ -11,7 +11,7 @@ position = TypeVar("position", bound="Position")
 
 @dataclass(frozen=True, order=True, kw_only=True)
 class Position(Element[position]):
-    _DEFAULT_ID = "id"
+    _DEFAULT_NAME = "singular_name"
 
     id: int = field(compare=True)
     plural_name: str = field(hash=False, repr=False)
@@ -24,9 +24,6 @@ class Position(Element[position]):
     ui_shirt_specific: bool = field(hash=False, repr=False)
     sub_positions_locked: list = field(hash=False, repr=False)
     element_count: int = field(hash=False, repr=False)
-
-    def __str__(self) -> str:
-        return self.singular_name
 
     @classmethod
     @property

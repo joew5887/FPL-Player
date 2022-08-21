@@ -1,11 +1,11 @@
-from gui import HomeScrn
+from fplgui import HomeWindow
 import sys
 from PyQt5.QtWidgets import QApplication
 
 
 def main() -> None:
     app = QApplication(sys.argv)
-    home = HomeScrn()
+    home = HomeWindow()
     sys.exit(app.exec_())
 
 
