@@ -1,4 +1,5 @@
 import fpld
+from typing import TypeVar, Generic
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QTabWidget, QWidget, QHBoxLayout, QVBoxLayout, QLabel, QPushButton, QScrollArea
 from fpld.elements.element import ElementGroup
@@ -9,6 +10,9 @@ from gui.widgets.simple import Label, Table
 from gui.windows import DefaultWindow
 from gui.widgets import TitleWidget
 import pandas as pd
+
+
+_E = TypeVar("_E")  # need element type restriction
 
 
 class HomeWindow(DefaultWindow):
@@ -39,8 +43,33 @@ class HomeWindow(DefaultWindow):
         return x
 
 
-class ElementWindow(DefaultWindow):
-    pass
+class ElementWindow(DefaultWindow, Generic[_E]):
+    def __init__(self, element: _E, title_widget: TitleWidget, main_widget: QWidget):
+        super().__init__(title_widget, main_widget)
+
+    @classmethod
+    def clicked_button(cls, element: _E) -> QPushButton:
+        button = QPushButton()
+
+        foo = cls(element)
+        button.clicked.connect(lambda: foo.show())
+        button.setText(str(element))
+
+        return button
+
+
+class PlayerWindow(ElementWindow[fpld.Player]):
+    def __init__(self, player: fpld.Player):
+        title_widget = TitleWidget(
+            player.web_name, left_txt=str(player.team), right_txt=str(player.element_type))
+        super().__init__(player, title_widget, QWidget())
+
+
+class TeamWindow(ElementWindow[fpld.Team]):
+    def __init__(self, team: fpld.Team):
+        title_widget = TitleWidget(
+            team.name)
+        super().__init__(team, title_widget, QWidget())
 
 
 class HomeWindowTitle(TitleWidget):
@@ -145,9 +174,18 @@ class PlayerSearchTable(SearchTable):
         label = fpld.Label.get(label=sort_by_name)[0]
         self.__players = self.__players.sort(label.name)
 
-        df = self.__players.as_df(
-            "web_name", "team", "element_type", label.name)
+        df = self.__create_df(label)
         Table.set_data(self._table, df)
+
+    def __create_df(self, label: fpld.Label) -> pd.DataFrame:
+        df = self.__players.as_df("element_type", label.name)
+        df["team"] = [TeamWindow.clicked_button(
+            player.team) for player in self.__players]
+        df["player"] = [PlayerWindow.clicked_button(
+            player) for player in self.__players]
+        df = df[["player", "team", "element_type", label.name]]
+
+        return df
 
     @classmethod
     def get_default_title(cls) -> str:
