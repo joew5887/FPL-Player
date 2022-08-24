@@ -1,6 +1,5 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from cmath import isinf
 from typing import Any, Iterable, Iterator, SupportsIndex, TypeVar, Generic, Optional, Union, overload, Callable
 from dataclasses import fields
 from PyQt5.QtWidgets import QPushButton
@@ -9,19 +8,49 @@ from ..util import all_attributes_present, all_field_names, Percentile
 from functools import cache
 from random import choice
 import pandas as pd
-from collections.abc import Iterable as isIterable
 
 
-element = TypeVar("element", bound="Element")
+element = TypeVar("element", bound="Element")  # generic type of `Element`
 
 
 class Element(ABC, Generic[element]):
+    """Template class for an FPL element.
+
+    E.g. Players, Teams, Fixtures
+    """
+
     _DEFAULT_ID = "id"
     _api = None
     _DEFAULT_NAME = "name"
 
     def __str__(self) -> str:
+        """Gets attribute called `cls._DEFAULT_NAME`.
+
+        Returns
+        -------
+        str
+            Text name of element.
+        """
         return getattr(self, type(self)._DEFAULT_NAME, None)
+
+    @classmethod
+    def __pre_init__(cls, new_instance: dict[str, Any]) -> dict[str, Any]:
+        """Edit current attributes from `new_instance` to the correct datatype
+        for the object of the class it will become.
+
+        Used before instantiating the object.
+
+        Parameters
+        ----------
+        new_instance : dict[str, Any]
+            All attributes of the new object.
+
+        Returns
+        -------
+        dict[str, Any]
+            Updated `new_instance` with the correct data types.
+        """
+        return new_instance
 
     @ property
     def unique_id(self) -> int:
@@ -49,6 +78,46 @@ class Element(ABC, Generic[element]):
             )
 
         return id_
+
+    @property
+    def info(self) -> str:
+        """Full info for element.
+
+        Returns
+        -------
+        str
+            Element informaiton.
+        """
+        field_names = all_field_names(type(self))
+
+        return "\n".join([f_name + ": " + str(getattr(self, f_name)) for f_name in field_names])
+
+    @ classmethod
+    @ property
+    def unique_id_col(cls) -> str:
+        """Attribute name that is a unique ID for any object of that class.
+
+        Returns
+        -------
+        str
+            Attribute name.
+        """
+        return cls._DEFAULT_ID
+
+    @classmethod
+    @property
+    @abstractmethod
+    def api_link(cls) -> str:
+        """URL of API for objects of that class.
+
+        Used in `cls.get_api` property.
+
+        Returns
+        -------
+        str
+            API URL.
+        """
+        return
 
       # No type to prevent circular import
     def create_button(self, window) -> QPushButton:
@@ -80,65 +149,6 @@ class Element(ABC, Generic[element]):
         """
         window(self)
 
-    @property
-    def info(self) -> str:
-        """Full info for element.
-
-        Returns
-        -------
-        str
-            Element informaiton.
-        """
-        field_names = all_field_names(type(self))
-
-        return "\n".join([f_name + ": " + str(getattr(self, f_name)) for f_name in field_names])
-
-    @classmethod
-    def __pre_init__(cls, new_instance: dict[str, Any]) -> dict[str, Any]:
-        """Edit current attributes from `new_instance` to the correct datatype
-        for the object of the class it will become.
-
-        Used before instantiating the object.
-
-        Parameters
-        ----------
-        new_instance : dict[str, Any]
-            All attributes of the new object.
-
-        Returns
-        -------
-        dict[str, Any]
-            Updated `new_instance` with the correct data types.
-        """
-        return new_instance
-
-    @ classmethod
-    @ property
-    def unique_id_col(cls) -> str:
-        """Attribute name that is a unique ID for any object of that class.
-
-        Returns
-        -------
-        str
-            Attribute name.
-        """
-        return cls._DEFAULT_ID
-
-    @classmethod
-    @property
-    @abstractmethod
-    def api_link(cls) -> str:
-        """URL of API for objects of that class.
-
-        Used in `cls.get_api` property.
-
-        Returns
-        -------
-        str
-            API URL.
-        """
-        return
-
     @classmethod
     @abstractmethod
     def get_latest_api(cls) -> list[dict[str, Any]]:
@@ -169,7 +179,7 @@ class Element(ABC, Generic[element]):
         list[dict[str, Any]]
             Data for the class.
         """
-        if (refresh_api is True) or (cls._api is None):
+        if (refresh_api is True) or (cls._api is None):  # If api is empty or an update to api is requested.
             cls._api = cls.get_latest_api()
 
         return cls._api
@@ -249,6 +259,20 @@ class Element(ABC, Generic[element]):
     @classmethod
     @cache
     def get(cls, *, method_: str = "all", **attr_to_value: dict[str, Union[Any, Iterable[Any]]]) -> ElementGroup[element]:
+        """Gets a group of elements based on filters and conditions passed.
+
+        Conditions passed by `attr_to_value`. E.g. `web_name="Spurs"`
+
+        Parameters
+        ----------
+        method_ : str, optional
+            "all" if all conditions must be met, "or" for any condition to be met, by default "all"
+
+        Returns
+        -------
+        ElementGroup[element]
+            All elements that satisfy the filters passed, may also be empty.
+        """
         all_elems = cls.get_all()
 
         return all_elems.filter(method_=method_, **attr_to_value)
@@ -256,6 +280,13 @@ class Element(ABC, Generic[element]):
     @classmethod
     @cache
     def get_all(cls) -> ElementGroup[element]:
+        """Gets all elements as objects of parent class `Element`.
+
+        Returns
+        -------
+        ElementGroup[element]
+            All elements.
+        """
         elements = cls.get_api()
 
         objs = ElementGroup([cls.from_dict(elem) for elem in elements])
@@ -264,6 +295,9 @@ class Element(ABC, Generic[element]):
 
 
 class ElementGroup(ABC, Generic[element]):
+    """Way to store and edit a group of common FPL elements.
+    """
+
     def __init__(self, objects: Iterable[element]):
         #objects_no_duplicates = set(objects)
         self.__objects = list(objects)
