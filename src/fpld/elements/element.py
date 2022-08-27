@@ -23,16 +23,6 @@ class Element(ABC, Generic[element]):
     _api = None
     _DEFAULT_NAME = "name"
 
-    def __str__(self) -> str:
-        """Gets attribute called `cls._DEFAULT_NAME`.
-
-        Returns
-        -------
-        str
-            Text name of element.
-        """
-        return getattr(self, type(self)._DEFAULT_NAME, None)
-
     @classmethod
     def __pre_init__(cls, new_instance: dict[str, Any]) -> dict[str, Any]:
         """Edit current attributes from `new_instance` to the correct datatype
@@ -51,6 +41,44 @@ class Element(ABC, Generic[element]):
             Updated `new_instance` with the correct data types.
         """
         return new_instance
+
+    def __str__(self) -> str:
+        """Gets attribute called `cls._DEFAULT_NAME`.
+
+        Returns
+        -------
+        str
+            Text name of element.
+        """
+        return getattr(self, type(self)._DEFAULT_NAME, None)
+
+    @classmethod
+    @property
+    @abstractmethod
+    def api_link(cls) -> str:
+        """URL of API for objects of that class.
+
+        Used in `cls.get_api` property.
+
+        Returns
+        -------
+        str
+            API URL.
+        """
+        return
+
+    @property
+    def info(self) -> str:
+        """Full info for element.
+
+        Returns
+        -------
+        str
+            Element informaiton.
+        """
+        field_names = all_field_names(type(self))
+
+        return "\n".join([f_name + ": " + str(getattr(self, f_name)) for f_name in field_names])
 
     @ property
     def unique_id(self) -> int:
@@ -79,19 +107,6 @@ class Element(ABC, Generic[element]):
 
         return id_
 
-    @property
-    def info(self) -> str:
-        """Full info for element.
-
-        Returns
-        -------
-        str
-            Element informaiton.
-        """
-        field_names = all_field_names(type(self))
-
-        return "\n".join([f_name + ": " + str(getattr(self, f_name)) for f_name in field_names])
-
     @ classmethod
     @ property
     def unique_id_col(cls) -> str:
@@ -103,21 +118,6 @@ class Element(ABC, Generic[element]):
             Attribute name.
         """
         return cls._DEFAULT_ID
-
-    @classmethod
-    @property
-    @abstractmethod
-    def api_link(cls) -> str:
-        """URL of API for objects of that class.
-
-        Used in `cls.get_api` property.
-
-        Returns
-        -------
-        str
-            API URL.
-        """
-        return
 
       # No type to prevent circular import
     def create_button(self, window) -> QPushButton:
@@ -150,41 +150,6 @@ class Element(ABC, Generic[element]):
         window(self)
 
     @classmethod
-    @abstractmethod
-    def get_latest_api(cls) -> list[dict[str, Any]]:
-        """Data from API.
-
-        Used by `get_api()` to get API.
-
-        Returns
-        -------
-        list[dict[str, Any]]
-            Latest data for the class.
-        """
-        return
-
-    @classmethod
-    def get_api(cls, refresh_api: bool = False) -> list[dict[str, Any]]:
-        """Gets API either online or stored in memory from previous use.
-
-        Used by `get()` to find search results.
-
-        Parameters
-        ----------
-        refresh_api : bool, optional
-            Return the latest version from FPL website, by default False
-
-        Returns
-        -------
-        list[dict[str, Any]]
-            Data for the class.
-        """
-        if (refresh_api is True) or (cls._api is None):  # If api is empty or an update to api is requested.
-            cls._api = cls.get_latest_api()
-
-        return cls._api
-
-    @classmethod
     def from_dict(cls, new_instance: dict[str, Any]) -> element:
         """Converts dictionary of attributes to an object of the class.
 
@@ -214,6 +179,64 @@ class Element(ABC, Generic[element]):
 
         raise KeyError(
             f"Missing: {field_names.difference(set(new_instance.keys()))}")
+
+    @classmethod
+    @cache
+    def get(cls, *, method_: str = "all", **attr_to_value: dict[str, Union[Any, Iterable[Any]]]) -> ElementGroup[element]:
+        """Gets a group of elements based on filters and conditions passed.
+
+        Conditions passed by `attr_to_value`. E.g. `web_name="Spurs"`
+
+        Parameters
+        ----------
+        method_ : str, optional
+            "all" if all conditions must be met, "or" for any condition to be met, by default "all"
+
+        Returns
+        -------
+        ElementGroup[element]
+            All elements that satisfy the filters passed, may also be empty.
+        """
+        all_elems = cls.get_all()
+
+        return all_elems.filter(method_=method_, **attr_to_value)
+
+    @classmethod
+    @cache
+    def get_all(cls) -> ElementGroup[element]:
+        """Gets all elements as objects of parent class `Element`.
+
+        Returns
+        -------
+        ElementGroup[element]
+            All elements.
+        """
+        elements = cls.get_api()
+
+        objs = ElementGroup([cls.from_dict(elem) for elem in elements])
+
+        return objs.sort(cls._DEFAULT_ID, reverse=False)
+
+    @classmethod
+    def get_api(cls, refresh_api: bool = False) -> list[dict[str, Any]]:
+        """Gets API either online or stored in memory from previous use.
+
+        Used by `get()` to find search results.
+
+        Parameters
+        ----------
+        refresh_api : bool, optional
+            Return the latest version from FPL website, by default False
+
+        Returns
+        -------
+        list[dict[str, Any]]
+            Data for the class.
+        """
+        if (refresh_api is True) or (cls._api is None):  # If api is empty or an update to api is requested.
+            cls._api = cls.get_latest_api()
+
+        return cls._api
 
     @classmethod
     @cache
@@ -257,41 +280,18 @@ class Element(ABC, Generic[element]):
             return element_group[0]
 
     @classmethod
-    @cache
-    def get(cls, *, method_: str = "all", **attr_to_value: dict[str, Union[Any, Iterable[Any]]]) -> ElementGroup[element]:
-        """Gets a group of elements based on filters and conditions passed.
+    @abstractmethod
+    def get_latest_api(cls) -> list[dict[str, Any]]:
+        """Data from API.
 
-        Conditions passed by `attr_to_value`. E.g. `web_name="Spurs"`
-
-        Parameters
-        ----------
-        method_ : str, optional
-            "all" if all conditions must be met, "or" for any condition to be met, by default "all"
+        Used by `get_api()` to get API.
 
         Returns
         -------
-        ElementGroup[element]
-            All elements that satisfy the filters passed, may also be empty.
+        list[dict[str, Any]]
+            Latest data for the class.
         """
-        all_elems = cls.get_all()
-
-        return all_elems.filter(method_=method_, **attr_to_value)
-
-    @classmethod
-    @cache
-    def get_all(cls) -> ElementGroup[element]:
-        """Gets all elements as objects of parent class `Element`.
-
-        Returns
-        -------
-        ElementGroup[element]
-            All elements.
-        """
-        elements = cls.get_api()
-
-        objs = ElementGroup([cls.from_dict(elem) for elem in elements])
-
-        return objs.sort(cls._DEFAULT_ID, reverse=False)
+        return
 
 
 class ElementGroup(ABC, Generic[element]):
@@ -302,15 +302,6 @@ class ElementGroup(ABC, Generic[element]):
         #objects_no_duplicates = set(objects)
         self.__objects = list(objects)
 
-    def __str__(self) -> str:
-        return f"{self.__class__.__name__} of {len(self)} elements."
-
-    def __iter__(self) -> Iterator[element]:
-        return iter(self.__objects)
-
-    def __len__(self) -> int:
-        return len(self.__objects)
-
     @overload
     def __add__(self, obj: ElementGroup[element]) -> ElementGroup[element]: ...
 
@@ -319,7 +310,7 @@ class ElementGroup(ABC, Generic[element]):
             if not self.is_compatible(obj):
                 raise Exception("ElementGroups must have same type.")
 
-            return ElementGroup[element](self.as_list() + obj.as_list())
+            return ElementGroup[element](self.to_list() + obj.to_list())
         else:
             raise NotImplementedError
 
@@ -330,109 +321,47 @@ class ElementGroup(ABC, Generic[element]):
 
     def __getitem__(self, idx: Any) -> Any:
         if isinstance(idx, slice):
+            # slicing creates new ElementGroup
             return ElementGroup(self.__objects[idx])
         elif isinstance(idx, SupportsIndex):
             return self.__objects[idx]
         else:
             raise NotImplementedError
 
-    def as_list(self) -> list[element]:
-        return [elem for elem in self]
+    def __iter__(self) -> Iterator[element]:
+        return iter(self.__objects)
 
-    def string_list(self) -> list[str]:
-        output = [str(elem) for elem in self]
+    def __len__(self) -> int:
+        return len(self.__objects)
 
-        return output
-
-    def top_n_elements(self, col_by: str, n: int, reverse: bool = True) -> ElementGroup:
-        return ElementGroup(self.sort(col_by, reverse=reverse)[:n])
-
-    def random(self) -> element:
-        """Gets random element from objects list.
+    def __str__(self) -> str:
+        """Description of contents in the class.
 
         Returns
         -------
-        element
-            Random element selected.
+        str
+            E.g. 'ElementGroup of 10 elements.'
         """
+        return f"{self.__class__.__name__} of {len(self)} elements."
 
-        return choice(self.__objects)
-
-    def as_df(self, *attributes: tuple[str]) -> pd.DataFrame:
-        """Gets a list of like elements and puts them into a dataframe.
-
-        With the chosen attributes as columns.
-
-        Returns
-        -------
-        pd.DataFrame
-            `elements` data in a dataframe.
-        """
-
-        df_rows = [[getattr(element, attr) for attr in attributes]
-                   for element in self]
-
-        df = pd.DataFrame(df_rows, index=list(
-            range(1, len(self) + 1)), columns=attributes)
-
-        return df
-
-    def sort(self, sort_by: str, *, reverse: bool = True) -> ElementGroup[element]:
-        """Sorts a list of like elements by an attribute.
+    def filter(self, *, method_: bool = "all", **attr_to_value: dict[str, Union[Any, Iterable[Any]]]) -> ElementGroup[element]:
+        """Filters an ElementGroup into a group that satisfies all the conditions passed.
 
         Parameters
         ----------
-        sort_by : str
-            Attribute name to sort `elements` by.
-        reverse : bool, optional
-            True if in descending order, by default True
+        method_ : bool, optional
+            "all" if all conditions must be met, "or" for any condition to be met, by default "all"
 
         Returns
         -------
-        list[element]
-            `elements` sorted by `sort_by`.
+        ElementGroup[element]
+            All elements that satisfy the filters.
+
+        Raises
+        ------
+        AttributeError
+            If the attribute does not exist for the elements.
         """
-        elements_sorted = sorted(self.__objects, key=lambda elem: getattr(
-            elem, sort_by), reverse=reverse)
-
-        return ElementGroup(elements_sorted)
-
-    def percentile(self, attr: str) -> Percentile[element]:
-        elements_to_attr = {elem: getattr(elem, attr) for elem in self}
-
-        for attr_value in elements_to_attr.values():
-            if not isinstance(attr_value, (int, float)):
-                raise TypeError("Must be int or float.")
-
-        return Percentile[element](elements_to_attr)
-
-    def split(self, *, method_: bool = "all", **attr_to_value: dict[str, Union[Any, Iterable[Any]]]) -> tuple[ElementGroup[element], ElementGroup[element]]:
-        filtered_elems = self.filter(method_=method_, **attr_to_value)
-
-        not_filtered_elems = ElementGroup[element](
-            [elem for elem in self if elem not in filtered_elems.as_list()])
-
-        return filtered_elems, not_filtered_elems
-
-    def group_by(self, group_by_attr: str) -> dict[Any, ElementGroup[element]]:
-        groups: dict[Any, list[element]]
-        groups = {}
-
-        for elem in self:
-            elem_attr = getattr(elem, group_by_attr, None)
-
-            if elem_attr is None:
-                raise AttributeError(
-                    f"'{group_by_attr}' not in attributes.\nUse: {asdict(elem).keys()}")
-
-            if elem_attr not in groups:
-                groups[elem_attr] = [elem]
-            else:
-                groups[elem_attr].append(elem)
-
-        return {attr: ElementGroup[element](elems) for attr, elems in groups.items()}
-
-    def filter(self, *, method_: bool = "all", **attr_to_value: dict[str, Union[Any, Iterable[Any]]]) -> ElementGroup[element]:
         # Method check
         func = _method_choice(method_)
         attr_to_value = _format_attr_to_value(attr_to_value)
@@ -464,10 +393,86 @@ class ElementGroup(ABC, Generic[element]):
 
         return ElementGroup[element](elements_found)
 
+    def get_top_n_elements(self, col_by: str, n: int, reverse: bool = True) -> ElementGroup[element]:
+        """Gets top n elements of an attribute and returns them in a new ElementGroup.
+
+        Parameters
+        ----------
+        col_by : str
+            Attribute to rank elements by.
+        n : int
+            Number of elements to save.
+        reverse : bool, optional
+           For descending order, use True, by default True
+
+        Returns
+        -------
+        ElementGroup[element]
+            Group of top elements of size `n`.
+        """
+        return ElementGroup(self.sort(col_by, reverse=reverse)[:n])
+
+    def get_random(self) -> element:
+        """Gets random element from objects list.
+
+        Returns
+        -------
+        element
+            Random element selected.
+        """
+        return choice(self.__objects)
+
+    def group_by(self, group_by_attr: str) -> dict[Any, ElementGroup[element]]:
+        """Split an ElementGroup into multiple sub-groups by an attribute value.
+
+        Parameters
+        ----------
+        group_by_attr : str
+            Attribute to create groups by.
+
+        Returns
+        -------
+        dict[Any, ElementGroup[element]]
+            The key is the attribute value, the value is elements with a common attribute value.
+
+        Raises
+        ------
+        AttributeError
+            If `group_by_attr` does not exist for the elements.
+        """
+        groups: dict[Any, list[element]]
+        groups = {}
+
+        for elem in self:
+            elem_attr = getattr(elem, group_by_attr, None)
+
+            if elem_attr is None:
+                raise AttributeError(
+                    f"'{group_by_attr}' not in attributes.\nUse: {asdict(elem).keys()}")
+
+            if elem_attr not in groups:
+                groups[elem_attr] = [elem]  # Creates new group
+            else:
+                groups[elem_attr].append(elem)
+
+        return {attr: ElementGroup[element](elems) for attr, elems in groups.items()}
+
     def is_compatible(self, other: ElementGroup) -> bool:
+        """Checks if two ElementGroups store the same element.
+
+        Parameters
+        ----------
+        other : ElementGroup
+            Other group of elements to compare against.
+
+        Returns
+        -------
+        bool
+            True if they both store the same elements, False otherwise.
+        """
         subtypes_found = []
 
-        full_list = self.as_list() + other.as_list()
+        full_list = self.to_list() + other.to_list()
 
         for elem in full_list:
             if type(elem) not in subtypes_found:
@@ -477,6 +482,113 @@ class ElementGroup(ABC, Generic[element]):
                     return False
 
         return True
+
+    def sort(self, sort_by: str, *, reverse: bool = True) -> ElementGroup[element]:
+        """Sorts a list of like elements by an attribute.
+
+        Parameters
+        ----------
+        sort_by : str
+            Attribute name to sort `elements` by.
+        reverse : bool, optional
+            True if in descending order, by default True
+
+        Returns
+        -------
+        list[element]
+            `elements` sorted by `sort_by`.
+        """
+        elements_sorted = sorted(self.__objects, key=lambda elem: getattr(
+            elem, sort_by), reverse=reverse)
+
+        return ElementGroup(elements_sorted)
+
+    def split(self, *, method_: bool = "all", **attr_to_value: dict[str, Union[Any, Iterable[Any]]]) -> tuple[ElementGroup[element], ElementGroup[element]]:
+        """Splits an ElementGroup into two sub-groups, where one group satisfies the filters, the other does not.
+
+        Parameters
+        ----------
+        method_ : bool, optional
+            "all" if all conditions must be met, "or" for any condition to be met, by default "all"
+
+        Returns
+        -------
+        tuple[ElementGroup[element], ElementGroup[element]]
+            The first group satisfies the filter, the other does not.
+        """
+        filtered_elems = self.filter(method_=method_, **attr_to_value)
+
+        not_filtered_elems = ElementGroup[element](
+            [elem for elem in self if elem not in filtered_elems.to_list()])
+
+        return filtered_elems, not_filtered_elems
+
+    def to_df(self, *attributes: tuple[str]) -> pd.DataFrame:
+        """Gets a list of like elements and puts them into a dataframe.
+
+        With the chosen attributes as columns.
+
+        Returns
+        -------
+        pd.DataFrame
+            `elements` data in a dataframe.
+        """
+
+        df_rows = [[getattr(element, attr) for attr in attributes]
+                   for element in self]
+
+        df = pd.DataFrame(df_rows, index=list(
+            range(1, len(self) + 1)), columns=attributes)
+
+        return df
+
+    def to_list(self) -> list[element]:
+        """All elements in instance within a list.
+
+        Returns
+        -------
+        list[element]
+            `self.__object`.
+        """
+        return self.__objects
+
+    def to_percentile(self, attr: str) -> Percentile[element]:
+        """Ranks all elements in instance by percentile by `attr`.
+
+        Parameters
+        ----------
+        attr : str
+            Attribute to rank elements by.
+
+        Returns
+        -------
+        Percentile[element]
+           Gives each element a rank.
+
+        Raises
+        ------
+        TypeError
+            Attribute type must be int or float.
+        """
+        elements_to_attr = {elem: getattr(elem, attr) for elem in self}
+
+        for attr_value in elements_to_attr.values():
+            if not isinstance(attr_value, (int, float)):
+                raise TypeError("Must be int or float.")
+
+        return Percentile[element](elements_to_attr)
+
+    def to_string_list(self) -> list[str]:
+        """All elements in instance as their string representation.
+
+        Returns
+        -------
+        list[str]
+            All elements in instance as their string representation.
+        """
+        output = [str(elem) for elem in self]
+
+        return output
 
 
 def _method_choice(method_: str) -> Callable:
@@ -511,6 +623,20 @@ def _method_choice(method_: str) -> Callable:
 
 
 def _format_attr_to_value(attr_to_value: dict[str, Union[Any, tuple[Any]]]) -> dict[str, tuple[Any]]:
+    """Formats query so the values are all tuples.
+
+    Used by `ElementGroup.filter()`
+
+    Parameters
+    ----------
+    attr_to_value : dict[str, Union[Any, tuple[Any]]]
+        Original query
+
+    Returns
+    -------
+    dict[str, tuple[Any]]
+        Formatted query where values are stored in tuples by default.
+    """
     # Attr_to_value check
     for attr, values in attr_to_value.items():
         # If single value for attr is passed
