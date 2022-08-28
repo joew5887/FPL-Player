@@ -1,4 +1,4 @@
-from typing import Generic, TypeVar, Any
+from typing import Generic, TypeVar, Any, Optional
 from .element import Element, ElementGroup
 from ..util import API
 from ..constants import URLS, str_to_datetime
@@ -54,7 +54,11 @@ class BaseFixture(Element[basefixture], Generic[basefixture]):
         str
             In form: 'Spurs (1) v Wolves (0)'.
         """
-        return f"{self.team_h} ({self.team_h_score}) v {self.team_a} ({self.team_a_score})"
+        # If game has not happened yet.
+        if self.kickoff_time > datetime.now():
+            return f"{self.team_h} v {self.team_a}"
+
+        return f"({self.team_h}) {self.team_h_score} - {self.team_a_score} ({self.team_a})"
 
     @property
     def total_goals(self) -> int:
@@ -73,7 +77,7 @@ class BaseFixture(Element[basefixture], Generic[basefixture]):
         return URLS["FIXTURES"]
 
     @classmethod
-    def get_all_team_fixtures(cls, team: int) -> ElementGroup[basefixture]:
+    def get_all_team_fixtures(cls, team_id: int) -> ElementGroup[basefixture]:
         """Gets all fixtures and results for a team.
 
         Parameters
@@ -86,7 +90,7 @@ class BaseFixture(Element[basefixture], Generic[basefixture]):
         ElementGroup[basefixture]
             All fixtures and results a team has.
         """
-        foo = cls.get(method_="or", team_h=team, team_a=team)
+        foo = cls.get(method_="or", team_h=team_id, team_a=team_id)
 
         return foo.sort("kickoff_time", reverse=False)
 
@@ -97,7 +101,7 @@ class BaseFixture(Element[basefixture], Generic[basefixture]):
         return api.data
 
     @classmethod
-    def group_fixtures_by_gameweek(fixtures: ElementGroup[basefixture]) -> dict[int, ElementGroup[basefixture]]:
+    def group_fixtures_by_gameweek(cls, fixtures: ElementGroup[basefixture]) -> dict[int, ElementGroup[basefixture]]:
         """Groups an ElementGroup of fixtures by gameweek.
 
         Parameters
@@ -113,7 +117,7 @@ class BaseFixture(Element[basefixture], Generic[basefixture]):
         return fixtures.group_by("event")
 
     @classmethod
-    def split_fixtures_by_finished(fixtures: ElementGroup[basefixture]) -> tuple[ElementGroup[basefixture], ElementGroup[basefixture]]:
+    def split_fixtures_by_finished(cls, fixtures: ElementGroup[basefixture]) -> tuple[ElementGroup[basefixture], ElementGroup[basefixture]]:
         """Splits an ElementGroup of fixtures by whether they have finished.
 
         Parameters
@@ -129,7 +133,7 @@ class BaseFixture(Element[basefixture], Generic[basefixture]):
         return fixtures.split(finished=True)
 
     @classmethod
-    def get_fixtures_in_event(fixtures: ElementGroup[basefixture], event: int) -> ElementGroup[basefixture]:
+    def get_fixtures_in_event(cls, fixtures: ElementGroup[basefixture], event_id: int) -> ElementGroup[basefixture]:
         """Gets fixtures from a gameweek from `fixtures`.
 
         Parameters
@@ -144,4 +148,4 @@ class BaseFixture(Element[basefixture], Generic[basefixture]):
         ElementGroup[basefixture]
             All fixtures from `fixtures` that take place in gameweek `event`.
         """
-        return fixtures.filter(event=event)
+        return fixtures.filter(event=event_id)

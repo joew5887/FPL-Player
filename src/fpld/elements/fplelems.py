@@ -1,16 +1,16 @@
 from __future__ import annotations
 import math
-from typing import TypeVar, Any, Union
-from fpld.constants import URLS
-from fpld.util.percent import percent
-from fpld.util import API
+from typing import TypeVar, Any, Union, Optional
+from ..constants import URLS
+from ..util.percent import percent
+from ..util import API
 from .team import BaseTeam
 from .player import BasePlayer, BasePlayerFull, BasePlayerHistory, BasePlayerFixtures, BasePlayerHistoryPast
 from .fixture import BaseFixture
 from .event import BaseEvent
 from .position import Position
 from dataclasses import Field, dataclass, field
-from fpld.util.attribute import CategoricalVar
+from ..util.attribute import CategoricalVar
 from .element import ElementGroup
 
 
@@ -40,10 +40,7 @@ class Team(BaseTeam[team]):
         for i, fixtures in enumerate(all_fixtures_by_event.values()):
             fixture: Fixture
             for fixture in fixtures:
-                if fixture.team_h == self:
-                    diff = fixture.team_h_difficulty
-                elif fixture.team_a == self:
-                    diff = fixture.team_a_difficulty
+                diff = fixture.get_difficulty(self)
 
                 score += diff * multiplier
                 multiplier = math.e ** (-0.4 * i)
@@ -59,7 +56,7 @@ class Team(BaseTeam[team]):
         ElementGroup[Player]
             Unsorted group of all players for a team.
         """
-        return Player.get(team=self.id)
+        return Player.get(team=self.unique_id)
 
     def get_all_fixtures(self) -> ElementGroup[fixture]:
         """Gets all fixtures and results for a team.
@@ -69,7 +66,7 @@ class Team(BaseTeam[team]):
         ElementGroup[fixture]
             Team fixtures and results sorted by kickoff time.
         """
-        return Fixture.get_all_team_fixtures(self)
+        return Fixture.get_all_team_fixtures(self.unique_id)
 
     def players_by_pos(self, position: Position) -> ElementGroup[Player]:
         """Gets all players from a team in a certain position.
@@ -87,6 +84,25 @@ class Team(BaseTeam[team]):
         return self.players.filter(element_type=position)
 
     def player_total(self, *cols: tuple[str], by_position: Position = None) -> Union[float, int]:
+        """Total points for all the players in a team, for a given attribute.
+
+        Parameters
+        ----------
+        by_position : Position, optional
+            Position to filter, None means all positions, by default None
+
+        Returns
+        -------
+        Union[float, int]
+            Total points.
+
+        Raises
+        ------
+        AttributeError
+            Attribute must exist in 'Player' fields.
+        AttributeError
+            Attribute found must be of type 'int' or 'float'.
+        """
         if by_position is not None:
             players = self.players_by_pos(by_position)
         else:
@@ -111,6 +127,18 @@ class Team(BaseTeam[team]):
         return total
 
     def total_goal_contributions(self, *, by_position: Position = None) -> int:
+        """Total goal contributions for a team.
+
+        Parameters
+        ----------
+        by_position : Position, optional
+            Position to filter, None means all positions, by default None
+
+        Returns
+        -------
+        int
+            Total goals + total assists.
+        """
         cols = ["goals_scored", "assists"]
 
         return self.player_total(*cols, by_position=by_position)
@@ -189,16 +217,38 @@ class Player(BasePlayer[player]):
 
     @property
     def percent_pos(self) -> float:
+        """Percent of player contribution to total team contributions
+        in the player's position.
+
+        Returns
+        -------
+        float
+            player contributions / team position contributions.
+        """
         position_total = self.team.total_goal_contributions(
             by_position=self.element_type)
         return percent(self.goal_contributions, position_total)
 
     @property
     def percent_team(self) -> float:
+        """Percent of player  contributions to total team contributions.
+
+        Returns
+        -------
+        float
+            player contributions / team contributions.
+        """
         team_total = self.team.total_goal_contributions()
         return percent(self.goal_contributions, team_total)
 
     def in_full(self) -> PlayerFull:
+        """Game by game, season by season data for a player.
+
+        Returns
+        -------
+        PlayerFull
+            Game by game, season by season data for a player.
+        """
         return PlayerFull.from_id(self.id)
 
 
@@ -255,30 +305,44 @@ class Fixture(BaseFixture[fixture]):
 
         return new_instance
 
-    @classmethod
-    def get_all_team_fixtures(cls, team: Union[Team, int]) -> ElementGroup[fixture]:
-        """Gets all fixtures and results for a team.
+    def get_difficulty(self, team: Union[int, Team], raise_value_error: bool = True) -> Optional[int]:
+        """Gets the difficulty of a fixture for a team.
 
         Parameters
         ----------
-        team : Team
-            Team to find fixtures for.
+        team : Union[int, Team]
+            Team to find difficulty for.
+        raise_value_error : bool, optional
+            True raises a 'ValueError', False returns None, by default True
 
         Returns
         -------
-        ElementGroup[fixture]
-            All fixtures and results a team has.
+        Optional[int]
+            Difficulty of the game for `team`. 
+
+        Raises
+        ------
+        ValueError
+            If `team` is not in fixture and `raise_value_error` is True.
         """
-
         if isinstance(team, Team):
-            return super().get_all_team_fixtures(team.id)
-        if isinstance(team, int):
-            return super().get_all_team_fixtures(team)
+            team_id = team.unique_id
+        else:
+            team_id = team
 
-        raise NotImplementedError
+        if self.team_h.unique_id == team_id:
+            return self.team_h_difficulty
+        if self.team_a.unique_id == team_id:
+            return self.team_a_difficulty
 
-    @staticmethod
-    def group_fixtures_by_gameweek(fixtures: ElementGroup[fixture]) -> dict[Event, ElementGroup[fixture]]:
+        if raise_value_error:
+            raise ValueError(
+                f"Team ID '{team}' not in fixture, '{str(self)}'")
+
+        return None
+
+    @classmethod
+    def group_fixtures_by_gameweek(cls, fixtures: ElementGroup[fixture]) -> dict[Event, ElementGroup[fixture]]:
         """Groups an ElementGroup of fixtures by gameweek.
 
         Parameters
@@ -292,21 +356,3 @@ class Fixture(BaseFixture[fixture]):
             The key is the event, the value is the fixtures in that gameweek.
         """
         return super().group_fixtures_by_gameweek(fixtures)
-
-    @staticmethod
-    def get_fixtures_in_event(fixtures: ElementGroup[fixture], event: Union[Event, int]) -> ElementGroup[fixture]:
-        """Gets fixtures from a gameweek from `fixtures`.
-
-        Parameters
-        ----------
-        fixtures : ElementGroup[basefixture]
-            Fixtures to group.
-        event : Event
-            Event to filter by.
-
-        Returns
-        -------
-        ElementGroup[fixture]
-            All fixtures from `fixtures` that take place in gameweek `event`.
-        """
-        return super().get_fixtures_in_event(fixtures)

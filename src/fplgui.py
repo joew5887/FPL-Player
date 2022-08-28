@@ -260,10 +260,13 @@ class FixtureDifficultyTable(SearchTable):
 
         team: fpld.Team
         for team in all_teams:
+            all_team_fixtures = team.get_all_fixtures()
             row = [str(team)]
 
+            event: fpld.Event
             for event in events:
-                fixtures_from_team = team.fixtures_from_event(event)
+                fixtures_from_team = fpld.Fixture.get_fixtures_in_event(
+                    all_team_fixtures, event.unique_id)
                 widget = QWidget()
                 widget = FixtureDifficultyTable.get_widget(
                     fixtures_from_team, team)
@@ -289,12 +292,7 @@ class FixtureDifficultyTable(SearchTable):
         layout = QHBoxLayout()
 
         for fixture in fixtures:
-            if fixture.team_h == team:
-                diff = fixture.team_h_difficulty
-            elif fixture.team_a == team:
-                diff = fixture.team_a_difficulty
-            else:
-                raise ValueError("Team not in fixture")
+            diff = fixture.get_difficulty(team)
 
             colour = DIFF_TO_COLOUR[diff]
 

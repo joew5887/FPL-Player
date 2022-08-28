@@ -2,7 +2,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import Field, dataclass, field, fields
 from datetime import datetime
-from fpld.util.attribute import CategoricalVar, ContinuousVar
+from ..util.attribute import CategoricalVar, ContinuousVar
 from .element import Element, ElementGroup
 from typing import Optional, TypeVar, Generic, Any, get_type_hints
 from ..util import API
@@ -311,7 +311,17 @@ class BasePlayerStats(ABC):
 class BasePlayerFixtures(BasePlayerStats):
     """All fixtures for a player, unlinked from other FPL elements.
     """
-    fixture: CategoricalVar[int] = field(hash=False, repr=False)
+    id: CategoricalVar[int] = field(hash=False, repr=False)
+    code: CategoricalVar[int] = field(hash=False, repr=False)
+    team_h: CategoricalVar[int] = field(hash=False, repr=False)
+    team_a: CategoricalVar[int] = field(hash=False, repr=False)
+    team_a_score: CategoricalVar[int] = field(hash=False, repr=False)
+    event: CategoricalVar[int] = field(hash=False, repr=False)
+    finished: CategoricalVar[int] = field(hash=False, repr=False)
+    minutes: CategoricalVar[int] = field(hash=False, repr=False)
+    provisional_start_time: CategoricalVar[int] = field(hash=False, repr=False)
+    id: CategoricalVar[int] = field(hash=False, repr=False)
+    id: CategoricalVar[int] = field(hash=False, repr=False)
 
 
 @dataclass(frozen=True, kw_only=True)
