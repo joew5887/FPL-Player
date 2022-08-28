@@ -21,7 +21,7 @@ class Element(ABC, Generic[element]):
 
     _DEFAULT_ID = "id"
     _api = None
-    _DEFAULT_NAME = "name"
+    _ATTR_FOR_STR = "name"
 
     @classmethod
     def __pre_init__(cls, new_instance: dict[str, Any]) -> dict[str, Any]:
@@ -43,29 +43,34 @@ class Element(ABC, Generic[element]):
         return new_instance
 
     def __str__(self) -> str:
-        """Gets attribute called `cls._DEFAULT_NAME`.
+        """Gets attribute called `cls._ATTR_FOR_STR`.
 
         Returns
         -------
         str
             Text name of element.
         """
-        return getattr(self, type(self)._DEFAULT_NAME, None)
+        return getattr(self, type(self)._ATTR_FOR_STR, None)
 
-    @classmethod
-    @property
-    @abstractmethod
-    def api_link(cls) -> str:
-        """URL of API for objects of that class.
+    # No type to prevent circular import
+    def create_button(self, window) -> QPushButton:
+        """Creates a QPushButton that opens a window for that element.
 
-        Used in `cls.get_api` property.
+        Parameters
+        ----------
+        window : FPLElemWindow
+            Displays element in gui.
 
         Returns
         -------
-        str
-            API URL.
+        QPushButton
+            Access to `window` from another window.
         """
-        return
+        button = QPushButton()
+        button.setText(str(self))
+        button.clicked.connect(lambda: self.open_gui(window))
+
+        return button
 
     @property
     def info(self) -> str:
@@ -79,6 +84,16 @@ class Element(ABC, Generic[element]):
         field_names = all_field_names(type(self))
 
         return "\n".join([f_name + ": " + str(getattr(self, f_name)) for f_name in field_names])
+
+    def open_gui(self, window) -> None:
+        """Opens `window` with `self` passed.
+
+        Parameters
+        ----------
+        window : FPLElemWindow
+            Displays element in gui.
+        """
+        window(self)
 
     @ property
     def unique_id(self) -> int:
@@ -107,47 +122,20 @@ class Element(ABC, Generic[element]):
 
         return id_
 
-    @ classmethod
-    @ property
-    def unique_id_col(cls) -> str:
-        """Attribute name that is a unique ID for any object of that class.
+    @classmethod
+    @property
+    @abstractmethod
+    def api_link(cls) -> str:
+        """URL of API for objects of that class.
+
+        Used in `cls.get_api` property.
 
         Returns
         -------
         str
-            Attribute name.
+            API URL.
         """
-        return cls._DEFAULT_ID
-
-      # No type to prevent circular import
-    def create_button(self, window) -> QPushButton:
-        """Creates a QPushButton that opens a window for that element.
-
-        Parameters
-        ----------
-        window : FPLElemWindow
-            Displays element in gui.
-
-        Returns
-        -------
-        QPushButton
-            Access to `window` from another window.
-        """
-        button = QPushButton()
-        button.setText(str(self))
-        button.clicked.connect(lambda: self.open_gui(window))
-
-        return button
-
-    def open_gui(self, window) -> None:
-        """Opens `window` with `self` passed.
-
-        Parameters
-        ----------
-        window : FPLElemWindow
-            Displays element in gui.
-        """
-        window(self)
+        return
 
     @classmethod
     def from_dict(cls, new_instance: dict[str, Any]) -> element:
@@ -292,6 +280,18 @@ class Element(ABC, Generic[element]):
             Latest data for the class.
         """
         return
+
+    @ classmethod
+    @ property
+    def unique_id_col(cls) -> str:
+        """Attribute name that is a unique ID for any object of that class.
+
+        Returns
+        -------
+        str
+            Attribute name.
+        """
+        return cls._DEFAULT_ID
 
 
 class ElementGroup(ABC, Generic[element]):

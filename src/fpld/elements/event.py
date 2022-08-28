@@ -11,6 +11,8 @@ baseevent = TypeVar("baseevent", bound="BaseEvent")
 
 @dataclass(frozen=True, order=True, kw_only=True)
 class BaseEvent(Element[baseevent], Generic[baseevent]):
+    """Event / Gameweek element, unlinked from other FPL elements.
+    """
     id: int = field(compare=True)
     name: str = field(hash=False)
     deadline_time: datetime = field(hash=False)
@@ -37,18 +39,41 @@ class BaseEvent(Element[baseevent], Generic[baseevent]):
     def __pre_init__(cls, new_instance: dict[str, Any]) -> dict[str, Any]:
         new_instance = super().__pre_init__(new_instance)
 
+        # converts string datetime to datetime object
         new_instance["deadline_time"] = \
             str_to_datetime(new_instance["deadline_time"])
 
         return new_instance
 
     @property
-    def started(self) -> bool: return datetime.now() > self.deadline_time
+    def started(self) -> bool:
+        """Has the gameweek started?
+
+        Uses `datetime.now()`.
+
+        Returns
+        -------
+        bool
+            True if gameweek has started, False otherwise.
+        """
+        return datetime.now() > self.deadline_time
 
     @classmethod
     @property
     def api_link(cls) -> str:
         return URLS["BOOTSTRAP-STATIC"]
+
+    @classmethod
+    @property
+    def current_gw(cls) -> baseevent:
+        """Returns current gameweek at the time of program execution.
+
+        Returns
+        -------
+        baseevent
+            The current gameweek.
+        """
+        return cls.__find_until_true("is_current")
 
     @classmethod
     def get_latest_api(cls) -> list[dict[str, Any]]:
@@ -58,31 +83,59 @@ class BaseEvent(Element[baseevent], Generic[baseevent]):
 
     @classmethod
     @property
-    def previous_gw(cls) -> baseevent:
-        return cls.__find_until_true("is_previous")
-
-    @classmethod
-    @property
-    def current_gw(cls) -> baseevent:
-        return cls.__find_until_true("is_current")
-
-    @classmethod
-    @property
     def next_gw(cls) -> baseevent:
+        """Returns the next gameweek at the time of program execution.
+
+        Returns
+        -------
+        baseevent
+            The next gameweek.
+        """
         return cls.__find_until_true("is_next")
 
     @classmethod
+    def past_and_future(cls) -> tuple[ElementGroup[baseevent], ElementGroup[baseevent]]:
+        """Splits all the gameweeks into two groups by whether they have finished.
+
+        Returns
+        -------
+        tuple[ElementGroup[baseevent], ElementGroup[baseevent]]
+            The first group is the completed gameweeks, with the rest in group 2.
+        """
+        all_events = cls.get_all()
+
+        return all_events.split(finished=True)
+
+    @classmethod
+    @property
+    def previous_gw(cls) -> baseevent:
+        """Returns the previous gameweek at the time of program execution.
+
+        Returns
+        -------
+        baseevent
+            The previous gameweek.
+        """
+        return cls.__find_until_true("is_previous")
+
+    @classmethod
     def __find_until_true(cls, attr: str) -> Optional[baseevent]:
-        all_events = cls.get()
+        """Iterates through all gameweeks until the attribute is True.
+
+        Parameters
+        ----------
+        attr : str
+            The boolean attribute to find.
+
+        Returns
+        -------
+        Optional[baseevent]
+            The first gameweek where the attribute is True, may be None if they are all False.
+        """
+        all_events = cls.get_all()
 
         for event in all_events:
             if getattr(event, attr):
                 return event
 
         return None
-
-    @classmethod
-    def past_and_future(cls) -> tuple[ElementGroup[baseevent], ElementGroup[baseevent]]:
-        all_events = cls.get_all()
-
-        return all_events.split(finished=True)

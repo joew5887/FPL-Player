@@ -16,7 +16,9 @@ playerfull = TypeVar("playerfull")
 
 @dataclass(frozen=True, order=True, kw_only=True)
 class BasePlayer(Element[base_player], Generic[base_player]):
-    _DEFAULT_NAME = "web_name"
+    """Player element, unlinked from other FPL elements.
+    """
+    _ATTR_FOR_STR = "web_name"
 
     chance_of_playing_next_round: Optional[int] = field(hash=False, repr=False)
     chance_of_playing_this_round: Optional[int] = field(hash=False, repr=False)
@@ -98,14 +100,35 @@ class BasePlayer(Element[base_player], Generic[base_player]):
 
     @ property
     def ppm(self) -> float:
+        """Points per million cost.
+
+        Returns
+        -------
+        float
+            The higher, the more points for the cost.
+        """
         return self.total_points / self.now_cost
 
     @property
     def goal_contributions(self) -> int:
+        """Total goal contributions.
+
+        Returns
+        -------
+        int
+            goals + assists
+        """
         return self.goals_scored + self.assists
 
     @ property
     def transfer_diff(self) -> int:
+        """Difference between transfers in and transfers out for current event.
+
+        Returns
+        -------
+        int
+            transfers_in - transfers_out
+        """
         return self.transfers_in_event - self.transfers_out_event
 
     @ classmethod
@@ -120,10 +143,20 @@ class BasePlayer(Element[base_player], Generic[base_player]):
         return api.data["elements"]
 
     def in_full(self) -> BasePlayerFull:
+        """Game by game, season by season data for a player.
+
+        Returns
+        -------
+        BasePlayerFull
+            Game by game, season by season data for a player.
+        """
         return BasePlayerFull.from_id(self.id)
 
 
 class BasePlayerFull:
+    """Game by game, season by season data for a player, unlinked from other FPL elements.
+    """
+
     def __init__(self, fixtures: BasePlayerFixtures, history: BasePlayerHistory, history_past: BasePlayerHistoryPast):
         self.__fixtures = fixtures
         self.__history = history
@@ -131,21 +164,55 @@ class BasePlayerFull:
 
     @property
     def fixtures(self) -> BasePlayerFixtures:
+        """Player history this season, game by game.
+
+        Returns
+        -------
+        BasePlayerFixtures
+            Player history this season, game by game.
+        """
         return self.__fixtures
 
     @property
     def history(self) -> BasePlayerHistory:
+        """Player stats this season.
+
+        Returns
+        -------
+        BasePlayerHistory
+            Player stats this season.
+        """
         return self.__history
 
     @property
     def history_past(self) -> BasePlayerHistoryPast:
+        """Player stats, season by season.
+
+        Returns
+        -------
+        BasePlayerHistoryPast
+            Player stats, season by season.
+        """
         return self.__history_past
 
     @classmethod
     def from_id(cls, player_id: int) -> BasePlayerFull:
+        """Takes a player ID, and returns full data for that player
+
+        Parameters
+        ----------
+        player_id : int
+            Player ID to get stats for.
+
+        Returns
+        -------
+        BasePlayerFull
+           Player stats, game by game, season by season.
+        """
         url = URLS["ELEMENT-SUMMARY"].format(player_id)
         api = API(url)  # Need to have offline feature
-        fixtures = BasePlayerFixtures.from_api(api.data["fixtures"])
+        # fixtures = BasePlayerFixtures.from_api(api.data["fixtures"])
+        fixtures = None
         history = BasePlayerHistory.from_api(api.data["history"])
         history_past = BasePlayerHistoryPast.from_api(
             api.data["history_past"])
@@ -155,18 +222,48 @@ class BasePlayerFull:
 @dataclass(frozen=True, kw_only=True)
 class BasePlayerStats(ABC):
     @classmethod
-    def _edit_stat_from_api(cls, field: Field, attr_list: list[Any]) -> dict[str, list[Any]]:
+    def _edit_stat_from_api(cls, field: Field, attr_list: list[Any]) -> list[Any]:
+        """Pre-format API data before passing it into the class.
+
+        Like '__pre__init__()' from 'Element'.
+
+        Parameters
+        ----------
+        field : Field
+            Attribute from class to create.
+        attr_list : list[Any]
+            Attribute values for `field`.
+
+        Returns
+        -------
+        list[Any]
+            Formatted `attr_list`.
+        """
         return attr_list
 
     @classmethod
     def from_api(cls, api_data: list[dict[str, Any]]) -> BasePlayerStats:
+        """Converts data from API to a `BasePlayerStats` object.
+
+        Parameters
+        ----------
+        api_data : list[dict[str, Any]]
+            API data in JSON form.
+
+        Returns
+        -------
+        BasePlayerStats
+            Object containing `api_data`.
+        """
+        print(api_data)
         stat_attributes = {}
-        resolved_hints = get_type_hints(cls)
+        resolved_hints = get_type_hints(cls)  # Gets Generic Types for fields.
 
         for f in cls.all_fields():
             attr_list = []
 
             for state in api_data:
+                # KeyError: 'fixture'.
                 attr_list.append(state[f.name])
 
             attr_list = cls._edit_stat_from_api(f, attr_list)
@@ -177,26 +274,51 @@ class BasePlayerStats(ABC):
 
     @classmethod
     def all_fields(cls) -> list[Field]:
+        """All fields for a class.
+
+        Returns
+        -------
+        list[Field]
+            All fields, including names of attributes.
+        """
         return list(fields(cls))
 
     @classmethod
     @property
     def categorical_vars(cls) -> list[str]:
+        """All categorical variables.
+
+        Returns
+        -------
+        list[str]
+            E.g. string variables.
+        """
         return [f.name for f in cls.all_fields() if "CategoricalVar" in str(f.type)]
 
     @classmethod
     @property
     def continuous_vars(cls) -> list[str]:
+        """All continuous variables.
+
+        Returns
+        -------
+        list[str]
+            E.g. integer and float variables.
+        """
         return [f.name for f in cls.all_fields() if "ContinuousVar" in str(f.type)]
 
 
 @dataclass(frozen=True, kw_only=True)
 class BasePlayerFixtures(BasePlayerStats):
+    """All fixtures for a player, unlinked from other FPL elements.
+    """
     fixture: CategoricalVar[int] = field(hash=False, repr=False)
 
 
 @dataclass(frozen=True, kw_only=True)
 class BasePlayerHistory(BasePlayerStats):
+    """Player history, season by season, unlinked from other FPL elements.
+    """
     fixture: CategoricalVar[int] = field(hash=False, repr=False)
     opponent_team: CategoricalVar[int] = field(hash=False, repr=False)
     total_points: ContinuousVar[int] = field(hash=False, repr=False)

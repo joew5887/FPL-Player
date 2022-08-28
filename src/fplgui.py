@@ -101,21 +101,21 @@ class FilterBoxes:
     @classmethod
     def teams(cls) -> FilterBox:
         name = "Team"
-        items = fpld.Team.get_all().string_list()
+        items = fpld.Team.get_all().to_string_list()
 
         return FilterBox(name, items)
 
     @classmethod
     def position(cls) -> FilterBox:
         name = "Position"
-        items = fpld.Position.get_all().string_list()
+        items = fpld.Position.get_all().to_string_list()
 
         return FilterBox(name, items)
 
     @classmethod
     def events(cls) -> FilterBox:
         name = "Gameweek"
-        items = fpld.Event.get_all().string_list()
+        items = fpld.Event.get_all().to_string_list()
 
         return FilterBox(name, items)
 
@@ -127,7 +127,7 @@ class FilterBoxes:
 
     @classmethod
     def player_sort(cls) -> FilterBox:
-        items = fpld.Label.get_all().string_list()
+        items = fpld.Label.get_all().to_string_list()
 
         return cls.__sort(items)
 
@@ -178,7 +178,7 @@ class PlayerSearchTable(SearchTable):
         Table.set_data(self._table, df)
 
     def __create_df(self, label: fpld.Label) -> pd.DataFrame:
-        df = self.__players.as_df("element_type", label.name)
+        df = self.__players.to_df("element_type", label.name)
         df["team"] = [TeamWindow.clicked_button(
             player.team) for player in self.__players]
         df["player"] = [PlayerWindow.clicked_button(
@@ -227,7 +227,7 @@ class FixtureSearchTable(SearchTable):
         # label = fpld.Label.get(label=sort_by_name)[0]
         self.__fixtures = self.__fixtures.sort(sort_by_name, reverse=reverse_)
 
-        df = self.__fixtures.as_df("fixture", "event", sort_by_name)
+        df = self.__fixtures.to_df("score", "event", sort_by_name)
 
         if sort_by_name == "kickoff_time":
             df["kickoff_time"] = df["kickoff_time"].apply(
@@ -273,7 +273,7 @@ class FixtureDifficultyTable(SearchTable):
             content.append(row)
 
         df = pd.DataFrame(content)
-        df.columns = ["Team"] + events.string_list()
+        df.columns = ["Team"] + events.to_string_list()
         Table.set_data(self._table, df)
 
     @classmethod
@@ -316,7 +316,7 @@ class EventSearchTable(SearchTable):
         super().__init__([], FilterBoxes.fixture_difficulty_sort())
 
     def get_query(self) -> None:
-        df = fpld.Event.get_all().as_df("name", "deadline_time",
+        df = fpld.Event.get_all().to_df("name", "deadline_time",
                                         "most_selected", "most_transferred_in", "finished")
         df["deadline_time"] = df["deadline_time"].apply(
             lambda date_: string_datetime(date_))

@@ -2,8 +2,8 @@
 AI Agent for Fantasy Premier League Football
 
 Classes sorted by:
-1. dunder methods
-2. properties (including class properties)
-3. instance methods
-4. class methods
-5. static methods
+1. dunder methods (__pre_init__())
+2. instance methods & properties
+3. private instance methods
+3. class methods & properties
+4. static methods & private class methods

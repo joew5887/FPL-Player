@@ -22,14 +22,53 @@ fixture = TypeVar("fixture", bound="Fixture")
 
 @dataclass(frozen=True, order=True, kw_only=True)
 class Team(BaseTeam[team]):
-    @classmethod
-    def __pre_init__(cls, new_instance: dict[str, Any]) -> dict[str, Any]:
-        new_instance = super().__pre_init__(new_instance)
+    def get_all_fixtures(self) -> ElementGroup[fixture]:
+        """Gets all fixtures and results for a team.
 
-        return new_instance
+        Returns
+        -------
+        ElementGroup[fixture]
+            Team fixtures and results sorted by kickoff time.
+        """
+        return Fixture.get_all_team_fixtures(self)
+
+    @property
+    def fixture_score(self) -> float:
+        """Gives a score for how hard upcoming fixtures are.
+
+        Returns
+        -------
+        float
+            The higher the score, the harder the fixtures.
+        """
+        all_fixtures = self.get_all_fixtures()
+        all_fixtures_by_event = Fixture.group_fixtures_by_gameweek(
+            all_fixtures)
+        score = 0
+        multiplier = 0.9
+
+        for i, fixtures in enumerate(all_fixtures_by_event.values()):
+            fixture: Fixture
+            for fixture in fixtures:
+                if fixture.team_h == self:
+                    diff = fixture.team_h_difficulty
+                elif fixture.team_a == self:
+                    diff = fixture.team_a_difficulty
+
+                score += diff * multiplier
+                multiplier = math.e ** (-0.4 * i)
+
+        return score
 
     @property
     def players(self) -> ElementGroup[Player]:
+        """Get all players for a team.
+
+        Returns
+        -------
+        ElementGroup[Player]
+            Unsorted group of all players for a team.
+        """
         return Player.get(team=self.id)
 
     def players_by_pos(self, position: Position) -> ElementGroup[Player]:
@@ -64,39 +103,6 @@ class Team(BaseTeam[team]):
 
         return self.player_total(*cols, by_position=by_position)
 
-    def get_all_fixtures(self) -> ElementGroup[fixture]:
-        return Fixture.get_all_team_fixtures(self)
-
-    def get_fixtures_by_gameweek(self) -> dict[Event, ElementGroup[fixture]]:
-        all_team_fixtures = self.get_all_fixtures()
-
-        return all_team_fixtures.group_by("event")
-
-    def fixtures_from_event(self, event: Event) -> ElementGroup[fixture]:
-        all_team_fixtures = self.get_all_fixtures()
-
-        return all_team_fixtures.filter(event=event)
-
-    @property
-    def fixture_score(self) -> float:
-        future_events = Event.past_and_future()[1]
-        score = 0
-        multiplier = 0.9
-
-        for i, event in enumerate(future_events):
-            fixtures = self.fixtures_from_event(event)
-
-            for fixture in fixtures:
-                if fixture.team_h == self:
-                    diff = fixture.team_h_difficulty
-                elif fixture.team_a == self:
-                    diff = fixture.team_a_difficulty
-
-                score += diff * multiplier
-                multiplier = math.e ** (-0.4 * i)
-
-        return score
-
 
 @dataclass(frozen=True, order=True, kw_only=True)
 class PlayerFull(BasePlayerFull):
@@ -106,7 +112,7 @@ class PlayerFull(BasePlayerFull):
         self.__history_past = history_past
 
     @property
-    def fixtures(self) -> BasePlayerFixtures:
+    def fixtures(self) -> PlayerFixtures:
         return self.__fixtures
 
     @property
@@ -121,7 +127,8 @@ class PlayerFull(BasePlayerFull):
     def from_id(cls, player_id: int) -> BasePlayerFull:
         url = URLS["ELEMENT-SUMMARY"].format(player_id)
         api = API(url)  # Need to have offline feature
-        fixtures = PlayerFixtures.from_api(api.data["fixtures"])
+        # fixtures = PlayerFixtures.from_api(api.data["fixtures"])
+        fixtures = None
         history = PlayerHistory.from_api(api.data["history"])
         history_past = BasePlayerHistoryPast.from_api(api.data["history_past"])
         return BasePlayerFull(fixtures, history, history_past)
@@ -228,5 +235,51 @@ class Fixture(BaseFixture[fixture]):
         return new_instance
 
     @classmethod
-    def get_team_fixtures(cls, team: Team) -> ElementGroup[fixture]:
+    def get_all_team_fixtures(cls, team: Team) -> ElementGroup[fixture]:
+        """Gets all fixtures and results for a team.
+
+        Parameters
+        ----------
+        team : Team
+            Team to find fixtures for.
+
+        Returns
+        -------
+        ElementGroup[basefixture]
+            All fixtures and results a team has.
+        """
         return super().get_all_team_fixtures(team.id)
+
+    @staticmethod
+    def group_fixtures_by_gameweek(fixtures: ElementGroup[fixture]) -> dict[Event, ElementGroup[fixture]]:
+        """Groups an ElementGroup of fixtures by gameweek.
+
+        Parameters
+        ----------
+        fixtures : ElementGroup[basefixture]
+            Fixtures to group.
+
+        Returns
+        -------
+        dict[Event, ElementGroup[basefixture]]
+            The key is the event, the value is the fixtures in that gameweek.
+        """
+        return BaseFixture.group_fixtures_by_gameweek(fixtures)
+
+    @staticmethod
+    def get_fixtures_in_event(fixtures: ElementGroup[fixture], event: Event) -> ElementGroup[fixture]:
+        """Gets fixtures from a gameweek from `fixtures`.
+
+        Parameters
+        ----------
+        fixtures : ElementGroup[basefixture]
+            Fixtures to group.
+        event : Event
+            Event to filter by.
+
+        Returns
+        -------
+        ElementGroup[basefixture]
+            All fixtures from `fixtures` that take place in gameweek `event`.
+        """
+        return BaseFixture.get_fixtures_in_event(fixtures)
