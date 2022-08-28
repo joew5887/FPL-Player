@@ -12,6 +12,8 @@ from .position import Position
 
 base_player = TypeVar("base_player", bound="BasePlayer")
 playerfull = TypeVar("playerfull")
+player_history = TypeVar("player_history")
+player_history_past = TypeVar("player_history_past")
 
 
 @dataclass(frozen=True, order=True, kw_only=True)
@@ -153,47 +155,35 @@ class BasePlayer(Element[base_player], Generic[base_player]):
         return api.data["elements"]
 
 
-class BasePlayerFull:
+class BasePlayerFull(Generic[player_history, player_history_past]):
     """Game by game, season by season data for a player, unlinked from other FPL elements.
     """
 
-    def __init__(self, fixtures: BasePlayerFixtures, history: BasePlayerHistory, history_past: BasePlayerHistoryPast):
-        self.__fixtures = fixtures
-        self.__history = history
-        self.__history_past = history_past
+    def __init__(self, history: player_history, history_past: player_history_past):
+        self._history = history
+        self._history_past = history_past
 
     @property
-    def fixtures(self) -> BasePlayerFixtures:
-        """Player history this season, game by game.
-
-        Returns
-        -------
-        BasePlayerFixtures
-            Player history this season, game by game.
-        """
-        return self.__fixtures
-
-    @property
-    def history(self) -> BasePlayerHistory:
+    def history(self) -> player_history:
         """Player stats this season.
 
         Returns
         -------
-        BasePlayerHistory
+        player_history
             Player stats this season.
         """
-        return self.__history
+        return self._history
 
     @property
-    def history_past(self) -> BasePlayerHistoryPast:
+    def history_past(self) -> player_history_past:
         """Player stats, season by season.
 
         Returns
         -------
-        BasePlayerHistoryPast
+        player_history_past
             Player stats, season by season.
         """
-        return self.__history_past
+        return self._history_past
 
     @classmethod
     def from_id(cls, player_id: int) -> BasePlayerFull:
@@ -211,12 +201,10 @@ class BasePlayerFull:
         """
         url = URLS["ELEMENT-SUMMARY"].format(player_id)
         api = API(url)  # Need to have offline feature
-        # fixtures = BasePlayerFixtures.from_api(api.data["fixtures"])
-        fixtures = None
         history = BasePlayerHistory.from_api(api.data["history"])
         history_past = BasePlayerHistoryPast.from_api(
             api.data["history_past"])
-        return BasePlayerFull(fixtures, history, history_past)
+        return BasePlayerFull(history, history_past)
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -305,23 +293,6 @@ class BasePlayerStats(ABC):
             E.g. integer and float variables.
         """
         return [f.name for f in cls.all_fields() if "ContinuousVar" in str(f.type)]
-
-
-@dataclass(frozen=True, kw_only=True)
-class BasePlayerFixtures(BasePlayerStats):
-    """All fixtures for a player, unlinked from other FPL elements.
-    """
-    id: CategoricalVar[int] = field(hash=False, repr=False)
-    code: CategoricalVar[int] = field(hash=False, repr=False)
-    team_h: CategoricalVar[int] = field(hash=False, repr=False)
-    team_a: CategoricalVar[int] = field(hash=False, repr=False)
-    team_a_score: CategoricalVar[int] = field(hash=False, repr=False)
-    event: CategoricalVar[int] = field(hash=False, repr=False)
-    finished: CategoricalVar[int] = field(hash=False, repr=False)
-    minutes: CategoricalVar[int] = field(hash=False, repr=False)
-    provisional_start_time: CategoricalVar[int] = field(hash=False, repr=False)
-    id: CategoricalVar[int] = field(hash=False, repr=False)
-    id: CategoricalVar[int] = field(hash=False, repr=False)
 
 
 @dataclass(frozen=True, kw_only=True)
