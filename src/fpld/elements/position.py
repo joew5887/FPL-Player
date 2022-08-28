@@ -11,7 +11,11 @@ position = TypeVar("position", bound="Position")
 
 @dataclass(frozen=True, order=True, kw_only=True)
 class Position(Element[position]):
-    _DEFAULT_NAME = "singular_name"
+    """Position for FPL player. E.g. 'Midfielder'.
+
+    Replaces `player.element_type`.
+    """
+    _ATTR_FOR_STR = "singular_name"
 
     id: int = field(compare=True)
     plural_name: str = field(hash=False, repr=False)
@@ -38,12 +42,20 @@ class Position(Element[position]):
 
     @classmethod
     def get_all_names(cls) -> list[str]:
-        all_positions = cls.get()
-        return [position.singular_name for position in all_positions]
+        """Gets every position and returns their name.
 
-    @classmethod
+        Returns
+        -------
+        list[str]
+            E.g. ['Goalkeeper', 'Defender', 'Midfielder', 'Forward']
+        """
+        all_positions = cls.get()
+
+        return all_positions.to_string_list()
+
+    '''@classmethod
     def gui_get(cls, position_name: str) -> list[position]:
         if position_name == "All":
             return cls.get()
 
-        return cls.get(singular_name=position_name)
+        return cls.get(singular_name=position_name)'''

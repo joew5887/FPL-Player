@@ -1,7 +1,8 @@
 from __future__ import annotations
+from tkinter import N
 from typing import Any, Generic, TypeVar, overload
 from PyQt5.QtWidgets import (
-    QWidget, QHBoxLayout, QVBoxLayout, QTableWidget, QLabel
+    QWidget, QHBoxLayout, QVBoxLayout, QTableWidget, QLabel, QMainWindow
 )
 from PyQt5.QtCore import Qt
 from abc import abstractmethod
@@ -117,7 +118,7 @@ class WidgetWithStrHeader(WidgetWithWidgetHeader):
 
 
 class TitleWidget(ComplexWidget):
-    def __init__(self, title_txt: str, *, left_txt: str, right_txt: str):
+    def __init__(self, title_txt: str, *, left_txt: str = None, right_txt: str = None):
         super().__init__(title_txt=title_txt, left_txt=left_txt, right_txt=right_txt)
 
     def define_widgets(self, **kwargs) -> None:

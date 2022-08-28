@@ -11,8 +11,10 @@ label = TypeVar("label", bound="Label")
 
 @dataclass(frozen=True, kw_only=True)
 class Label(Element[label]):
+    """Name for FPL player attribute.
+    """
     _DEFAULT_ID = "name"
-    _DEFAULT_NAME = "label"
+    _ATTR_FOR_STR = "label"
 
     label: str
     name: str
@@ -29,7 +31,7 @@ class Label(Element[label]):
         data: list
         data = api.data["element_stats"]
 
-        # New labels
+        # New player labels
         data.append({"label": "Goal Contributions",
                     "name": "goal_contributions"})
         data.append({"label": "Percent Position",

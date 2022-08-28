@@ -11,8 +11,6 @@ class Window(QMainWindow):
         self.setup(dist_x, dist_y)
         self.add_widgets()
 
-        self.show()
-
     @abstractmethod
     def define_widgets(self) -> None:
         pass

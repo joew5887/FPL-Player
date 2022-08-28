@@ -1,4 +1,5 @@
 import fpld
+from typing import TypeVar, Generic
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QTabWidget, QWidget, QHBoxLayout, QVBoxLayout, QLabel, QPushButton, QScrollArea
 from fpld.elements.element import ElementGroup
@@ -9,6 +10,9 @@ from gui.widgets.simple import Label, Table
 from gui.windows import DefaultWindow
 from gui.widgets import TitleWidget
 import pandas as pd
+
+
+_E = TypeVar("_E")  # need element type restriction
 
 
 class HomeWindow(DefaultWindow):
@@ -39,8 +43,33 @@ class HomeWindow(DefaultWindow):
         return x
 
 
-class ElementWindow(DefaultWindow):
-    pass
+class ElementWindow(DefaultWindow, Generic[_E]):
+    def __init__(self, element: _E, title_widget: TitleWidget, main_widget: QWidget):
+        super().__init__(title_widget, main_widget)
+
+    @classmethod
+    def clicked_button(cls, element: _E) -> QPushButton:
+        button = QPushButton()
+
+        foo = cls(element)
+        button.clicked.connect(lambda: foo.show())
+        button.setText(str(element))
+
+        return button
+
+
+class PlayerWindow(ElementWindow[fpld.Player]):
+    def __init__(self, player: fpld.Player):
+        title_widget = TitleWidget(
+            player.web_name, left_txt=str(player.team), right_txt=str(player.element_type))
+        super().__init__(player, title_widget, QWidget())
+
+
+class TeamWindow(ElementWindow[fpld.Team]):
+    def __init__(self, team: fpld.Team):
+        title_widget = TitleWidget(
+            team.name)
+        super().__init__(team, title_widget, QWidget())
 
 
 class HomeWindowTitle(TitleWidget):
@@ -72,21 +101,21 @@ class FilterBoxes:
     @classmethod
     def teams(cls) -> FilterBox:
         name = "Team"
-        items = fpld.Team.get_all().string_list()
+        items = fpld.Team.get_all().to_string_list()
 
         return FilterBox(name, items)
 
     @classmethod
     def position(cls) -> FilterBox:
         name = "Position"
-        items = fpld.Position.get_all().string_list()
+        items = fpld.Position.get_all().to_string_list()
 
         return FilterBox(name, items)
 
     @classmethod
     def events(cls) -> FilterBox:
         name = "Gameweek"
-        items = fpld.Event.get_all().string_list()
+        items = fpld.Event.get_all().to_string_list()
 
         return FilterBox(name, items)
 
@@ -98,7 +127,7 @@ class FilterBoxes:
 
     @classmethod
     def player_sort(cls) -> FilterBox:
-        items = fpld.Label.get_all().string_list()
+        items = fpld.Label.get_all().to_string_list()
 
         return cls.__sort(items)
 
@@ -145,9 +174,18 @@ class PlayerSearchTable(SearchTable):
         label = fpld.Label.get(label=sort_by_name)[0]
         self.__players = self.__players.sort(label.name)
 
-        df = self.__players.as_df(
-            "web_name", "team", "element_type", label.name)
+        df = self.__create_df(label)
         Table.set_data(self._table, df)
+
+    def __create_df(self, label: fpld.Label) -> pd.DataFrame:
+        df = self.__players.to_df("element_type", label.name)
+        df["team"] = [TeamWindow.clicked_button(
+            player.team) for player in self.__players]
+        df["player"] = [PlayerWindow.clicked_button(
+            player) for player in self.__players]
+        df = df[["player", "team", "element_type", label.name]]
+
+        return df
 
     @classmethod
     def get_default_title(cls) -> str:
@@ -189,7 +227,7 @@ class FixtureSearchTable(SearchTable):
         # label = fpld.Label.get(label=sort_by_name)[0]
         self.__fixtures = self.__fixtures.sort(sort_by_name, reverse=reverse_)
 
-        df = self.__fixtures.as_df("fixture", "event", sort_by_name)
+        df = self.__fixtures.to_df("score", "event", sort_by_name)
 
         if sort_by_name == "kickoff_time":
             df["kickoff_time"] = df["kickoff_time"].apply(
@@ -222,10 +260,13 @@ class FixtureDifficultyTable(SearchTable):
 
         team: fpld.Team
         for team in all_teams:
+            all_team_fixtures = team.get_all_fixtures()
             row = [str(team)]
 
+            event: fpld.Event
             for event in events:
-                fixtures_from_team = team.fixtures_from_event(event)
+                fixtures_from_team = fpld.Fixture.get_fixtures_in_event(
+                    all_team_fixtures, event.unique_id)
                 widget = QWidget()
                 widget = FixtureDifficultyTable.get_widget(
                     fixtures_from_team, team)
@@ -235,7 +276,7 @@ class FixtureDifficultyTable(SearchTable):
             content.append(row)
 
         df = pd.DataFrame(content)
-        df.columns = ["Team"] + events.string_list()
+        df.columns = ["Team"] + events.to_string_list()
         Table.set_data(self._table, df)
 
     @classmethod
@@ -251,12 +292,7 @@ class FixtureDifficultyTable(SearchTable):
         layout = QHBoxLayout()
 
         for fixture in fixtures:
-            if fixture.team_h == team:
-                diff = fixture.team_h_difficulty
-            elif fixture.team_a == team:
-                diff = fixture.team_a_difficulty
-            else:
-                raise ValueError("Team not in fixture")
+            diff = fixture.get_difficulty(team)
 
             colour = DIFF_TO_COLOUR[diff]
 
@@ -278,7 +314,7 @@ class EventSearchTable(SearchTable):
         super().__init__([], FilterBoxes.fixture_difficulty_sort())
 
     def get_query(self) -> None:
-        df = fpld.Event.get_all().as_df("name", "deadline_time",
+        df = fpld.Event.get_all().to_df("name", "deadline_time",
                                         "most_selected", "most_transferred_in", "finished")
         df["deadline_time"] = df["deadline_time"].apply(
             lambda date_: string_datetime(date_))
