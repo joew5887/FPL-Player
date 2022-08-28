@@ -10,6 +10,8 @@ base_team = TypeVar("base_team", bound="BaseTeam")
 
 @dataclass(frozen=True, order=True, kw_only=True)
 class BaseTeam(Element[base_team], Generic[base_team]):
+    """Element for team in the Premier League, unlinked from other FPL elements.
+    """
     code: int = field(repr=False)
     draw: int = field(hash=False, repr=False)
     form: None = field(hash=False, repr=False)
@@ -45,12 +47,20 @@ class BaseTeam(Element[base_team], Generic[base_team]):
 
     @classmethod
     def get_all_names(cls) -> list[str]:
-        all_teams = cls.get()
-        return [team.name for team in all_teams]
+        """All team names in the Premier League.
 
-    @classmethod
+        Returns
+        -------
+        list[str]
+            E.g. ['Arsenal', 'Aston Villa', ...]
+        """
+        all_teams = cls.get()
+
+        return all_teams.to_string_list()
+
+    '''@classmethod
     def gui_get(cls, team_name: str) -> ElementGroup[base_team]:
         if team_name == "All":
             return cls.get()
 
-        return cls.get(name=team_name)
+        return cls.get(name=team_name)'''

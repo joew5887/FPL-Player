@@ -131,6 +131,16 @@ class BasePlayer(Element[base_player], Generic[base_player]):
         """
         return self.transfers_in_event - self.transfers_out_event
 
+    def in_full(self) -> BasePlayerFull:
+        """Game by game, season by season data for a player.
+
+        Returns
+        -------
+        BasePlayerFull
+            Game by game, season by season data for a player.
+        """
+        return BasePlayerFull.from_id(self.id)
+
     @ classmethod
     @ property
     def api_link(cls) -> str:
@@ -141,16 +151,6 @@ class BasePlayer(Element[base_player], Generic[base_player]):
         api = super().get_latest_api()
         api = API(cls.api_link)
         return api.data["elements"]
-
-    def in_full(self) -> BasePlayerFull:
-        """Game by game, season by season data for a player.
-
-        Returns
-        -------
-        BasePlayerFull
-            Game by game, season by season data for a player.
-        """
-        return BasePlayerFull.from_id(self.id)
 
 
 class BasePlayerFull:
@@ -255,7 +255,6 @@ class BasePlayerStats(ABC):
         BasePlayerStats
             Object containing `api_data`.
         """
-        print(api_data)
         stat_attributes = {}
         resolved_hints = get_type_hints(cls)  # Gets Generic Types for fields.
 

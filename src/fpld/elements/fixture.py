@@ -96,7 +96,7 @@ class BaseFixture(Element[basefixture], Generic[basefixture]):
         api = API(cls.api_link)
         return api.data
 
-    @staticmethod
+    @classmethod
     def group_fixtures_by_gameweek(fixtures: ElementGroup[basefixture]) -> dict[int, ElementGroup[basefixture]]:
         """Groups an ElementGroup of fixtures by gameweek.
 
@@ -112,7 +112,7 @@ class BaseFixture(Element[basefixture], Generic[basefixture]):
         """
         return fixtures.group_by("event")
 
-    @staticmethod
+    @classmethod
     def split_fixtures_by_finished(fixtures: ElementGroup[basefixture]) -> tuple[ElementGroup[basefixture], ElementGroup[basefixture]]:
         """Splits an ElementGroup of fixtures by whether they have finished.
 
@@ -128,7 +128,7 @@ class BaseFixture(Element[basefixture], Generic[basefixture]):
         """
         return fixtures.split(finished=True)
 
-    @staticmethod
+    @classmethod
     def get_fixtures_in_event(fixtures: ElementGroup[basefixture], event: int) -> ElementGroup[basefixture]:
         """Gets fixtures from a gameweek from `fixtures`.
 

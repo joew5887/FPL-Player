@@ -52,26 +52,6 @@ class Element(ABC, Generic[element]):
         """
         return getattr(self, type(self)._ATTR_FOR_STR, None)
 
-    # No type to prevent circular import
-    def create_button(self, window) -> QPushButton:
-        """Creates a QPushButton that opens a window for that element.
-
-        Parameters
-        ----------
-        window : FPLElemWindow
-            Displays element in gui.
-
-        Returns
-        -------
-        QPushButton
-            Access to `window` from another window.
-        """
-        button = QPushButton()
-        button.setText(str(self))
-        button.clicked.connect(lambda: self.open_gui(window))
-
-        return button
-
     @property
     def info(self) -> str:
         """Full info for element.
@@ -84,16 +64,6 @@ class Element(ABC, Generic[element]):
         field_names = all_field_names(type(self))
 
         return "\n".join([f_name + ": " + str(getattr(self, f_name)) for f_name in field_names])
-
-    def open_gui(self, window) -> None:
-        """Opens `window` with `self` passed.
-
-        Parameters
-        ----------
-        window : FPLElemWindow
-            Displays element in gui.
-        """
-        window(self)
 
     @ property
     def unique_id(self) -> int:
@@ -122,6 +92,36 @@ class Element(ABC, Generic[element]):
 
         return id_
 
+    # No type to prevent circular import
+    def create_button(self, window) -> QPushButton:
+        """Creates a QPushButton that opens a window for that element.
+
+        Parameters
+        ----------
+        window : FPLElemWindow
+            Displays element in gui.
+
+        Returns
+        -------
+        QPushButton
+            Access to `window` from another window.
+        """
+        button = QPushButton()
+        button.setText(str(self))
+        button.clicked.connect(lambda: self.open_gui(window))
+
+        return button
+
+    def open_gui(self, window) -> None:
+        """Opens `window` with `self` passed.
+
+        Parameters
+        ----------
+        window : FPLElemWindow
+            Displays element in gui.
+        """
+        window(self)
+
     @classmethod
     @property
     @abstractmethod
@@ -136,6 +136,18 @@ class Element(ABC, Generic[element]):
             API URL.
         """
         return
+
+    @ classmethod
+    @ property
+    def unique_id_col(cls) -> str:
+        """Attribute name that is a unique ID for any object of that class.
+
+        Returns
+        -------
+        str
+            Attribute name.
+        """
+        return cls._DEFAULT_ID
 
     @classmethod
     def from_dict(cls, new_instance: dict[str, Any]) -> element:
@@ -280,18 +292,6 @@ class Element(ABC, Generic[element]):
             Latest data for the class.
         """
         return
-
-    @ classmethod
-    @ property
-    def unique_id_col(cls) -> str:
-        """Attribute name that is a unique ID for any object of that class.
-
-        Returns
-        -------
-        str
-            Attribute name.
-        """
-        return cls._DEFAULT_ID
 
 
 class ElementGroup(ABC, Generic[element]):

@@ -65,6 +65,18 @@ class BaseEvent(Element[baseevent], Generic[baseevent]):
 
     @classmethod
     @property
+    def previous_gw(cls) -> baseevent:
+        """Returns the previous gameweek at the time of program execution.
+
+        Returns
+        -------
+        baseevent
+            The previous gameweek.
+        """
+        return cls.__find_until_true("is_previous")
+
+    @classmethod
+    @property
     def current_gw(cls) -> baseevent:
         """Returns current gameweek at the time of program execution.
 
@@ -74,12 +86,6 @@ class BaseEvent(Element[baseevent], Generic[baseevent]):
             The current gameweek.
         """
         return cls.__find_until_true("is_current")
-
-    @classmethod
-    def get_latest_api(cls) -> list[dict[str, Any]]:
-        api = super().get_latest_api()
-        api = API(cls.api_link)
-        return api.data["events"]
 
     @classmethod
     @property
@@ -94,6 +100,12 @@ class BaseEvent(Element[baseevent], Generic[baseevent]):
         return cls.__find_until_true("is_next")
 
     @classmethod
+    def get_latest_api(cls) -> list[dict[str, Any]]:
+        api = super().get_latest_api()
+        api = API(cls.api_link)
+        return api.data["events"]
+
+    @classmethod
     def past_and_future(cls) -> tuple[ElementGroup[baseevent], ElementGroup[baseevent]]:
         """Splits all the gameweeks into two groups by whether they have finished.
 
@@ -105,18 +117,6 @@ class BaseEvent(Element[baseevent], Generic[baseevent]):
         all_events = cls.get_all()
 
         return all_events.split(finished=True)
-
-    @classmethod
-    @property
-    def previous_gw(cls) -> baseevent:
-        """Returns the previous gameweek at the time of program execution.
-
-        Returns
-        -------
-        baseevent
-            The previous gameweek.
-        """
-        return cls.__find_until_true("is_previous")
 
     @classmethod
     def __find_until_true(cls, attr: str) -> Optional[baseevent]:
