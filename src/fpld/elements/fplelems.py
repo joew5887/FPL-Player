@@ -165,12 +165,27 @@ class PlayerHistoryPast(BasePlayerHistoryPast):
 
 
 class PlayerFull(BasePlayerFull[PlayerHistory, PlayerHistoryPast]):
+    """Game by game, season by season data for a player, linked to other FPL elements.
+    """
+
     def __init__(self, history: PlayerHistory, history_past: PlayerHistoryPast):
         self._history = history
         self._history_past = history_past
 
     @classmethod
     def from_id(cls, player_id: int) -> PlayerFull:
+        """Takes a player ID, and returns full data for that player
+
+        Parameters
+        ----------
+        player_id : int
+            Player ID to get stats for.
+
+        Returns
+        -------
+        PlayerFull
+           Player stats, game by game, season by season.
+        """
         url = URLS["ELEMENT-SUMMARY"].format(player_id)
         api = API(url)  # Need to have offline feature
         history = PlayerHistory.from_api(api.data["history"])
@@ -180,6 +195,8 @@ class PlayerFull(BasePlayerFull[PlayerHistory, PlayerHistoryPast]):
 
 @dataclass(frozen=True, order=True, kw_only=True)
 class Player(BasePlayer[player]):
+    """Player element, linked to other FPL elements.
+    """
     team: Team = field(hash=False)
 
     @classmethod
@@ -229,6 +246,8 @@ class Player(BasePlayer[player]):
 
 @dataclass(frozen=True, order=True, kw_only=True)
 class Event(BaseEvent[event]):
+    """Event / gameweek element, linked to other FPL elements.
+    """
     most_selected: Player = field(hash=False, repr=False)
     most_transferred_in: Player = field(hash=False, repr=False)
     top_element: Player = field(hash=False, repr=False)
@@ -266,6 +285,8 @@ class Event(BaseEvent[event]):
 
 @dataclass(frozen=True, order=True, kw_only=True)
 class Fixture(BaseFixture[fixture]):
+    """Fixture / result element, linked to other FPL elements.
+    """
     event: Event = field(hash=False)
     team_h: Team = field(hash=False)
     team_a: Team = field(hash=False)
