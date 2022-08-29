@@ -315,7 +315,8 @@ class EventSearchTable(SearchTable):
 
     def get_query(self) -> None:
         df = fpld.Event.get_all().to_df("name", "deadline_time",
-                                        "most_selected", "most_transferred_in", "finished")
+                                        "most_selected", "most_transferred_in", "most_captained",
+                                        "most_vice_captained", "finished")
         df["deadline_time"] = df["deadline_time"].apply(
             lambda date_: string_datetime(date_))
         Table.set_data(self._table, df)

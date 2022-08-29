@@ -32,8 +32,9 @@ class Team(BaseTeam[team]):
             The higher the score, the harder the fixtures.
         """
         all_fixtures = self.get_all_fixtures()
+        fixtures_to_play = Fixture.split_fixtures_by_finished(all_fixtures)[1]
         all_fixtures_by_event = Fixture.group_fixtures_by_gameweek(
-            all_fixtures)
+            fixtures_to_play)
         score = 0
         multiplier = 0.9
 

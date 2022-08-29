@@ -1,5 +1,5 @@
 from dataclasses import fields
-from typing import Any, Generic, TypeVar, Union
+from typing import Any, Generic, Iterator, TypeVar, Union
 from datetime import datetime
 
 
@@ -121,6 +121,9 @@ class Attribute(Generic[t]):
 
     def __str__(self) -> str:
         return f"{self.__attr_name} - {self.__values}"
+
+    def __iter__(self) -> Iterator[t]:
+        return iter(self.values)
 
     @property
     def values(self) -> list[t]:
