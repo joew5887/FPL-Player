@@ -5,7 +5,7 @@ from ..constants import URLS
 from ..util.percent import percent
 from ..util import API
 from .team import BaseTeam
-from .player import BasePlayer, BasePlayerFull, BasePlayerHistory, BasePlayerFixtures, BasePlayerHistoryPast
+from .player import BasePlayer, BasePlayerFull, BasePlayerHistory, BasePlayerHistoryPast
 from .fixture import BaseFixture
 from .event import BaseEvent
 from .position import Position
@@ -144,38 +144,6 @@ class Team(BaseTeam[team]):
         return self.player_total(*cols, by_position=by_position)
 
 
-@dataclass(frozen=True, order=True, kw_only=True)
-class PlayerFull(BasePlayerFull):
-    def __init__(self, fixtures: PlayerFixtures, history: PlayerHistory, history_past: BasePlayerHistoryPast):
-        self.__fixtures = fixtures
-        self.__history = history
-        self.__history_past = history_past
-
-    @property
-    def fixtures(self) -> PlayerFixtures:
-        return self.__fixtures
-
-    @property
-    def history(self) -> PlayerHistory:
-        return self.__history
-
-    @property
-    def history_past(self) -> BasePlayerHistoryPast:
-        return self.__history_past
-
-    @classmethod
-    def from_id(cls, player_id: int) -> BasePlayerFull:
-        url = URLS["ELEMENT-SUMMARY"].format(player_id)
-        api = API(url)  # Need to have offline feature
-        print(api.data["fixtures"][0].keys())
-        print(api.data["history"][0].keys())
-        fixtures = PlayerFixtures.from_api(api.data["fixtures"])
-        # fixtures = None
-        history = PlayerHistory.from_api(api.data["history"])
-        history_past = BasePlayerHistoryPast.from_api(api.data["history_past"])
-        return BasePlayerFull(fixtures, history, history_past)
-
-
 @dataclass(frozen=True, kw_only=True)
 class PlayerHistory(BasePlayerHistory):
     fixture: CategoricalVar[Fixture] = field(hash=False, repr=False)
@@ -192,19 +160,43 @@ class PlayerHistory(BasePlayerHistory):
 
 
 @dataclass(frozen=True, kw_only=True)
-class PlayerFixtures(BasePlayerFixtures):
-    fixture: CategoricalVar[Fixture] = field(hash=False, repr=False)
+class PlayerHistoryPast(BasePlayerHistoryPast):
+    pass
+
+
+class PlayerFull(BasePlayerFull[PlayerHistory, PlayerHistoryPast]):
+    """Game by game, season by season data for a player, linked to other FPL elements.
+    """
+
+    def __init__(self, history: PlayerHistory, history_past: PlayerHistoryPast):
+        self._history = history
+        self._history_past = history_past
 
     @classmethod
-    def _edit_stat_from_api(cls, field: Field, attr_list: list[Any]) -> dict[str, list[Any]]:
-        if field.name == "fixture":
-            attr_list = [Fixture.get_by_id(id_) for id_ in attr_list]
+    def from_id(cls, player_id: int) -> PlayerFull:
+        """Takes a player ID, and returns full data for that player
 
-        return attr_list
+        Parameters
+        ----------
+        player_id : int
+            Player ID to get stats for.
+
+        Returns
+        -------
+        PlayerFull
+           Player stats, game by game, season by season.
+        """
+        url = URLS["ELEMENT-SUMMARY"].format(player_id)
+        api = API(url)  # Need to have offline feature
+        history = PlayerHistory.from_api(api.data["history"])
+        history_past = PlayerHistoryPast.from_api(api.data["history_past"])
+        return PlayerFull(history, history_past)
 
 
 @dataclass(frozen=True, order=True, kw_only=True)
 class Player(BasePlayer[player]):
+    """Player element, linked to other FPL elements.
+    """
     team: Team = field(hash=False)
 
     @classmethod
@@ -254,6 +246,8 @@ class Player(BasePlayer[player]):
 
 @dataclass(frozen=True, order=True, kw_only=True)
 class Event(BaseEvent[event]):
+    """Event / gameweek element, linked to other FPL elements.
+    """
     most_selected: Player = field(hash=False, repr=False)
     most_transferred_in: Player = field(hash=False, repr=False)
     top_element: Player = field(hash=False, repr=False)
@@ -291,6 +285,8 @@ class Event(BaseEvent[event]):
 
 @dataclass(frozen=True, order=True, kw_only=True)
 class Fixture(BaseFixture[fixture]):
+    """Fixture / result element, linked to other FPL elements.
+    """
     event: Event = field(hash=False)
     team_h: Team = field(hash=False)
     team_a: Team = field(hash=False)
