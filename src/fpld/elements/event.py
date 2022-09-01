@@ -1,3 +1,4 @@
+from types import NoneType
 from .element import Element, ElementGroup
 from datetime import datetime
 from typing import Generic, Optional, TypeVar, Union, Any
@@ -45,6 +46,60 @@ class BaseEvent(Element[baseevent], Generic[baseevent]):
 
         return new_instance
 
+    def __add__(self, other: int) -> Union[baseevent, NoneType]:
+        """Increments the event by `other` gameweeks.
+
+        Parameters
+        ----------
+        other : int
+            Number of gameweeks to go up by.
+
+        Returns
+        -------
+        Union[baseevent, NoneType]
+            Event at gameweek `self.unique_id + other`.
+            May be None if outside season.
+
+        Raises
+        ------
+        NotImplementedError
+            `other` must be an int.
+        """
+        if isinstance(other, int):
+            return type(self).get_by_id(self.unique_id + other)
+
+        raise NotImplementedError
+
+    def __iadd__(self, other: int) -> Union[baseevent, NoneType]:
+        return self.__add__(other)
+
+    def __sub__(self, other: int) -> Union[baseevent, NoneType]:
+        """Decrements the event by `other` gameweeks.
+
+        Parameters
+        ----------
+        other : int
+            Number of gameweeks to go down by.
+
+        Returns
+        -------
+        Union[baseevent, NoneType]
+            Event at gameweek `self.unique_id - other`.
+            May be None if outside season.
+
+        Raises
+        ------
+        NotImplementedError
+            `other` must be an int.
+        """
+        if isinstance(other, int):
+            return type(self).get_by_id(self.unique_id - other)
+
+        raise NotImplementedError
+
+    def __isub__(self, other: int) -> Union[baseevent, NoneType]:
+        return self.__sub__(other)
+
     @property
     def started(self) -> bool:
         """Has the gameweek started?
@@ -57,6 +112,45 @@ class BaseEvent(Element[baseevent], Generic[baseevent]):
             True if gameweek has started, False otherwise.
         """
         return datetime.now() > self.deadline_time
+
+    @classmethod
+    def range(cls, start_gw: baseevent,  start: int, end: int, step: int) -> ElementGroup[baseevent]:
+        """Gets a range of events between two points.
+
+        Parameters
+        ----------
+        start_gw : baseevent
+            Event to start list from, may be included in list if `start` = 0.
+        start : int
+            Where to start incrementing from.
+        end : int
+            Where to stop incrementing.
+        step : int
+            How much to increment by.
+
+        Returns
+        -------
+        ElementGroup[baseevent]
+            Events in the range.
+
+        Raises
+        ------
+        ValueError
+            If the range produces an empty list.
+        Warning
+            If the length of the range is less than the length of events.
+            Happens at each end of the season.
+        """
+        group = [
+            start_gw + i for i in range(start, end, step) if start_gw + i is not None]
+
+        if len(group) == 0:
+            raise ValueError("No gameweeks found")
+
+        '''if len(group) < len(range(start, end, step)):
+            raise Warning("Gameweek range has been cut.")'''
+
+        return ElementGroup[baseevent](group)
 
     @classmethod
     @property

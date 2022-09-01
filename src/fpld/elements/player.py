@@ -97,6 +97,7 @@ class BasePlayer(Element[base_player], Generic[base_player]):
 
         new_instance["element_type"] = Position.get_by_id(
             new_instance["element_type"])
+        new_instance["form"] = float(new_instance["form"])
 
         return new_instance
 
