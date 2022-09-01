@@ -1,5 +1,6 @@
 from __future__ import annotations
 import math
+from types import NoneType
 from typing import TypeVar, Any, Union, Optional
 from ..constants import URLS
 from ..util.percent import percent
@@ -58,6 +59,28 @@ class Team(BaseTeam[team]):
             Unsorted group of all players for a team.
         """
         return Player.get(team=self.unique_id)
+
+    def average_form(self) -> float:
+        """Gets average form of playing players in a team.
+
+        Returns
+        -------
+        float
+            Non-rounded average of team form.
+        """
+        eligible_players: list[Player] = []
+        for player in self.players:
+            player_full = player.in_full()
+
+            if len(player_full.history.minutes.values) == 0:
+                continue
+
+            if player_full.history.minutes.values[-1] > 0:
+                eligible_players.append(player)
+
+        form_sum = sum(p.form for p in eligible_players)
+
+        return form_sum / len(eligible_players)
 
     def get_all_fixtures(self) -> ElementGroup[fixture]:
         """Gets all fixtures and results for a team.
@@ -302,7 +325,7 @@ class Fixture(BaseFixture[fixture]):
 
         return new_instance
 
-    def get_difficulty(self, team: Union[int, Team], raise_value_error: bool = True) -> Optional[int]:
+    def get_difficulty(self, team: Union[int, Team], raise_value_error: bool = True) -> Union[int, NoneType]:
         """Gets the difficulty of a fixture for a team.
 
         Parameters
@@ -314,7 +337,7 @@ class Fixture(BaseFixture[fixture]):
 
         Returns
         -------
-        Optional[int]
+        Union[int, NoneType]
             Difficulty of the game for `team`. 
 
         Raises
@@ -331,6 +354,42 @@ class Fixture(BaseFixture[fixture]):
             return self.team_h_difficulty
         if self.team_a.unique_id == team_id:
             return self.team_a_difficulty
+
+        if raise_value_error:
+            raise ValueError(
+                f"Team ID '{team}' not in fixture, '{str(self)}'")
+
+        return None
+
+    def is_home(self, team: Union[int, Team], raise_value_error: bool = True) -> Union[bool, NoneType]:
+        """Determines whether team passed is at home or away.
+
+        Parameters
+        ----------
+        team : Union[int, Team]
+            Team to find home or away for.
+        raise_value_error : bool, optional
+            True raises a 'ValueError', False returns None, by default True
+
+        Returns
+        -------
+        Union[bool, NoneType]
+            True if home, False otherwise.
+
+        Raises
+        ------
+        ValueError
+            If `team` is not in fixture and `raise_value_error` is True.
+        """
+        if isinstance(team, Team):
+            team_id = team.unique_id
+        else:
+            team_id = team
+
+        if self.team_h.unique_id == team_id:
+            return True
+        if self.team_a.unique_id == team_id:
+            return False
 
         if raise_value_error:
             raise ValueError(
