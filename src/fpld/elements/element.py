@@ -6,7 +6,7 @@ from PyQt5.QtWidgets import QPushButton
 from attr import asdict
 from ..util import all_attributes_present, all_field_names, Percentile
 from functools import cache
-from random import choice
+from random import choice, sample
 import pandas as pd
 
 
@@ -421,6 +421,21 @@ class ElementGroup(ABC, Generic[element]):
             Random element selected.
         """
         return choice(self.__objects)
+
+    def get_sample(self, n: int) -> ElementGroup[element]:
+        """Gets `n` random elements from `self`.
+
+        Parameters
+        ----------
+        n : int
+            Length of new element group.
+
+        Returns
+        -------
+        ElementGroup[element]
+            `n` elements from random sample.
+        """
+        return ElementGroup[element](list(sample(self.__objects, n)))
 
     def group_by(self, group_by_attr: str) -> dict[Any, ElementGroup[element]]:
         """Split an ElementGroup into multiple sub-groups by an attribute value.

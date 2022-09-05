@@ -297,7 +297,12 @@ class FixtureDifficultyTable(SearchTable):
             colour = DIFF_TO_COLOUR[diff]
 
             diff_widget = QPushButton()
-            diff_widget.setText(str(diff))
+
+            if fixture.is_home(team):
+                diff_widget.setText(fixture.team_a.short_name)
+            else:
+                diff_widget.setText(fixture.team_h.short_name)
+
             diff_widget.setStyleSheet(f"background-color: {colour}")
 
             layout.addWidget(diff_widget)

@@ -4,16 +4,17 @@ from dataclasses import Field, dataclass, field, fields
 from datetime import datetime
 from ..util.attribute import CategoricalVar, ContinuousVar
 from .element import Element, ElementGroup
-from typing import Optional, TypeVar, Generic, Any, get_type_hints
+from typing import Optional, TypeVar, Generic, Any, get_type_hints, Iterable
 from ..util import API
 from ..constants import URLS
 from .position import Position
 
 
 base_player = TypeVar("base_player", bound="BasePlayer")
-playerfull = TypeVar("playerfull")
-player_history = TypeVar("player_history")
-player_history_past = TypeVar("player_history_past")
+playerfull = TypeVar("playerfull", bound="BasePlayerFull")
+player_history = TypeVar("player_history", bound="BasePlayerHistory")
+player_history_past = TypeVar(
+    "player_history_past", bound="BasePlayerHistoryPast")
 
 
 @dataclass(frozen=True, order=True, kw_only=True)
@@ -155,6 +156,38 @@ class BasePlayer(Element[base_player], Generic[base_player]):
         api = API(cls.api_link)
         return api.data["elements"]
 
+    @classmethod
+    def in_cost_range(
+            cls, player_pool: ElementGroup[base_player],
+            *, lower: int = 0, upper: int = 150, include_boundaries: bool = True) -> ElementGroup[base_player]:
+        """Filters a group of players based on if their cost lies between two values.
+
+        Parameters
+        ----------
+        player_pool : ElementGroup[base_player]
+            Players to filter.
+        lower : int, optional
+           Lower bound cost, by default 0
+        upper : int, optional
+            Upper bound cost, by default 150
+        include_boundaries : bool, optional
+            If upper = 100 and a player costs 100, they will be included, by default True
+
+        Returns
+        -------
+        ElementGroup[base_player]
+            Players between `lower` and `upper` costs.
+        """
+
+        players_found = []
+
+        for player in player_pool:
+            if (lower <= player.now_cost and include_boundaries) or (lower < player.now_cost):
+                if (player.now_cost <= upper and include_boundaries) or (player.now_cost < upper):
+                    players_found.append(player)
+
+        return ElementGroup[base_player](players_found)
+
 
 class BasePlayerFull(Generic[player_history, player_history_past]):
     """Game by game, season by season data for a player, unlinked from other FPL elements.
@@ -202,6 +235,7 @@ class BasePlayerFull(Generic[player_history, player_history_past]):
         """
         url = URLS["ELEMENT-SUMMARY"].format(player_id)
         api = API(url)  # Need to have offline feature
+        print(api.data)
         history = BasePlayerHistory.from_api(api.data["history"])
         history_past = BasePlayerHistoryPast.from_api(
             api.data["history_past"])
@@ -210,6 +244,16 @@ class BasePlayerFull(Generic[player_history, player_history_past]):
 
 @dataclass(frozen=True, kw_only=True)
 class BasePlayerStats(ABC):
+    def __iter__(self) -> Iterable[dict[str, Any]]:
+        # In form: {"fixture": 1, "score": 0}, {"fixture": 2, "score": 1}
+        elements = []
+
+        for i in range(len(getattr(self, type(self).unique_id_col))):
+            elements.append(
+                {f.name: getattr(self, f.name).values[i] for f in type(self).all_fields()})
+
+        return iter(elements)
+
     @classmethod
     def _edit_stat_from_api(cls, field: Field, attr_list: list[Any]) -> list[Any]:
         """Pre-format API data before passing it into the class.
@@ -295,6 +339,19 @@ class BasePlayerStats(ABC):
         """
         return [f.name for f in cls.all_fields() if "ContinuousVar" in str(f.type)]
 
+    @classmethod
+    @property
+    @abstractmethod
+    def unique_id_col(cls) -> str:
+        """The field that identifies each different data entry, e.g. fixture.
+
+        Returns
+        -------
+        str
+            Name of field.
+        """
+        return
+
 
 @dataclass(frozen=True, kw_only=True)
 class BasePlayerHistory(BasePlayerStats):
@@ -331,6 +388,11 @@ class BasePlayerHistory(BasePlayerStats):
     transfers_in: ContinuousVar[int] = field(hash=False, repr=False)
     transfers_out: ContinuousVar[int] = field(hash=False, repr=False)
 
+    @classmethod
+    @property
+    def unique_id_col(cls) -> str:
+        return "fixture"
+
 
 @dataclass(frozen=True, kw_only=True)
 class BasePlayerHistoryPast(BasePlayerStats):
@@ -355,3 +417,8 @@ class BasePlayerHistoryPast(BasePlayerStats):
     creativity: ContinuousVar[float] = field(hash=False, repr=False)
     threat: ContinuousVar[float] = field(hash=False, repr=False)
     ict_index: ContinuousVar[float] = field(hash=False, repr=False)
+
+    @classmethod
+    @property
+    def unique_id_col(cls) -> str:
+        return "season_name"

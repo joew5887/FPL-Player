@@ -122,6 +122,9 @@ class Attribute(Generic[t]):
     def __str__(self) -> str:
         return f"{self.__attr_name} - {self.__values}"
 
+    def __len__(self) -> int:
+        return len(self.values)
+
     def __iter__(self) -> Iterator[t]:
         return iter(self.values)
 

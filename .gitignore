@@ -131,6 +131,7 @@ dmypy.json
 # Test file
 src/test.py
 src/points_graph_test.ipynb
+src/points_model_test.ipynb
 
 # VS code workspace
 .vscode/

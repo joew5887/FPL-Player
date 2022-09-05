@@ -194,6 +194,17 @@ class BaseEvent(Element[baseevent], Generic[baseevent]):
         return cls.__find_until_true("is_next")
 
     @classmethod
+    @property
+    def model_gw(cls) -> baseevent:
+        current_gw = cls.current_gw
+        next_gw = cls.next_gw
+
+        if current_gw.finished:
+            return next_gw
+
+        return current_gw
+
+    @classmethod
     def get_latest_api(cls) -> list[dict[str, Any]]:
         api = super().get_latest_api()
         api = API(cls.api_link)
