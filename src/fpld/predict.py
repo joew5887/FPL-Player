@@ -16,6 +16,7 @@ import pickle
 
 elem = TypeVar("elem", bound=Element)
 model_type = TypeVar("model_type")
+data_type = TypeVar("data_type", bound="AttributeModelData")
 
 
 class AttributeModelData(ABC):
@@ -123,13 +124,13 @@ class PointsData(AttributeModelData):
         return super().from_file(path)
 
 
-class __PointsModel(ABC, Generic[model_type]):
+class __Model(ABC, Generic[data_type, model_type]):
     __x_train: np.ndarray
     __x_test: np.ndarray
     __y_train: np.ndarray
     __y_test: np.ndarray
 
-    def __init__(self, data: AttributeModelData, model: model_type):
+    def __init__(self, data: data_type, model: model_type):
         self.__model = model
         self.__data = data
 
@@ -145,6 +146,10 @@ class __PointsModel(ABC, Generic[model_type]):
         Data used: {self.__data}
         Training method: {self.__training_method}
         """
+
+    @property
+    def data(self) -> data_type:
+        return self.__data
 
     @property
     def model(self) -> model_type:
@@ -203,14 +208,14 @@ class __PointsModel(ABC, Generic[model_type]):
         return self.model.score(self.__x_test, self.__y_test)
 
     @classmethod
-    def from_file(cls, path: str) -> __PointsModel:
+    def from_file(cls, path: str) -> __Model:
         with open(path, "rb") as f:
             data = pickle.load(f)
 
         return cls(data)
 
 
-class PointsModel(__PointsModel[RandomForestClassifier]):
+class PointsModel(__Model[PointsData, RandomForestClassifier]):
     def __init__(self, data: PointsData):
         super().__init__(data, RandomForestClassifier())
 
@@ -242,9 +247,13 @@ class PointsModel(__PointsModel[RandomForestClassifier]):
 
 
 class FuturePointsModel():
-    def __init__(self, model: __PointsModel, model_gw: Event):
+    def __init__(self, model: __Model, model_gw: Event):
         self.__model = model
         self.__model_gw = model_gw
+
+    @property
+    def model(self) -> __Model:
+        return self.__model
 
     def is_updated(self) -> bool:
         return self.__model_gw >= Event.model_gw
@@ -252,6 +261,16 @@ class FuturePointsModel():
     def update(self) -> FuturePointsModel:
         if self.is_updated():
             return self
+
+    @classmethod
+    def from_model(cls, model: __Model) -> FuturePointsModel:
+        max_gw = max(model.data._events)
+        model_gw = max_gw + 1
+
+        if model_gw is None:
+            model_gw = max_gw
+
+        return cls(model, model_gw)
 
 
 # Not used
