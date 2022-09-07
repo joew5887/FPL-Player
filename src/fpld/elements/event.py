@@ -3,7 +3,7 @@ from .element import Element, ElementGroup
 from datetime import datetime
 from typing import Generic, Optional, TypeVar, Union, Any
 from ..util import API
-from ..constants import URLS, str_to_datetime
+from ..constants import URLS, string_to_datetime
 from dataclasses import dataclass, field
 
 
@@ -42,7 +42,7 @@ class BaseEvent(Element[baseevent], Generic[baseevent]):
 
         # converts string datetime to datetime object
         new_instance["deadline_time"] = \
-            str_to_datetime(new_instance["deadline_time"])
+            string_to_datetime(new_instance["deadline_time"])
 
         return new_instance
 

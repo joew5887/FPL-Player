@@ -200,15 +200,3 @@ def all_field_names(class_) -> list[str]:
     class_attrs = fields(class_)
 
     return [attr.name for attr in class_attrs]
-
-
-def string_date(date_: datetime) -> str:
-    return date_.strftime("%a %d %B %Y")
-
-
-def string_time(date_: datetime) -> str:
-    return date_.strftime("%H:%M")
-
-
-def string_datetime(date_: datetime):
-    return string_time(date_) + " - " + string_date(date_)

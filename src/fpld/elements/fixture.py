@@ -1,7 +1,7 @@
 from typing import Generic, TypeVar, Any, Optional
 from .element import Element, ElementGroup
 from ..util import API
-from ..constants import URLS, str_to_datetime
+from ..constants import URLS, string_to_datetime
 from datetime import datetime
 from dataclasses import dataclass, field
 
@@ -41,7 +41,7 @@ class BaseFixture(Element[basefixture], Generic[basefixture]):
         new_instance = super().__pre_init__(new_instance)
 
         new_instance["kickoff_time"] = \
-            str_to_datetime(new_instance["kickoff_time"])
+            string_to_datetime(new_instance["kickoff_time"])
 
         return new_instance
 

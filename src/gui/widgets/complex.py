@@ -1,11 +1,10 @@
 from __future__ import annotations
-from tkinter import N
 from typing import Any, Generic, TypeVar, overload
 from PyQt5.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout, QTableWidget, QLabel, QMainWindow
 )
 from PyQt5.QtCore import Qt
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 import matplotlib.pylab as plt
@@ -13,9 +12,6 @@ from matplotlib.figure import Figure
 import matplotlib
 from .simple import Title, Label, ComboBox, Table
 
-
-header = TypeVar("header", bound=QWidget)
-main = TypeVar("main", bound=QWidget)
 
 matplotlib.use("Qt5Agg")
 
@@ -29,7 +25,7 @@ class ComplexWidget(QWidget):
         self.add_widgets()
 
     @abstractmethod
-    def define_widgets(self) -> None:
+    def define_widgets(self, **kwargs) -> None:
         pass
 
     @abstractmethod
@@ -39,6 +35,23 @@ class ComplexWidget(QWidget):
     @abstractmethod
     def add_widgets(self) -> None:
         pass
+
+    @abstractmethod
+    def get_default_header(self) -> QWidget:
+        return QWidget()
+
+    @abstractmethod
+    def get_default_footer(self) -> QWidget:
+        return QWidget()
+
+    @classmethod
+    def add_default_headers(cls) -> AddHeaders:
+        main = cls()
+
+        header = main.get_default_header()
+        footer = main.get_default_footer()
+
+        return AddHeaders(main, header=header, footer=footer)
 
 
 class ContentWidget(ComplexWidget):
@@ -47,74 +60,38 @@ class ContentWidget(ComplexWidget):
 
         self.setMinimumHeight(700)
 
-    @overload
-    @classmethod
-    def with_title(cls, title: str) -> WidgetWithStrHeader: ...
 
-    @overload
-    @classmethod
-    def with_title(cls, title: QWidget) -> WidgetWithWidgetHeader: ...
+class AddHeaders(ComplexWidget):
+    __header: QWidget
+    __main: QWidget
+    __footer: QWidget
 
-    @classmethod
-    def with_title(cls, title: Any) -> Any:
-        if isinstance(title, str):
-            return WidgetWithStrHeader(title, cls())
-        elif isinstance(title, QWidget):
-            return WidgetWithWidgetHeader(title, cls())
-
-        raise NotImplementedError
-
-    @classmethod
-    def with_default_title(cls) -> WidgetWithStrHeader:
-        return cls.with_title(cls.get_default_title())
-
-    @classmethod
-    @abstractmethod
-    def get_default_title(cls) -> str:
-        return "Foo"
-
-
-class WidgetWithWidgetHeader(ComplexWidget, Generic[header, main]):
-    def __init__(self, header_widget: header, main_widget: main):
-        super().__init__(header_widget=header_widget, main_widget=main_widget)
-
-    @property
-    def header(self) -> header:
-        return self.__header
-
-    @property
-    def main(self) -> main:
-        return self.__main
+    def __init__(self, main_widget: QWidget, *, header: QWidget = None, footer: QWidget = None):
+        super().__init__(header_widget=header,
+                         main_widget=main_widget, footer_widget=footer)
 
     def define_widgets(self, **kwargs) -> None:
         self.__layout = QVBoxLayout()
         self.__header = kwargs["header_widget"]
         self.__main = kwargs["main_widget"]
+        self.__footer = kwargs["footer_widget"]
 
     def setup(self) -> None:
         super().setup()
 
-        self.header.setMaximumHeight(100)
+        if self.__header is not None:
+            self.__header.setMaximumHeight(100)
+
+        if self.__footer is not None:
+            self.__footer.setMaximumHeight(100)
+
+        self.setMinimumHeight(700)
 
     def add_widgets(self) -> None:
-        self.__layout.addWidget(self.header)
-        self.__layout.addWidget(self.main)
+        self.__layout.addWidget(self.__header)
+        self.__layout.addWidget(self.__main)
+        self.__layout.addWidget(self.__footer)
         self.setLayout(self.__layout)
-
-
-class WidgetWithStrHeader(WidgetWithWidgetHeader):
-    def __init__(self, header_txt: str, main_widget: main):
-        label = Label.get(header_txt)
-        super().__init__(header_widget=label, main_widget=main_widget)
-
-    @property
-    def header(self) -> QLabel:
-        return super().header
-
-    def setup(self) -> None:
-        super().setup()
-
-        self.header.setAlignment(Qt.AlignCenter)
 
 
 class TitleWidget(ComplexWidget):
