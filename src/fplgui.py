@@ -3,73 +3,78 @@ from typing import TypeVar, Generic
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QTabWidget, QWidget, QHBoxLayout, QVBoxLayout, QLabel, QPushButton, QScrollArea
 from fpld.elements.element import ElementGroup
-from fpld.util.attribute import string_datetime
+from fpld.constants import datetime_to_string
 from gui.widgets import FilterBox, SearchTable
-from gui.widgets.complex import ComplexWidget, LineGraph, WidgetWithStrHeader
+from gui.widgets.complex import ContentWidget, LineGraph
 from gui.widgets.simple import Label, Table
-from gui.windows import DefaultWindow
-from gui.widgets import TitleWidget
+from gui.windows import Window
+from gui.widgets import TitleWidget, AddHeaders
 import pandas as pd
 
 
 _E = TypeVar("_E")  # need element type restriction
 
 
-class HomeWindow(DefaultWindow):
-    def __init__(self):
-        main_widget = self.__get_home()
-        super().__init__(HomeWindowTitle(), main_widget)
+class ElementWidget(ContentWidget, Generic[_E]):
+    _element: _E
 
-    def __get_home(self) -> QWidget:
-        x = QTabWidget()
-        test = QWidget()
+    def __init__(self, element: _E):
+        super().__init__(element=element)
 
-        z = QScrollArea()
-        layout = QVBoxLayout()
-        layout.addWidget(PlayerSearchTable.with_default_title())
-        layout.addWidget(FixtureSearchTable.with_default_title())
-        test.setLayout(layout)
-        z.setWidget(test)
-        z.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
-        z.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        z.setWidgetResizable(True)
-        x.addTab(z, "Home")
-        x.addTab(EventSearchTable.with_default_title(), "Events")
-        x.addTab(PlayerSearchTable.with_default_title(), "Players")
-        x.addTab(FixtureSearchTable.with_default_title(), "Fixtures")
-        x.addTab(FixtureDifficultyTable.with_default_title(), "Teams")
-        x.addTab(LineGraph(), "Test")
+    def define_widgets(self, **kwargs) -> None:
+        super().define_widgets()
 
-        return x
+        self._element = kwargs["element"]
+        self._layout = QVBoxLayout()
 
+    def setup(self) -> None:
+        super().setup()
 
-class ElementWindow(DefaultWindow, Generic[_E]):
-    def __init__(self, element: _E, title_widget: TitleWidget, main_widget: QWidget):
-        super().__init__(title_widget, main_widget)
+    def add_widgets(self) -> None:
+        super().add_widgets()
+
+        self.setLayout(self._layout)
 
     @classmethod
     def clicked_button(cls, element: _E) -> QPushButton:
         button = QPushButton()
 
-        foo = cls(element)
+        foo = Window(cls.add_default_headers(element))
         button.clicked.connect(lambda: foo.show())
         button.setText(str(element))
 
         return button
 
+    @classmethod
+    def add_default_headers(cls, element: _E) -> AddHeaders:
+        main = cls(element)
 
-class PlayerWindow(ElementWindow[fpld.Player]):
-    def __init__(self, player: fpld.Player):
+        header = main.get_default_header()
+        footer = main.get_default_footer()
+
+        return AddHeaders(main, header=header, footer=footer)
+
+
+class PlayerWidget(ElementWidget[fpld.Player]):
+    def get_default_header(self) -> TitleWidget:
         title_widget = TitleWidget(
-            player.web_name, left_txt=str(player.team), right_txt=str(player.element_type))
-        super().__init__(player, title_widget, QWidget())
+            self._element.web_name, left_txt=str(self._element.team), right_txt=str(self._element.element_type))
+
+        return title_widget
+
+    def get_default_footer(self) -> QWidget:
+        return QWidget()
 
 
-class TeamWindow(ElementWindow[fpld.Team]):
-    def __init__(self, team: fpld.Team):
+class TeamWidget(ElementWidget[fpld.Team]):
+    def get_default_header(self) -> TitleWidget:
         title_widget = TitleWidget(
-            team.name)
-        super().__init__(team, title_widget, QWidget())
+            self._element.name)
+
+        return title_widget
+
+    def get_default_footer(self) -> QWidget:
+        return QWidget()
 
 
 class HomeWindowTitle(TitleWidget):
@@ -91,53 +96,115 @@ class HomeWindowTitle(TitleWidget):
         next_gw = fpld.Event.next_gw
         if next_gw is not None:
             msg = next_gw.deadline_time
+            msg = datetime_to_string(msg)
         else:
             msg = "UNKNOWN"
 
         return f"Next gameweek starts: {msg}"
 
 
+class Home(ContentWidget):
+    def define_widgets(self, **kwargs) -> None:
+        super().define_widgets(**kwargs)
+
+        self.__layout = QVBoxLayout()
+        self.__main_widget = QTabWidget()
+
+    def setup(self) -> None:
+        super().setup()
+
+    def add_widgets(self) -> None:
+        super().add_widgets()
+
+        self.__main_widget.addTab(self.__get_home(), "Home")
+        self.__main_widget.addTab(
+            PlayerSearchTable.add_default_headers(), "Players")
+        self.__main_widget.addTab(
+            FixtureDifficultyTable.add_default_headers(), "Teams")
+        self.__main_widget.addTab(
+            FixtureSearchTable.add_default_headers(), "Fixtures")
+        self.__main_widget.addTab(
+            EventSearchTable.add_default_headers(), "Events")
+        self.__main_widget.addTab(LineGraph(), "Test")
+
+        self.__layout.addWidget(self.__main_widget)
+        self.setLayout(self.__layout)
+
+    def __get_home(self) -> QScrollArea:
+        main_widget = QWidget()
+        main_scrollarea = QScrollArea()
+        layout = QVBoxLayout()
+
+        layout.addWidget(PlayerSearchTable.add_default_headers())
+        layout.addWidget(FixtureSearchTable.add_default_headers())
+        main_widget.setLayout(layout)
+        main_scrollarea.setWidget(main_widget)
+        main_scrollarea.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+        main_scrollarea.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        main_scrollarea.setWidgetResizable(True)
+
+        return main_scrollarea
+
+    def get_default_header(self) -> HomeWindowTitle:
+        return HomeWindowTitle()
+
+    def get_default_footer(self) -> QLabel:
+        label = QLabel()
+        label.setText(
+            f"All data from: {fpld.constants.API_URL_STEM}. I do not own any of this data.")
+
+        return label
+
+
 class FilterBoxes:
-    @classmethod
+    @ classmethod
     def teams(cls) -> FilterBox:
         name = "Team"
         items = fpld.Team.get_all().to_string_list()
 
         return FilterBox(name, items)
 
-    @classmethod
+    @ classmethod
     def position(cls) -> FilterBox:
         name = "Position"
         items = fpld.Position.get_all().to_string_list()
 
         return FilterBox(name, items)
 
-    @classmethod
+    @ classmethod
     def events(cls) -> FilterBox:
         name = "Gameweek"
-        items = fpld.Event.get_all().to_string_list()
+        events = fpld.Event.get_all()
+        current_gw = fpld.Event.current_gw
+
+        items = []
+        for event in events:
+            if event == current_gw:
+                items.append(f"{event} - Current")
+            else:
+                items.append(str(event))
 
         return FilterBox(name, items)
 
-    @classmethod
+    @ classmethod
     def __sort(cls, items: list[str]) -> FilterBox:
         name = "Sort By"
 
         return FilterBox(name, items, all_option=False)
 
-    @classmethod
+    @ classmethod
     def player_sort(cls) -> FilterBox:
         items = fpld.Label.get_all().to_string_list()
 
         return cls.__sort(items)
 
-    @classmethod
+    @ classmethod
     def fixture_sort(cls) -> FilterBox:
         items = ["kickoff_time", "team_h_difficulty", "team_a_difficulty"]
 
         return cls.__sort(items)
 
-    @classmethod
+    @ classmethod
     def fixture_difficulty_sort(cls) -> FilterBox:
         items = ["Team", "League Position", "Overall Difficulty"]
 
@@ -179,17 +246,21 @@ class PlayerSearchTable(SearchTable):
 
     def __create_df(self, label: fpld.Label) -> pd.DataFrame:
         df = self.__players.to_df("element_type", label.name)
-        df["team"] = [TeamWindow.clicked_button(
+        df["team"] = [TeamWidget.clicked_button(
             player.team) for player in self.__players]
-        df["player"] = [PlayerWindow.clicked_button(
+        df["player"] = [PlayerWidget.clicked_button(
             player) for player in self.__players]
         df = df[["player", "team", "element_type", label.name]]
 
         return df
 
-    @classmethod
-    def get_default_title(cls) -> str:
-        return "Player Search"
+    def get_default_header(self) -> QLabel:
+        label = Label.get("Players Search")
+
+        return label
+
+    def get_default_footer(self) -> QWidget:
+        return QWidget()
 
 
 class FixtureSearchTable(SearchTable):
@@ -209,7 +280,8 @@ class FixtureSearchTable(SearchTable):
         if event == "All":
             self.__events = fpld.Event.get()
         else:
-            self.__events = fpld.Event.get(name=event)
+            event_name = event.split(" - ")[0]
+            self.__events = fpld.Event.get(name=event_name)
 
         self.__fixtures = fpld.Fixture.get(event=tuple(self.__events))
 
@@ -231,13 +303,17 @@ class FixtureSearchTable(SearchTable):
 
         if sort_by_name == "kickoff_time":
             df["kickoff_time"] = df["kickoff_time"].apply(
-                lambda date_: string_datetime(date_))
+                lambda date_: datetime_to_string(date_))
 
         Table.set_data(self._table, df)
 
-    @classmethod
-    def get_default_title(cls) -> str:
-        return "Fixture Search"
+    def get_default_header(self) -> QLabel:
+        label = Label.get("Fixture Search")
+
+        return label
+
+    def get_default_footer(self) -> QWidget:
+        return QWidget()
 
 
 class FixtureDifficultyTable(SearchTable):
@@ -279,9 +355,13 @@ class FixtureDifficultyTable(SearchTable):
         df.columns = ["Team"] + events.to_string_list()
         Table.set_data(self._table, df)
 
-    @classmethod
-    def get_default_title(cls) -> str:
-        return "Fixture Difficulty"
+    def get_default_header(self) -> QLabel:
+        label = Label.get("Fixture Difficulty Search")
+
+        return label
+
+    def get_default_footer(self) -> QWidget:
+        return QWidget()
 
     @ staticmethod
     def get_widget(fixtures: ElementGroup[fpld.Fixture], team: fpld.Team) -> QPushButton:
@@ -297,7 +377,12 @@ class FixtureDifficultyTable(SearchTable):
             colour = DIFF_TO_COLOUR[diff]
 
             diff_widget = QPushButton()
-            diff_widget.setText(str(diff))
+
+            if fixture.is_home(team):
+                diff_widget.setText(fixture.team_a.short_name)
+            else:
+                diff_widget.setText(fixture.team_h.short_name)
+
             diff_widget.setStyleSheet(f"background-color: {colour}")
 
             layout.addWidget(diff_widget)
@@ -318,9 +403,13 @@ class EventSearchTable(SearchTable):
                                         "most_selected", "most_transferred_in", "most_captained",
                                         "most_vice_captained", "finished")
         df["deadline_time"] = df["deadline_time"].apply(
-            lambda date_: string_datetime(date_))
+            lambda date_: datetime_to_string(date_))
         Table.set_data(self._table, df)
 
-    @classmethod
-    def get_default_title(cls) -> str:
-        return "Event Search"
+    def get_default_header(self) -> QLabel:
+        label = Label.get("Event Search")
+
+        return label
+
+    def get_default_footer(self) -> QWidget:
+        return QWidget()

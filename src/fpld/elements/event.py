@@ -3,7 +3,7 @@ from .element import Element, ElementGroup
 from datetime import datetime
 from typing import Generic, Optional, TypeVar, Union, Any
 from ..util import API
-from ..constants import URLS, str_to_datetime
+from ..constants import URLS, string_to_datetime
 from dataclasses import dataclass, field
 
 
@@ -42,7 +42,7 @@ class BaseEvent(Element[baseevent], Generic[baseevent]):
 
         # converts string datetime to datetime object
         new_instance["deadline_time"] = \
-            str_to_datetime(new_instance["deadline_time"])
+            string_to_datetime(new_instance["deadline_time"])
 
         return new_instance
 
@@ -192,6 +192,17 @@ class BaseEvent(Element[baseevent], Generic[baseevent]):
             The next gameweek.
         """
         return cls.__find_until_true("is_next")
+
+    @classmethod
+    @property
+    def model_gw(cls) -> baseevent:
+        current_gw = cls.current_gw
+        next_gw = cls.next_gw
+
+        if current_gw.finished:
+            return next_gw
+
+        return current_gw
 
     @classmethod
     def get_latest_api(cls) -> list[dict[str, Any]]:

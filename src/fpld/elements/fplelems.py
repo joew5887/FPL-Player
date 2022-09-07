@@ -1,7 +1,7 @@
 from __future__ import annotations
 import math
 from types import NoneType
-from typing import TypeVar, Any, Union, Optional
+from typing import TypeVar, Any, Union, Optional, Type
 from ..constants import URLS
 from ..util.percent import percent
 from ..util import API
@@ -212,6 +212,10 @@ class PlayerFull(BasePlayerFull[PlayerHistory, PlayerHistoryPast]):
         """
         url = URLS["ELEMENT-SUMMARY"].format(player_id)
         api = API(url)  # Need to have offline feature
+
+        if api.data == "The game is being updated.":
+            raise ValueError("The game is being updated.")
+
         history = PlayerHistory.from_api(api.data["history"])
         history_past = PlayerHistoryPast.from_api(api.data["history_past"])
         return PlayerFull(history, history_past)
@@ -256,6 +260,43 @@ class Player(BasePlayer[player]):
         """
         team_total = self.team.total_goal_contributions()
         return percent(self.goal_contributions, team_total)
+
+    def attribute_in_event(self, attribute: str, event: Event) -> list[Any]:
+        """Gets all values of `attribute` for gameweek `event`.
+
+        Parameters
+        ----------
+        attribute : str
+            Attribute to find, e.g. 'total_points'.
+        event : Event
+            Event to find value for.
+
+        Returns
+        -------
+        list[Any]
+            All `attribute` values in gameweek `event`.
+
+        Raises
+        ------
+        KeyError
+            If `attribute` is not a key in each fixture.
+        """
+        in_full = self.in_full()
+        fixtures_in_event = self.team.get_all_fixtures().filter(event=event.unique_id)
+        values = []
+
+        for fixture in in_full.history:
+            if fixture["fixture"] not in fixtures_in_event:
+                continue
+
+            try:
+                value = fixture[attribute]
+            except KeyError:
+                raise KeyError(f"{attribute} not in {fixture.keys()}")
+            else:
+                values.append(value)
+
+        return values
 
     def in_full(self) -> PlayerFull:
         """Game by game, season by season data for a player.
@@ -357,7 +398,7 @@ class Fixture(BaseFixture[fixture]):
 
         if raise_value_error:
             raise ValueError(
-                f"Team ID '{team}' not in fixture, '{str(self)}'")
+                f"Team '{team}' not in fixture, '{str(self)}'")
 
         return None
 
@@ -393,7 +434,7 @@ class Fixture(BaseFixture[fixture]):
 
         if raise_value_error:
             raise ValueError(
-                f"Team ID '{team}' not in fixture, '{str(self)}'")
+                f"Team '{team}' not in fixture, '{str(self)}'")
 
         return None
 

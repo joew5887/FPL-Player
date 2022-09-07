@@ -38,5 +38,6 @@ class Label(Element[label]):
                     "name": "percent_pos"})
         data.append({"label": "Percent Team",
                     "name": "percent_team"})
+        data.append({"label": "Total Points", "name": "total_points"})
 
         return data
