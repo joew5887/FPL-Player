@@ -226,7 +226,7 @@ class PlayerFull(BasePlayerFull[PlayerHistory, PlayerHistoryPast]):
 class Player(BasePlayer["Player"]):
     """Player element, linked to other FPL elements.
     """
-    team: Team = field(hash=False)
+    team: Team = field(hash=False, compare=False)
 
     @classmethod
     def __pre_init__(cls, new_instance: dict[str, Any]) -> dict[str, Any]:
@@ -314,11 +314,11 @@ class Player(BasePlayer["Player"]):
 class Event(BaseEvent["Event"]):
     """Event / gameweek element, linked to other FPL elements.
     """
-    most_selected: Player = field(hash=False, repr=False)
-    most_transferred_in: Player = field(hash=False, repr=False)
-    top_element: Player = field(hash=False, repr=False)
-    most_captained: Player = field(hash=False, repr=False)
-    most_vice_captained: Player = field(hash=False, repr=False)
+    most_selected: Player = field(hash=False, repr=False, compare=False)
+    most_transferred_in: Player = field(hash=False, repr=False, compare=False)
+    top_element: Player = field(hash=False, repr=False, compare=False)
+    most_captained: Player = field(hash=False, repr=False, compare=False)
+    most_vice_captained: Player = field(hash=False, repr=False, compare=False)
 
     @classmethod
     def __pre_init__(cls, new_instance: dict[str, Any]) -> dict[str, Any]:
@@ -353,9 +353,9 @@ class Event(BaseEvent["Event"]):
 class Fixture(BaseFixture["Fixture"]):
     """Fixture / result element, linked to other FPL elements.
     """
-    event: Event = field(hash=False)
-    team_h: Team = field(hash=False)
-    team_a: Team = field(hash=False)
+    event: Event = field(hash=False, compare=False)
+    team_h: Team = field(hash=False, compare=False)
+    team_a: Team = field(hash=False, compare=False)
 
     @classmethod
     def __pre_init__(cls, new_instance: dict[str, Any]) -> dict[str, Any]:

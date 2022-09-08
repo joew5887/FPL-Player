@@ -1,7 +1,7 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Any, Iterable, Iterator, SupportsIndex, TypeVar, Generic, Optional, Union, overload, Callable
-from dataclasses import fields
+from dataclasses import fields, dataclass
 from PyQt5.QtWidgets import QPushButton
 from attr import asdict
 from ..util import all_attributes_present, all_field_names, Percentile
@@ -212,10 +212,9 @@ class Element(ABC, Generic[element]):
             All elements.
         """
         elements = cls.get_api()
+        elements_sorted = sorted([cls.from_dict(elem) for elem in elements])
 
-        objs = ElementGroup([cls.from_dict(elem) for elem in elements])
-
-        return objs.sort(cls._DEFAULT_ID, reverse=False)
+        return ElementGroup[element](elements_sorted)
 
     @classmethod
     def get_api(cls, refresh_api: bool = False) -> list[dict[str, Any]]:
@@ -372,11 +371,7 @@ class ElementGroup(ABC, Generic[element]):
             conditions_by_attr = []
 
             for attr, values in attr_to_value.items():
-                elem_attr = getattr(elem, attr, None)
-
-                if elem_attr is None:
-                    raise AttributeError(
-                        f"'{attr}' not in attributes.\nUse: {asdict(elem).keys()}")
+                elem_attr = getattr(elem, attr)
 
                 if isinstance(elem_attr, Element):
                     elem_attr = elem_attr.unique_id

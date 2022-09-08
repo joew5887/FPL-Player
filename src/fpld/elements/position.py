@@ -17,17 +17,18 @@ class Position(Element[position]):
     """
     _ATTR_FOR_STR = "singular_name"
 
-    id: int = field(compare=True)
-    plural_name: str = field(hash=False, repr=False)
-    plural_name_short: str = field(hash=False, repr=False)
-    singular_name: str
-    singular_name_short: str
-    squad_select: int = field(hash=False, repr=False)
-    squad_min_play: int = field(hash=False, repr=False)
-    squad_max_play: int = field(hash=False, repr=False)
-    ui_shirt_specific: bool = field(hash=False, repr=False)
-    sub_positions_locked: list = field(hash=False, repr=False)
-    element_count: int = field(hash=False, repr=False)
+    id: int = field()
+
+    plural_name: str = field(hash=False, repr=False, compare=False)
+    plural_name_short: str = field(hash=False, repr=False, compare=False)
+    singular_name: str = field(compare=False)
+    singular_name_short: str = field(compare=False)
+    squad_select: int = field(hash=False, repr=False, compare=False)
+    squad_min_play: int = field(hash=False, repr=False, compare=False)
+    squad_max_play: int = field(hash=False, repr=False, compare=False)
+    ui_shirt_specific: bool = field(hash=False, repr=False, compare=False)
+    sub_positions_locked: list = field(hash=False, repr=False, compare=False)
+    element_count: int = field(hash=False, repr=False, compare=False)
 
     @classmethod
     @property
