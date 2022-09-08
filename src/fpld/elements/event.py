@@ -1,10 +1,11 @@
 from types import NoneType
 from .element import Element, ElementGroup
 from datetime import datetime
-from typing import Generic, Optional, TypeVar, Union, Any
+from typing import Generic, Iterable, Optional, TypeVar, Union, Any
 from ..util import API
 from ..constants import URLS, string_to_datetime
 from dataclasses import dataclass, field
+from functools import cache
 
 
 baseevent = TypeVar("baseevent", bound="BaseEvent")
@@ -158,8 +159,7 @@ class BaseEvent(Element[baseevent], Generic[baseevent]):
         return URLS["BOOTSTRAP-STATIC"]
 
     @classmethod
-    @property
-    def previous_gw(cls) -> baseevent:
+    def get_previous_gw(cls) -> baseevent:
         """Returns the previous gameweek at the time of program execution.
 
         Returns
@@ -170,8 +170,7 @@ class BaseEvent(Element[baseevent], Generic[baseevent]):
         return cls.__find_until_true("is_previous")
 
     @classmethod
-    @property
-    def current_gw(cls) -> baseevent:
+    def get_current_gw(cls) -> baseevent:
         """Returns current gameweek at the time of program execution.
 
         Returns
@@ -182,8 +181,7 @@ class BaseEvent(Element[baseevent], Generic[baseevent]):
         return cls.__find_until_true("is_current")
 
     @classmethod
-    @property
-    def next_gw(cls) -> baseevent:
+    def get_next_gw(cls) -> baseevent:
         """Returns the next gameweek at the time of program execution.
 
         Returns
@@ -194,10 +192,9 @@ class BaseEvent(Element[baseevent], Generic[baseevent]):
         return cls.__find_until_true("is_next")
 
     @classmethod
-    @property
-    def model_gw(cls) -> baseevent:
-        current_gw = cls.current_gw
-        next_gw = cls.next_gw
+    def get_model_gw(cls) -> baseevent:
+        current_gw = cls.get_current_gw()
+        next_gw = cls.get_next_gw()
 
         if current_gw.finished:
             return next_gw
@@ -244,3 +241,14 @@ class BaseEvent(Element[baseevent], Generic[baseevent]):
                 return event
 
         return None
+
+    @classmethod
+    @property
+    def none(cls) -> baseevent:
+        return cls.from_dict({
+            "id": 0, "name": "No Gameweek", "deadline_time": "2000-1-1T00:00:00Z", "average_entry_score": 0,
+            "finished": False, "data_checked": False, "highest_scoring_entry": 0, "is_previous": False,
+            "is_current": False, "is_next": False, "cup_leagues_created": False, "h2h_ko_matches_created": False,
+            "chip_plays": [], "most_selected": -1, "most_transferred_in": -1, "top_element": -1,
+            "top_element_info": dict(), "transfers_made": 0, "most_captained": -1, "most_vice_captained": -1
+        })

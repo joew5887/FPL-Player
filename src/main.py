@@ -1,12 +1,13 @@
 from fplgui import Home
 from gui.windows import Window
+from gui.widgets import AddDefaultHeaders
 import sys
 from PyQt5.QtWidgets import QApplication
 
 
 def main() -> None:
     app = QApplication(sys.argv)
-    home = Window(Home.add_default_headers())
+    home = Window(AddDefaultHeaders(Home()))
     home.show()
     sys.exit(app.exec_())
 

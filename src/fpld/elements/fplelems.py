@@ -1,7 +1,8 @@
 from __future__ import annotations
+from functools import cache
 import math
 from types import NoneType
-from typing import TypeVar, Any, Union, Optional, Type
+from typing import Iterable, TypeVar, Any, Union, Optional, Type
 from ..constants import URLS
 from ..util.percent import percent
 from ..util import API
@@ -22,7 +23,7 @@ fixture = TypeVar("fixture", bound="Fixture")
 
 
 @dataclass(frozen=True, order=True, kw_only=True)
-class Team(BaseTeam[team]):
+class Team(BaseTeam["Team"]):
     @property
     def fixture_score(self) -> float:
         """Gives a score for how hard upcoming fixtures are.
@@ -82,7 +83,7 @@ class Team(BaseTeam[team]):
 
         return form_sum / len(eligible_players)
 
-    def get_all_fixtures(self) -> ElementGroup[fixture]:
+    def get_all_fixtures(self) -> ElementGroup[Fixture]:
         """Gets all fixtures and results for a team.
 
         Returns
@@ -222,7 +223,7 @@ class PlayerFull(BasePlayerFull[PlayerHistory, PlayerHistoryPast]):
 
 
 @dataclass(frozen=True, order=True, kw_only=True)
-class Player(BasePlayer[player]):
+class Player(BasePlayer["Player"]):
     """Player element, linked to other FPL elements.
     """
     team: Team = field(hash=False)
@@ -310,7 +311,7 @@ class Player(BasePlayer[player]):
 
 
 @dataclass(frozen=True, order=True, kw_only=True)
-class Event(BaseEvent[event]):
+class Event(BaseEvent["Event"]):
     """Event / gameweek element, linked to other FPL elements.
     """
     most_selected: Player = field(hash=False, repr=False)
@@ -349,7 +350,7 @@ class Event(BaseEvent[event]):
 
 
 @dataclass(frozen=True, order=True, kw_only=True)
-class Fixture(BaseFixture[fixture]):
+class Fixture(BaseFixture["Fixture"]):
     """Fixture / result element, linked to other FPL elements.
     """
     event: Event = field(hash=False)
@@ -439,7 +440,7 @@ class Fixture(BaseFixture[fixture]):
         return None
 
     @classmethod
-    def group_fixtures_by_gameweek(cls, fixtures: ElementGroup[fixture]) -> dict[Event, ElementGroup[fixture]]:
+    def group_fixtures_by_gameweek(cls, fixtures: ElementGroup[Fixture]) -> dict[Event, ElementGroup[Fixture]]:
         """Groups an ElementGroup of fixtures by gameweek.
 
         Parameters

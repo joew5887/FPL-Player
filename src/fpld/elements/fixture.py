@@ -1,9 +1,10 @@
-from typing import Generic, TypeVar, Any, Optional
+from typing import Generic, Iterable, TypeVar, Any, Optional, Union
 from .element import Element, ElementGroup
 from ..util import API
 from ..constants import URLS, string_to_datetime
 from datetime import datetime
 from dataclasses import dataclass, field
+from functools import cache
 
 
 basefixture = TypeVar("basefixture", bound="BaseFixture")
@@ -55,7 +56,7 @@ class BaseFixture(Element[basefixture], Generic[basefixture]):
             In form: 'Spurs (1) v Wolves (0)'.
         """
         # If game has not happened yet.
-        if self.kickoff_time > datetime.now():
+        if self.kickoff_time > datetime.now() or self.kickoff_time == datetime.min:
             return f"{self.team_h} v {self.team_a}"
 
         return f"({self.team_h}) {self.team_h_score} - {self.team_a_score} ({self.team_a})"

@@ -241,16 +241,16 @@ class Element(ABC, Generic[element]):
     @classmethod
     @cache
     @overload
-    def get_by_id(cls, id_: int) -> Optional[element]: ...
+    def get_by_id(cls, id_: int) -> Union[element, int]: ...
 
     @classmethod
     @cache
     @overload
-    def get_by_id(cls, id_: str) -> Optional[element]: ...
+    def get_by_id(cls, id_: str) -> Union[element, int]: ...
 
     @classmethod
     @cache
-    def get_by_id(cls, id_: Any) -> Optional[element]:
+    def get_by_id(cls, id_: Any) -> Union[element, int]:
         """Get an element by their unique id.
 
         Parameters
@@ -260,8 +260,8 @@ class Element(ABC, Generic[element]):
 
         Returns
         -------
-        Optional[element]
-            The found element. May return None if no element has been found.
+        Union[element, int]
+            The found element. May return -1 if no element has been found.
 
         Raises
         ------
@@ -275,7 +275,7 @@ class Element(ABC, Generic[element]):
             raise Exception(
                 f"Expected only one element, got {len(element_group)}.")
         elif len(element_group) == 0:
-            return None
+            return -1
         else:
             return element_group[0]
 

@@ -8,11 +8,11 @@ from gui.widgets import FilterBox, SearchTable
 from gui.widgets.complex import ContentWidget, LineGraph
 from gui.widgets.simple import Label, Table
 from gui.windows import Window
-from gui.widgets import TitleWidget, AddHeaders
+from gui.widgets import TitleWidget, AddDefaultHeaders
 import pandas as pd
 
 
-_E = TypeVar("_E")  # need element type restriction
+_E = TypeVar("_E", bound=fpld.element.Element)  # need element type restriction
 
 
 class ElementWidget(ContentWidget, Generic[_E]):
@@ -25,34 +25,37 @@ class ElementWidget(ContentWidget, Generic[_E]):
         super().define_widgets()
 
         self._element = kwargs["element"]
+        self._tab_widget = QTabWidget()
+        self.__info_label = Label.get(self._element.info)
+        self.__info_scrollarea = QScrollArea()
         self._layout = QVBoxLayout()
 
     def setup(self) -> None:
         super().setup()
 
+        self._tab_widget.addTab(self.__info_scrollarea, "Info")
+
     def add_widgets(self) -> None:
         super().add_widgets()
 
+        self.__info_scrollarea.setWidget(self.__info_label)
+        self.__info_scrollarea.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+        self.__info_scrollarea.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarAlwaysOff)
+        self.__info_scrollarea.setWidgetResizable(True)
+
+        self._layout.addWidget(self._tab_widget)
         self.setLayout(self._layout)
 
     @classmethod
     def clicked_button(cls, element: _E) -> QPushButton:
         button = QPushButton()
 
-        foo = Window(cls.add_default_headers(element))
+        foo = Window(AddDefaultHeaders(cls(element)))
         button.clicked.connect(lambda: foo.show())
         button.setText(str(element))
 
         return button
-
-    @classmethod
-    def add_default_headers(cls, element: _E) -> AddHeaders:
-        main = cls(element)
-
-        header = main.get_default_header()
-        footer = main.get_default_footer()
-
-        return AddHeaders(main, header=header, footer=footer)
 
 
 class PlayerWidget(ElementWidget[fpld.Player]):
@@ -84,7 +87,7 @@ class HomeWindowTitle(TitleWidget):
         super().__init__("SORLOTH", left_txt=left_txt, right_txt=right_txt)
 
     def _get_current_gw(self) -> None:
-        curr_gw = fpld.Event.current_gw
+        curr_gw = fpld.Event.get_current_gw()
         if curr_gw is not None:
             msg = curr_gw.id
         else:
@@ -93,7 +96,7 @@ class HomeWindowTitle(TitleWidget):
         return f"Current Gameweek: {msg}"
 
     def _get_next_gw(self) -> None:
-        next_gw = fpld.Event.next_gw
+        next_gw = fpld.Event.get_next_gw()
         if next_gw is not None:
             msg = next_gw.deadline_time
             msg = datetime_to_string(msg)
@@ -118,13 +121,13 @@ class Home(ContentWidget):
 
         self.__main_widget.addTab(self.__get_home(), "Home")
         self.__main_widget.addTab(
-            PlayerSearchTable.add_default_headers(), "Players")
+            AddDefaultHeaders(PlayerSearchTable()), "Players")
         self.__main_widget.addTab(
-            FixtureDifficultyTable.add_default_headers(), "Teams")
+            AddDefaultHeaders(FixtureDifficultyTable()), "Teams")
         self.__main_widget.addTab(
-            FixtureSearchTable.add_default_headers(), "Fixtures")
+            AddDefaultHeaders(FixtureSearchTable()), "Fixtures")
         self.__main_widget.addTab(
-            EventSearchTable.add_default_headers(), "Events")
+            AddDefaultHeaders(EventSearchTable()), "Events")
         self.__main_widget.addTab(LineGraph(), "Test")
 
         self.__layout.addWidget(self.__main_widget)
@@ -135,8 +138,8 @@ class Home(ContentWidget):
         main_scrollarea = QScrollArea()
         layout = QVBoxLayout()
 
-        layout.addWidget(PlayerSearchTable.add_default_headers())
-        layout.addWidget(FixtureSearchTable.add_default_headers())
+        layout.addWidget(AddDefaultHeaders(PlayerSearchTable()))
+        layout.addWidget(AddDefaultHeaders(FixtureSearchTable()))
         main_widget.setLayout(layout)
         main_scrollarea.setWidget(main_widget)
         main_scrollarea.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
@@ -175,7 +178,7 @@ class FilterBoxes:
     def events(cls) -> FilterBox:
         name = "Gameweek"
         events = fpld.Event.get_all()
-        current_gw = fpld.Event.current_gw
+        current_gw = fpld.Event.get_current_gw()
 
         items = []
         for event in events:
