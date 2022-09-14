@@ -1,5 +1,4 @@
 from __future__ import annotations
-from typing import Any, Generic, TypeVar, overload
 from PyQt5.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout, QTableWidget, QLabel, QMainWindow
 )
@@ -11,7 +10,6 @@ import matplotlib.pylab as plt
 from matplotlib.figure import Figure
 import matplotlib
 from .thread import Thread
-# from ..thread import Thread
 import pandas as pd
 from .simple import Title, Label, ComboBox, Table
 
@@ -20,7 +18,7 @@ matplotlib.use("Qt5Agg")
 
 
 class ComplexWidget(QWidget):
-    def __init__(self, *, include_headers: bool = True, **kwargs):
+    def __init__(self, **kwargs):
         super().__init__()
 
         self.run(**kwargs)
@@ -181,12 +179,12 @@ class SearchTable(ContentWidget):
         super().define_widgets()
 
         self.__layout = QVBoxLayout()
-        self.__filter_layout = QHBoxLayout()
+        self._filter_layout = QHBoxLayout()
         self._filters = kwargs["filters"]
         self._sort = kwargs["sort_by"]
         self.__filters_widget = QWidget()
         self._table = Table.get()
-        self._df = pd.DataFrame()
+        self._output_data = pd.DataFrame()
 
     def setup(self) -> None:
         super().setup()
@@ -194,41 +192,35 @@ class SearchTable(ContentWidget):
         for filter in self._filters:
             filter.filter_box.currentIndexChanged.connect(self.update_query)
 
-        self._sort.filter_box.currentIndexChanged.connect(self.update_query)
+        if self._sort is not None:
+            self._sort.filter_box.currentIndexChanged.connect(
+                self.update_query)
 
         self.update_query()
 
     def add_widgets(self) -> None:
         super().add_widgets()
 
-        for filter in self._filters:
-            self.__filter_layout.addWidget(filter)
+        for filter_ in self._filters:
+            self._filter_layout.addWidget(filter_)
 
-        self.__filters_widget.setLayout(self.__filter_layout)
+        self.__filters_widget.setLayout(self._filter_layout)
 
         # self.__layout.addWidget(self._title_lbl)
         self.__layout.addWidget(self.__filters_widget)
         self.__layout.addWidget(self._table)
-        self.__layout.addWidget(self._sort)
+
+        if self._sort is not None:
+            self.__layout.addWidget(self._sort)
 
         self.setLayout(self.__layout)
 
-    def update_query(self) -> None:
-        '''query_thread = Thread(self.get_query)
-        query_thread.signal.finished.connect(self.update_table)
-        self._thread_pool.start(query_thread)'''
-        self.get_query()
-
     @abstractmethod
-    def get_query(self) -> pd.DataFrame:
-        print("table")
-        for filter in self._filters:
-            print(filter.get_current_option())
-        print("")
+    def update_query(self) -> None:
+        return
 
-    def update_table(self, signal) -> None:
-        # print(signal)
-        Table.set_data(self._table, self._df)
+    def update_table(self, df: pd.DataFrame) -> None:
+        Table.set_data(self._table, df)
 
 
 class GraphWidget(ContentWidget):

@@ -6,11 +6,8 @@ from ..constants import URLS
 from .element import Element
 
 
-label = TypeVar("label", bound="Label")
-
-
 @dataclass(frozen=True, order=True, kw_only=True)
-class Label(Element[label]):
+class Label(Element["Label"]):
     """Name for FPL player attribute.
     """
     _DEFAULT_ID = "name"

@@ -1,9 +1,8 @@
 from __future__ import annotations
-from functools import cache
 import math
 from types import NoneType
-from typing import Iterable, TypeVar, Any, Union, Optional, Type
-from ..constants import URLS
+from typing import Any, Union
+from ..constants import URLS, datetime_to_string
 from ..util.percent import percent
 from ..util import API
 from .team import BaseTeam
@@ -11,15 +10,11 @@ from .player import BasePlayer, BasePlayerFull, BasePlayerHistory, BasePlayerHis
 from .fixture import BaseFixture
 from .event import BaseEvent
 from .position import Position
+from .labels import Label
 from dataclasses import Field, dataclass, field
 from ..util.attribute import CategoricalVar
 from .element import ElementGroup
-
-
-team = TypeVar("team", bound="Team")
-player = TypeVar("player", bound="Player")
-event = TypeVar("event", bound="Event")
-fixture = TypeVar("fixture", bound="Fixture")
+import pandas as pd
 
 
 @dataclass(frozen=True, order=True, kw_only=True)
@@ -40,13 +35,15 @@ class Team(BaseTeam["Team"]):
         score = 0
         multiplier = 0.9
 
-        for i, fixtures in enumerate(all_fixtures_by_event.values()):
+        i = 0
+        for fixtures in all_fixtures_by_event.values():
             fixture: Fixture
             for fixture in fixtures:
                 diff = fixture.get_difficulty(self)
 
                 score += diff * multiplier
                 multiplier = math.e ** (-0.4 * i)
+                i += 1
 
         return score
 
@@ -454,3 +451,67 @@ class Fixture(BaseFixture["Fixture"]):
             The key is the event, the value is the fixtures in that gameweek.
         """
         return super().group_fixtures_by_gameweek(fixtures)
+
+
+def get_players(*, team: str = "All", position: str = "All", sort_by: str = "Total Points") -> pd.DataFrame:
+    if team == "All":
+        teams_found = Team.get()
+    else:
+        teams_found = Team.get(name=team)
+
+    if position == "All":
+        positions_found = Position.get()
+    else:
+        positions_found = Position.get(singular_name=position)
+
+    players_found = Player.get(element_type=tuple(
+        positions_found), team=tuple(teams_found))
+
+    label = Label.get(label=sort_by)[0]
+    players_sorted = players_found.sort(label.name)
+
+    df = players_sorted.to_df("element_type", label.name)
+    df["player"] = players_sorted
+    df["team"] = [player.team for player in players_sorted]
+    df = df[["player", "team", "element_type", label.name]]
+
+    return df
+
+
+def get_fixtures(*, event: str = "All", team: str = "All", sort_by: str = "kickoff_time") -> pd.DataFrame:
+    if event == "All":
+        events_found = Event.get()
+    else:
+        event_name = event.split(" - ")[0]
+        events_found = Event.get(name=event_name)
+
+    fixtures_found = Fixture.get(event=tuple(events_found))
+    if team != "All":
+        team_obj = Team.get(name=team)[0]
+        fixtures_found = fixtures_found.filter(
+            method_="or", team_h=team_obj, team_a=team_obj)
+
+    if sort_by == "kickoff_time":
+        reverse_ = False
+    else:
+        reverse_ = True
+
+    # label = fpld.Label.get(label=sort_by_name)[0]
+    fixtures_sorted = fixtures_found.sort(sort_by, reverse=reverse_)
+    df = fixtures_sorted.to_df("score", "event", sort_by)
+
+    if sort_by == "kickoff_time":
+        df["kickoff_time"] = df["kickoff_time"].apply(
+            lambda date_: datetime_to_string(date_))
+
+    return df
+
+
+def get_events() -> pd.DataFrame:
+    df = Event.get_all().to_df("name", "deadline_time",
+                               "most_selected", "most_transferred_in", "most_captained",
+                               "most_vice_captained", "finished")
+    df["deadline_time"] = df["deadline_time"].apply(
+        lambda date_: datetime_to_string(date_))
+
+    return df

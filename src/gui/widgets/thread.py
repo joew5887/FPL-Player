@@ -1,14 +1,12 @@
-from types import NoneType
 from typing import Any, Callable
-from PyQt5.QtCore import pyqtSignal, QObject, pyqtSlot, QRunnable, QThreadPool
+from PyQt5.QtCore import pyqtSignal, QObject, pyqtSlot, QRunnable
 from traceback import format_tb  # Creating error message on loading screen.
-from PyQt5.uic import loadUi
-from abc import abstractmethod
+import pandas as pd
 
 
 class Signals(QObject):
     finished = pyqtSignal(bool)
-    #return_value = pyqtSignal(Any)
+    return_value = pyqtSignal(pd.DataFrame)
     error = pyqtSignal(Exception)
 
 
@@ -24,7 +22,7 @@ class Thread(QRunnable):
             value = self.__task()
         except Exception as err:
             self.signal.error.emit(err)
-        '''else:
-            self.signal.return_value.emit(value)'''
+        else:
+            self.signal.return_value.emit(value)
 
         self.signal.finished.emit(True)

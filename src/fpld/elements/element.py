@@ -1,7 +1,8 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from typing import Any, Iterable, Iterator, SupportsIndex, TypeVar, Generic, Optional, Union, overload, Callable
-from dataclasses import fields, dataclass
+from types import NoneType
+from typing import Any, Iterable, Iterator, SupportsIndex, TypeVar, Generic, Union, overload, Callable
+from dataclasses import fields
 from PyQt5.QtWidgets import QPushButton
 from attr import asdict
 from ..util import all_attributes_present, all_field_names, Percentile
@@ -91,36 +92,6 @@ class Element(ABC, Generic[element]):
             )
 
         return id_
-
-    # No type to prevent circular import
-    def create_button(self, window) -> QPushButton:
-        """Creates a QPushButton that opens a window for that element.
-
-        Parameters
-        ----------
-        window : FPLElemWindow
-            Displays element in gui.
-
-        Returns
-        -------
-        QPushButton
-            Access to `window` from another window.
-        """
-        button = QPushButton()
-        button.setText(str(self))
-        button.clicked.connect(lambda: self.open_gui(window))
-
-        return button
-
-    def open_gui(self, window) -> None:
-        """Opens `window` with `self` passed.
-
-        Parameters
-        ----------
-        window : FPLElemWindow
-            Displays element in gui.
-        """
-        window(self)
 
     @classmethod
     @property
@@ -240,16 +211,16 @@ class Element(ABC, Generic[element]):
     @classmethod
     @cache
     @overload
-    def get_by_id(cls, id_: int) -> Union[element, int]: ...
+    def get_by_id(cls, id_: int) -> Union[element, NoneType]: ...
 
     @classmethod
     @cache
     @overload
-    def get_by_id(cls, id_: str) -> Union[element, int]: ...
+    def get_by_id(cls, id_: str) -> Union[element, NoneType]: ...
 
     @classmethod
     @cache
-    def get_by_id(cls, id_: Any) -> Union[element, int]:
+    def get_by_id(cls, id_: Any) -> Union[element, NoneType]:
         """Get an element by their unique id.
 
         Parameters
@@ -259,8 +230,8 @@ class Element(ABC, Generic[element]):
 
         Returns
         -------
-        Union[element, int]
-            The found element. May return -1 if no element has been found.
+        Union[element, NoneType]
+            The found element. May return None if no element has been found.
 
         Raises
         ------
@@ -274,7 +245,7 @@ class Element(ABC, Generic[element]):
             raise Exception(
                 f"Expected only one element, got {len(element_group)}.")
         elif len(element_group) == 0:
-            return -1
+            return None
         else:
             return element_group[0]
 

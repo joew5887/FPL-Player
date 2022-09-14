@@ -1,7 +1,7 @@
 from types import NoneType
 from .element import Element, ElementGroup
 from datetime import datetime
-from typing import Generic, Iterable, Optional, TypeVar, Union, Any
+from typing import Generic, Optional, TypeVar, Union, Any
 from ..util import API
 from ..constants import URLS, string_to_datetime
 from dataclasses import dataclass, field
@@ -233,8 +233,7 @@ class BaseEvent(Element[baseevent], Generic[baseevent]):
         tuple[ElementGroup[baseevent], ElementGroup[baseevent]]
             The first group is the completed gameweeks, with the rest in group 2.
         """
-        all_events = ElementGroup[baseevent](
-            [event for event in cls.get_all() if event != cls.none])
+        all_events = cls.get_scheduled_events()
 
         return all_events.split(finished=True)
 
@@ -264,3 +263,9 @@ class BaseEvent(Element[baseevent], Generic[baseevent]):
     @property
     def none(cls) -> baseevent:
         return cls.get_by_id(0)
+
+    @classmethod
+    def get_scheduled_events(cls) -> ElementGroup[baseevent]:
+        all_events = cls.get_all()
+
+        return ElementGroup[baseevent]([event for event in all_events if event != cls.none])

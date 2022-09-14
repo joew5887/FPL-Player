@@ -223,8 +223,8 @@ class PointsModel(__Model[PointsData, RandomForestClassifier]):
         all_team_fixtures = player.team.get_all_fixtures()
         fixtures_in_event = all_team_fixtures.filter(event=event.unique_id)
         code = player.code
-
         total = 0
+
         fixture: Fixture
         for fixture in fixtures_in_event:
             diff = fixture.get_difficulty(player.team)
@@ -256,7 +256,7 @@ class FuturePointsModel():
         return self.__model
 
     def is_updated(self) -> bool:
-        return self.__model_gw >= Event.model_gw
+        return self.__model_gw >= Event.get_model_gw()
 
     def update(self) -> FuturePointsModel:
         if self.is_updated():

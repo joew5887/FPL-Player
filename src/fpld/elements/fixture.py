@@ -1,10 +1,9 @@
-from typing import Generic, Iterable, TypeVar, Any, Optional, Union
+from typing import Generic, TypeVar, Any
 from .element import Element, ElementGroup
 from ..util import API
 from ..constants import URLS, string_to_datetime
 from datetime import datetime
 from dataclasses import dataclass, field
-from functools import cache
 
 
 basefixture = TypeVar("basefixture", bound="BaseFixture")

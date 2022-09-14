@@ -54,9 +54,8 @@ class Position(Element[position]):
 
         return all_positions.to_string_list()
 
-    '''@classmethod
-    def gui_get(cls, position_name: str) -> list[position]:
-        if position_name == "All":
-            return cls.get()
+    @classmethod
+    def get_all_dict(cls) -> dict[str, Position]:
+        positions = cls.get_all()
 
-        return cls.get(singular_name=position_name)'''
+        return {position.singular_name_short: position for position in positions}

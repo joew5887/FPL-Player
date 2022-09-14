@@ -117,7 +117,7 @@ class BasePlayer(Element[base_player], Generic[base_player]):
         float
             The higher, the more points for the cost.
         """
-        return self.total_points / self.now_cost
+        return round(self.total_points / self.now_cost, 2)
 
     @property
     def goal_contributions(self) -> int:

@@ -7,7 +7,7 @@ from PyQt5.QtWidgets import QApplication
 
 def main() -> None:
     app = QApplication(sys.argv)
-    home = Window(AddDefaultHeaders(Home()))
+    home = Window(AddDefaultHeaders(Home()), "FPL")
     home.show()
     sys.exit(app.exec_())
 

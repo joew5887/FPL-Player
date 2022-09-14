@@ -10,11 +10,9 @@ class Window(QMainWindow):
     DIST_X = 1600
     DIST_Y = 1200
 
-    def __init__(self, widget: QWidget, dist_x: int = DIST_X, dist_y: int = DIST_Y):
+    def __init__(self, widget: QWidget, title: str, dist_x: int = DIST_X, dist_y: int = DIST_Y):
         super().__init__()
 
-        self.setup(dist_x, dist_y)
-        self.setCentralWidget(widget)
-
-    def setup(self, dist_x: int, dist_y: int) -> None:
         self.resize(dist_x, dist_y)
+        self.setCentralWidget(widget)
+        self.setWindowTitle(title)

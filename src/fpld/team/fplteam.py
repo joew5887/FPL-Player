@@ -86,16 +86,12 @@ class Squad:
         self.__bench = new_bench
 
     @property
-    def full_team(self) -> list[Player]:
-        return self.__full_team
-
-    @full_team.setter
-    def full_team(self, new_full_team: list[Player]) -> None:
-        self.__full_team = new_full_team
-
-    @property
     def formation(self) -> Formation:
         return self.__formation
+
+    @property
+    def cost(self) -> float:
+        return sum([p.now_cost for p in self.starting_team + self.bench])
 
     @classmethod
     def random(cls, player_pool: list[Player], **kwargs) -> Squad:

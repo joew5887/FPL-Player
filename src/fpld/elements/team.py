@@ -1,5 +1,5 @@
 from typing import TypeVar, Generic, Any
-from .element import Element, ElementGroup
+from .element import Element
 from ..util import API
 from ..constants import URLS
 from dataclasses import dataclass, field
