@@ -137,5 +137,5 @@ src/points_model_test.ipynb
 .vscode/
 
 # GUI - Work in Progress
-src/gui
+src/gui/
 src/fplgui.py
