@@ -1,5 +1,5 @@
 from typing import TypeVar, Generic, Any
-from .element import Element, ElementGroup
+from .element import Element
 from ..util import API
 from ..constants import URLS
 from dataclasses import dataclass, field
@@ -12,27 +12,28 @@ base_team = TypeVar("base_team", bound="BaseTeam")
 class BaseTeam(Element[base_team], Generic[base_team]):
     """Element for team in the Premier League, unlinked from other FPL elements.
     """
+    id: int = field()
     code: int = field(repr=False)
-    draw: int = field(hash=False, repr=False)
-    form: None = field(hash=False, repr=False)
-    id: int = field(compare=True)
-    loss: int = field(hash=False, repr=False)
-    name: str = field(hash=False)
-    played: int = field(hash=False, repr=False)
-    points: int = field(hash=False, repr=False)
-    position: int = field(hash=False, repr=False)
-    short_name: str = field(hash=False)
-    strength: int = field(hash=False, repr=False)
-    team_division: None = field(hash=False, repr=False)
-    unavailable: bool = field(hash=False, repr=False)
-    win: int = field(hash=False, repr=False)
-    strength_overall_home: int = field(hash=False, repr=False)
-    strength_overall_away: int = field(hash=False, repr=False)
-    strength_attack_home: int = field(hash=False, repr=False)
-    strength_attack_away: int = field(hash=False, repr=False)
-    strength_defence_home: int = field(hash=False, repr=False)
-    strength_defence_away: int = field(hash=False, repr=False)
-    pulse_id: int = field(repr=False)
+
+    draw: int = field(hash=False, repr=False, compare=False)
+    form: None = field(hash=False, repr=False, compare=False)
+    loss: int = field(hash=False, repr=False, compare=False)
+    name: str = field(hash=False, compare=False)
+    played: int = field(hash=False, repr=False, compare=False)
+    points: int = field(hash=False, repr=False, compare=False)
+    position: int = field(hash=False, repr=False, compare=False)
+    short_name: str = field(hash=False, compare=False)
+    strength: int = field(hash=False, repr=False, compare=False)
+    team_division: None = field(hash=False, repr=False, compare=False)
+    unavailable: bool = field(hash=False, repr=False, compare=False)
+    win: int = field(hash=False, repr=False, compare=False)
+    strength_overall_home: int = field(hash=False, repr=False, compare=False)
+    strength_overall_away: int = field(hash=False, repr=False, compare=False)
+    strength_attack_home: int = field(hash=False, repr=False, compare=False)
+    strength_attack_away: int = field(hash=False, repr=False, compare=False)
+    strength_defence_home: int = field(hash=False, repr=False, compare=False)
+    strength_defence_away: int = field(hash=False, repr=False, compare=False)
+    pulse_id: int = field(repr=False, compare=False)
 
     @classmethod
     @property

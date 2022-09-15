@@ -1,18 +1,19 @@
 import fpld
-from typing import TypeVar, Generic
+from typing import Callable, TypeVar, Generic
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QTabWidget, QWidget, QHBoxLayout, QVBoxLayout, QLabel, QPushButton, QScrollArea
-from fpld.elements.element import ElementGroup
+from PyQt5.QtWidgets import QTabWidget, QWidget, QHBoxLayout, QVBoxLayout, QLabel, QPushButton, QScrollArea, QSpinBox
 from fpld.constants import datetime_to_string
 from gui.widgets import FilterBox, SearchTable
-from gui.widgets.complex import ContentWidget, LineGraph
+from gui.widgets.complex import ContentWidget, LineGraph, RefineSearchWidget
 from gui.widgets.simple import Label, Table
+from gui.widgets.thread import Thread
 from gui.windows import Window
-from gui.widgets import TitleWidget, AddHeaders
+from gui.widgets import TitleWidget, AddDefaultHeaders
 import pandas as pd
+import os
 
 
-_E = TypeVar("_E")  # need element type restriction
+_E = TypeVar("_E", bound=fpld.element.Element)  # need element type restriction
 
 
 class ElementWidget(ContentWidget, Generic[_E]):
@@ -25,34 +26,37 @@ class ElementWidget(ContentWidget, Generic[_E]):
         super().define_widgets()
 
         self._element = kwargs["element"]
+        self._tab_widget = QTabWidget()
+        self.__info_label = Label.get(self._element.info)
+        self.__info_scrollarea = QScrollArea()
         self._layout = QVBoxLayout()
 
     def setup(self) -> None:
         super().setup()
 
+        self._tab_widget.addTab(self.__info_scrollarea, "Info")
+
     def add_widgets(self) -> None:
         super().add_widgets()
 
+        self.__info_scrollarea.setWidget(self.__info_label)
+        self.__info_scrollarea.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+        self.__info_scrollarea.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarAlwaysOff)
+        self.__info_scrollarea.setWidgetResizable(True)
+
+        self._layout.addWidget(self._tab_widget)
         self.setLayout(self._layout)
 
     @classmethod
     def clicked_button(cls, element: _E) -> QPushButton:
         button = QPushButton()
 
-        foo = Window(cls.add_default_headers(element))
+        foo = Window(AddDefaultHeaders(cls(element)), "Element")
         button.clicked.connect(lambda: foo.show())
         button.setText(str(element))
 
         return button
-
-    @classmethod
-    def add_default_headers(cls, element: _E) -> AddHeaders:
-        main = cls(element)
-
-        header = main.get_default_header()
-        footer = main.get_default_footer()
-
-        return AddHeaders(main, header=header, footer=footer)
 
 
 class PlayerWidget(ElementWidget[fpld.Player]):
@@ -84,7 +88,8 @@ class HomeWindowTitle(TitleWidget):
         super().__init__("SORLOTH", left_txt=left_txt, right_txt=right_txt)
 
     def _get_current_gw(self) -> None:
-        curr_gw = fpld.Event.current_gw
+        curr_gw = fpld.Event.get_current_gw()
+
         if curr_gw is not None:
             msg = curr_gw.id
         else:
@@ -93,7 +98,8 @@ class HomeWindowTitle(TitleWidget):
         return f"Current Gameweek: {msg}"
 
     def _get_next_gw(self) -> None:
-        next_gw = fpld.Event.next_gw
+        next_gw = fpld.Event.get_next_gw()
+
         if next_gw is not None:
             msg = next_gw.deadline_time
             msg = datetime_to_string(msg)
@@ -117,15 +123,24 @@ class Home(ContentWidget):
         super().add_widgets()
 
         self.__main_widget.addTab(self.__get_home(), "Home")
+        model = fpld.predict.PointsModel.from_file(
+            "C:/Users/joewi/Documents/Python/FPL-Player/lib/points_model")
+        model.fit_by_all()
+        event = fpld.Event.get_by_id(8)
+        points = {player: [model.get_predicted_points(
+            player, event)] for player in fpld.Player.get_all()}
+
         self.__main_widget.addTab(
-            PlayerSearchTable.add_default_headers(), "Players")
+            AddDefaultHeaders(PointsPredictionTable(model)), "Players")
         self.__main_widget.addTab(
-            FixtureDifficultyTable.add_default_headers(), "Teams")
+            AddDefaultHeaders(FixtureDifficultyTable()), "Teams")
         self.__main_widget.addTab(
-            FixtureSearchTable.add_default_headers(), "Fixtures")
+            AddDefaultHeaders(FixtureSearchTable()), "Fixtures")
         self.__main_widget.addTab(
-            EventSearchTable.add_default_headers(), "Events")
+            AddDefaultHeaders(EventSearchTable()), "Events")
         self.__main_widget.addTab(LineGraph(), "Test")
+        self.__main_widget.addTab(AddDefaultHeaders(SquadWidget(
+            fpld.Squad.optimal_team(points))), "Test2")
 
         self.__layout.addWidget(self.__main_widget)
         self.setLayout(self.__layout)
@@ -135,8 +150,8 @@ class Home(ContentWidget):
         main_scrollarea = QScrollArea()
         layout = QVBoxLayout()
 
-        layout.addWidget(PlayerSearchTable.add_default_headers())
-        layout.addWidget(FixtureSearchTable.add_default_headers())
+        layout.addWidget(PlayerSearchTable())
+        layout.addWidget(FixtureSearchTable())
         main_widget.setLayout(layout)
         main_scrollarea.setWidget(main_widget)
         main_scrollarea.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
@@ -172,10 +187,9 @@ class FilterBoxes:
         return FilterBox(name, items)
 
     @ classmethod
-    def events(cls) -> FilterBox:
+    def events(cls, events: fpld.ElementGroup[fpld.Event], all_option: bool = True) -> FilterBox:
         name = "Gameweek"
-        events = fpld.Event.get_all()
-        current_gw = fpld.Event.current_gw
+        current_gw = fpld.Event.get_current_gw()
 
         items = []
         for event in events:
@@ -184,7 +198,7 @@ class FilterBoxes:
             else:
                 items.append(str(event))
 
-        return FilterBox(name, items)
+        return FilterBox(name, items, all_option=all_option)
 
     @ classmethod
     def __sort(cls, items: list[str]) -> FilterBox:
@@ -210,49 +224,76 @@ class FilterBoxes:
 
         return cls.__sort(items)
 
+    @ classmethod
+    def points_prediction_sort(cls) -> FilterBox:
+        items = ["Total", "Multiplier", "Model"]
+
+        return cls.__sort(items)
+
+
+class EventRangeWidget(RefineSearchWidget):
+    def __init__(self):
+        super().__init__(filter_name="Event Range")
+
+    def define_widgets(self, **kwargs) -> None:
+        super().define_widgets(**kwargs)
+
+        self.__layout = QVBoxLayout()
+        self.__filter_box = QSpinBox()
+
+    def setup(self) -> None:
+        super().setup()
+
+        self.__filter_box.setValue(1)
+        self.__filter_box.setMinimum(1)
+        self.__filter_box.setMaximum(38)
+
+    def add_widgets(self) -> None:
+        super().add_widgets()
+
+        self.__layout.addWidget(self._filter_lbl)
+        self.__layout.addWidget(self.__filter_box)
+        self.setLayout(self.__layout)
+
+    def filter_changed(self, action: Callable) -> None:
+        self.__filter_box.valueChanged.connect(action)
+
+    def _access_value(self) -> str:
+        return self.__filter_box.value()
+
+    def get_current_option(self) -> int:
+        return super().get_current_option()
+
+    def get_event_range(self, event: fpld.Event) -> None:
+        event_range = fpld.Event.range(event, 0, self.get_current_option(), 1)
+        new_max = 39 - event.unique_id if event.unique_id >= 30 else 10
+        self.__filter_box.setMaximum(new_max)
+
+        return event_range
+
 
 class PlayerSearchTable(SearchTable):
-    __teams: ElementGroup[fpld.Team]
-    __positions: ElementGroup[fpld.Position]
-    __players: ElementGroup[fpld.Player]
-
     def __init__(self):
         super().__init__([FilterBoxes.teams(),
                           FilterBoxes.position()], FilterBoxes.player_sort())
 
-    def get_query(self) -> None:
+    def update_query(self) -> None:
         team = self._filters[0].get_current_option()
         position = self._filters[1].get_current_option()
+        sort_by = self._sort.get_current_option()
 
-        if team == "All":
-            self.__teams = fpld.Team.get()
-        else:
-            self.__teams = fpld.Team.get(name=team)
+        query_thread = Thread(lambda: fpld.get_players(
+            team=team, position=position, sort_by=sort_by))
+        query_thread.signal.return_value.connect(self.update_table)
+        self._thread_pool.start(query_thread)
 
-        if position == "All":
-            self.__positions = fpld.Position.get()
-        else:
-            self.__positions = fpld.Position.get(singular_name=position)
-
-        self.__players = fpld.Player.get(element_type=tuple(
-            self.__positions), team=tuple(self.__teams))
-
-        sort_by_name = self._sort.get_current_option()
-        label = fpld.Label.get(label=sort_by_name)[0]
-        self.__players = self.__players.sort(label.name)
-
-        df = self.__create_df(label)
-        Table.set_data(self._table, df)
-
-    def __create_df(self, label: fpld.Label) -> pd.DataFrame:
-        df = self.__players.to_df("element_type", label.name)
+    def update_table(self, df: pd.DataFrame) -> None:
         df["team"] = [TeamWidget.clicked_button(
-            player.team) for player in self.__players]
+            team) for team in df["team"]]
         df["player"] = [PlayerWidget.clicked_button(
-            player) for player in self.__players]
-        df = df[["player", "team", "element_type", label.name]]
+            player) for player in df["player"]]
 
-        return df
+        Table.set_data(self._table, df)
 
     def get_default_header(self) -> QLabel:
         label = Label.get("Players Search")
@@ -264,48 +305,19 @@ class PlayerSearchTable(SearchTable):
 
 
 class FixtureSearchTable(SearchTable):
-    __events: ElementGroup[fpld.Event]
-    __fixtures: ElementGroup[fpld.Fixture]
-
     def __init__(self):
-        super().__init__([FilterBoxes.events(),
+        super().__init__([FilterBoxes.events(fpld.Event.get_all()),
                           FilterBoxes.teams()], FilterBoxes.fixture_sort())
 
-    def get_query(self) -> None:
-        self.__events = fpld.Event.get_all()
-
+    def update_query(self) -> None:
         event = self._filters[0].get_current_option()
         team = self._filters[1].get_current_option()
+        sort_by = self._sort.get_current_option()
 
-        if event == "All":
-            self.__events = fpld.Event.get()
-        else:
-            event_name = event.split(" - ")[0]
-            self.__events = fpld.Event.get(name=event_name)
-
-        self.__fixtures = fpld.Fixture.get(event=tuple(self.__events))
-
-        if team != "All":
-            team_obj = fpld.Team.get(name=team)[0]
-            self.__fixtures = self.__fixtures.filter(
-                method_="or", team_h=team_obj, team_a=team_obj)
-
-        sort_by_name = self._sort.get_current_option()
-
-        if sort_by_name == "kickoff_time":
-            reverse_ = False
-        else:
-            reverse_ = True
-        # label = fpld.Label.get(label=sort_by_name)[0]
-        self.__fixtures = self.__fixtures.sort(sort_by_name, reverse=reverse_)
-
-        df = self.__fixtures.to_df("score", "event", sort_by_name)
-
-        if sort_by_name == "kickoff_time":
-            df["kickoff_time"] = df["kickoff_time"].apply(
-                lambda date_: datetime_to_string(date_))
-
-        Table.set_data(self._table, df)
+        query_thread = Thread(lambda: fpld.get_fixtures(
+            event=event, team=team, sort_by=sort_by))
+        query_thread.signal.return_value.connect(self.update_table)
+        self._thread_pool.start(query_thread)
 
     def get_default_header(self) -> QLabel:
         label = Label.get("Fixture Search")
@@ -320,7 +332,7 @@ class FixtureDifficultyTable(SearchTable):
     def __init__(self):
         super().__init__([], FilterBoxes.fixture_difficulty_sort())
 
-    def get_query(self) -> None:
+    def update_query(self) -> None:
         sort_by_name = self._sort.get_current_option()
 
         all_teams = fpld.Team.get_all()
@@ -353,7 +365,8 @@ class FixtureDifficultyTable(SearchTable):
 
         df = pd.DataFrame(content)
         df.columns = ["Team"] + events.to_string_list()
-        Table.set_data(self._table, df)
+
+        self.update_table(df)
 
     def get_default_header(self) -> QLabel:
         label = Label.get("Fixture Difficulty Search")
@@ -364,7 +377,7 @@ class FixtureDifficultyTable(SearchTable):
         return QWidget()
 
     @ staticmethod
-    def get_widget(fixtures: ElementGroup[fpld.Fixture], team: fpld.Team) -> QPushButton:
+    def get_widget(fixtures: fpld.ElementGroup[fpld.Fixture], team: fpld.Team) -> QPushButton:
         DIFF_TO_COLOUR = {1: "#8ace7e", 2: "#309143",
                           3: "#f0bd27", 4: "#ff684c", 5: "#b60a1c"}
 
@@ -396,15 +409,12 @@ class FixtureDifficultyTable(SearchTable):
 
 class EventSearchTable(SearchTable):
     def __init__(self):
-        super().__init__([], FilterBoxes.fixture_difficulty_sort())
+        super().__init__([EventRangeWidget()], None)
 
-    def get_query(self) -> None:
-        df = fpld.Event.get_all().to_df("name", "deadline_time",
-                                        "most_selected", "most_transferred_in", "most_captained",
-                                        "most_vice_captained", "finished")
-        df["deadline_time"] = df["deadline_time"].apply(
-            lambda date_: datetime_to_string(date_))
-        Table.set_data(self._table, df)
+    def update_query(self) -> None:
+        query_thread = Thread(lambda: fpld.get_events())
+        query_thread.signal.return_value.connect(self.update_table)
+        self._thread_pool.start(query_thread)
 
     def get_default_header(self) -> QLabel:
         label = Label.get("Event Search")
@@ -413,3 +423,167 @@ class EventSearchTable(SearchTable):
 
     def get_default_footer(self) -> QWidget:
         return QWidget()
+
+
+class PointsPredictionTable(SearchTable):
+    def __init__(self, points_model: fpld.predict.PointsModel):
+        self._model = points_model
+
+        super().__init__([FilterBoxes.events(fpld.Event.past_and_future()[1], all_option=False), FilterBoxes.teams(), FilterBoxes.position(), EventRangeWidget()],
+                         FilterBoxes.points_prediction_sort())
+
+    def update_query(self) -> None:
+        event_range_widget = self._filters[3]
+        event_range_widget: EventRangeWidget
+
+        event = self._filters[0].get_current_option()
+        event_name = event.split(" - ")[0]
+        event_found = fpld.Event.get(name=event_name)[0]
+
+        team = self._filters[1].get_current_option()
+        position = self._filters[2].get_current_option()
+        event_range = event_range_widget.get_event_range(event_found)
+        sort_by = self._sort.get_current_option()
+
+        query_thread = Thread(lambda: self.get_query(
+            event, event_range, team, position, sort_by))
+        query_thread.signal.return_value.connect(self.update_table)
+        self._thread_pool.start(query_thread)
+
+    def get_query(self, event: str, event_range: fpld.ElementGroup[fpld.Event], team: str, position: str, sort_by: str) -> pd.DataFrame:
+        df = fpld.get_players(team=team, position=position)
+        # Remove default sort column from `get_players()`
+        df = df.drop(columns=["total_points"])
+
+        # copied code from fplelems.py get_fixtures()
+        event_name = event.split(" - ")[0]
+        event_found = fpld.Event.get(name=event_name)[0]
+
+        if sort_by == "Total":
+            df["Total"] = df["player"].apply(lambda p: sum(
+                self._model.get_final_value(p, e) for e in event_range))
+            df = df.sort_values(by=["Total"], ascending=False)
+        if sort_by == "Model":
+            df["Model"] = df["player"].apply(lambda p: sum(
+                self._model.get_predicted_points(p, e) for e in event_range))
+            df = df.sort_values(by=["Model"], ascending=False)
+        if sort_by == "Multiplier":
+            '''df["Multiplier"] = df["player"].apply(lambda p: sum(
+                self._model.get_multiplier_value(p, e) for e in event_range))'''
+            df["Multiplier"] = [self._model.get_multiplier_value(
+                player, event_found) for player in df["player"]]
+            df = df.sort_values(by=["Multiplier"], ascending=False)
+
+        return df
+
+    def update_table(self, df: pd.DataFrame) -> None:
+        df["team"] = [TeamWidget.clicked_button(
+            team) for team in df["team"]]
+        df["player"] = [PlayerWidget.clicked_button(
+            player) for player in df["player"]]
+
+        Table.set_data(self._table, df)
+
+    def get_default_header(self) -> QLabel:
+        label = Label.get("Points Prediction")
+
+        return label
+
+    def get_default_footer(self) -> QWidget:
+        label = Label.get()
+
+        return label
+
+
+class SquadWidget(ContentWidget):
+    def __init__(self, squad: fpld.Squad):
+        self.squad = squad
+        super().__init__()
+
+    @ property
+    def squad(self) -> fpld.Squad:
+        return self.__squad
+
+    @ squad.setter
+    def squad(self, new_squad: fpld.Squad) -> None:
+        self.__squad = new_squad
+
+    def define_widgets(self, **kwargs) -> None:
+        super().define_widgets()
+
+        self.__layout = QVBoxLayout()
+        self.__gk_layout = QHBoxLayout()
+        self.__def_layout = QHBoxLayout()
+        self.__mid_layout = QHBoxLayout()
+        self.__fwd_layout = QHBoxLayout()
+
+        positions = fpld.Position.get_all()
+        self.__full_team_layouts = {
+            position: layout for position, layout in zip(positions, [self.__gk_layout, self.__def_layout, self.__mid_layout, self.__fwd_layout])}
+        self.__bench_layout = QHBoxLayout()
+
+    def setup(self) -> None:
+        self.__add_players()
+        self.__layout.setSpacing(0)
+        super().setup()
+
+    def add_widgets(self) -> None:
+        super().add_widgets()
+
+        gk_widget = QWidget()
+        def_widget = QWidget()
+        mid_widget = QWidget()
+        fwd_widget = QWidget()
+
+        LIGHT_GREEN = "rgb(96, 168, 48)"
+        DARK_GREEN = "rgb(9, 148, 65)"
+        gk_widget.setStyleSheet(f"background-color:{DARK_GREEN};")
+        mid_widget.setStyleSheet(f"background-color:{DARK_GREEN};")
+        def_widget.setStyleSheet(f"background-color:{LIGHT_GREEN};")
+        fwd_widget.setStyleSheet(f"background-color:{LIGHT_GREEN};")
+
+        bench_widget = QWidget()
+
+        gk_widget.setLayout(self.__gk_layout)
+        def_widget.setLayout(self.__def_layout)
+        mid_widget.setLayout(self.__mid_layout)
+        fwd_widget.setLayout(self.__fwd_layout)
+        bench_widget.setLayout(self.__bench_layout)
+
+        self.__layout.addWidget(gk_widget)
+        self.__layout.addWidget(def_widget)
+        self.__layout.addWidget(mid_widget)
+        self.__layout.addWidget(fwd_widget)
+        self.__layout.addWidget(bench_widget)
+
+        self.setLayout(self.__layout)
+
+    def get_default_header(self) -> QWidget:
+        widget = QWidget()
+        layout = QHBoxLayout()
+        cost_lbl = Label.get(f"Cost: {self.squad.cost}")
+
+        layout.addWidget(cost_lbl)
+        widget.setLayout(layout)
+
+        return widget
+
+    def get_default_footer(self) -> QWidget:
+        return QWidget()
+
+    def __add_players(self) -> None:
+        for player in self.squad.starting_team:
+            widget = PlayerWidget.clicked_button(player)
+
+            if player == self.squad.captain:
+                widget.setText(widget.text() + " (C)")
+
+            if player == self.squad.vice_captain:
+                widget.setText(widget.text() + " (VC)")
+
+            self.__full_team_layouts[player.element_type].addWidget(widget)
+
+        for player in self.squad.bench:
+            widget = PlayerWidget.clicked_button(player)
+
+            self.__bench_layout.addWidget(widget)

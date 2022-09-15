@@ -1,6 +1,7 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from typing import Any, Iterable, Iterator, SupportsIndex, TypeVar, Generic, Optional, Union, overload, Callable
+from types import NoneType
+from typing import Any, Iterable, Iterator, SupportsIndex, TypeVar, Generic, Union, overload, Callable
 from dataclasses import fields
 from PyQt5.QtWidgets import QPushButton
 from attr import asdict
@@ -92,36 +93,6 @@ class Element(ABC, Generic[element]):
 
         return id_
 
-    # No type to prevent circular import
-    def create_button(self, window) -> QPushButton:
-        """Creates a QPushButton that opens a window for that element.
-
-        Parameters
-        ----------
-        window : FPLElemWindow
-            Displays element in gui.
-
-        Returns
-        -------
-        QPushButton
-            Access to `window` from another window.
-        """
-        button = QPushButton()
-        button.setText(str(self))
-        button.clicked.connect(lambda: self.open_gui(window))
-
-        return button
-
-    def open_gui(self, window) -> None:
-        """Opens `window` with `self` passed.
-
-        Parameters
-        ----------
-        window : FPLElemWindow
-            Displays element in gui.
-        """
-        window(self)
-
     @classmethod
     @property
     @abstractmethod
@@ -212,10 +183,9 @@ class Element(ABC, Generic[element]):
             All elements.
         """
         elements = cls.get_api()
+        elements_sorted = sorted([cls.from_dict(elem) for elem in elements])
 
-        objs = ElementGroup([cls.from_dict(elem) for elem in elements])
-
-        return objs.sort(cls._DEFAULT_ID, reverse=False)
+        return ElementGroup[element](elements_sorted)
 
     @classmethod
     def get_api(cls, refresh_api: bool = False) -> list[dict[str, Any]]:
@@ -241,16 +211,16 @@ class Element(ABC, Generic[element]):
     @classmethod
     @cache
     @overload
-    def get_by_id(cls, id_: int) -> Optional[element]: ...
+    def get_by_id(cls, id_: int) -> Union[element, NoneType]: ...
 
     @classmethod
     @cache
     @overload
-    def get_by_id(cls, id_: str) -> Optional[element]: ...
+    def get_by_id(cls, id_: str) -> Union[element, NoneType]: ...
 
     @classmethod
     @cache
-    def get_by_id(cls, id_: Any) -> Optional[element]:
+    def get_by_id(cls, id_: Any) -> Union[element, NoneType]:
         """Get an element by their unique id.
 
         Parameters
@@ -260,7 +230,7 @@ class Element(ABC, Generic[element]):
 
         Returns
         -------
-        Optional[element]
+        Union[element, NoneType]
             The found element. May return None if no element has been found.
 
         Raises
@@ -372,11 +342,7 @@ class ElementGroup(ABC, Generic[element]):
             conditions_by_attr = []
 
             for attr, values in attr_to_value.items():
-                elem_attr = getattr(elem, attr, None)
-
-                if elem_attr is None:
-                    raise AttributeError(
-                        f"'{attr}' not in attributes.\nUse: {asdict(elem).keys()}")
+                elem_attr = getattr(elem, attr)
 
                 if isinstance(elem_attr, Element):
                     elem_attr = elem_attr.unique_id

@@ -1,4 +1,4 @@
-from typing import Generic, TypeVar, Any, Optional
+from typing import Generic, TypeVar, Any
 from .element import Element, ElementGroup
 from ..util import API
 from ..constants import URLS, string_to_datetime
@@ -15,23 +15,24 @@ class BaseFixture(Element[basefixture], Generic[basefixture]):
     """
     _ATTR_FOR_STR = None
 
-    code: int = field(repr=False)
-    event: int = field(hash=False)
-    finished: bool = field(hash=False, repr=False)
-    finished_provisional: bool = field(hash=False, repr=False)
-    id: int = field(compare=True)
     kickoff_time: datetime = field(hash=False, repr=False)
-    minutes: int = field(hash=False, repr=False)
-    provisional_start_time: bool = field(hash=False, repr=False)
-    started: bool = field(hash=False, repr=False)
-    team_a: int = field(hash=False)
-    team_a_score: int = field(hash=False, repr=False)
-    team_h: int = field(hash=False)
-    team_h_score: int = field(hash=False, repr=False)
-    stats: list[dict] = field(hash=False, repr=False)
-    team_h_difficulty: int = field(hash=False, repr=False)
-    team_a_difficulty: int = field(hash=False, repr=False)
-    pulse_id: int = field(repr=False)
+    id: int = field()
+
+    event: int = field(hash=False, compare=False)
+    code: int = field(repr=False, compare=False)
+    finished: bool = field(hash=False, repr=False, compare=False)
+    finished_provisional: bool = field(hash=False, repr=False, compare=False)
+    minutes: int = field(hash=False, repr=False, compare=False)
+    provisional_start_time: bool = field(hash=False, repr=False, compare=False)
+    started: bool = field(hash=False, repr=False, compare=False)
+    team_a: int = field(hash=False, compare=False)
+    team_a_score: int = field(hash=False, repr=False, compare=False)
+    team_h: int = field(hash=False, compare=False)
+    team_h_score: int = field(hash=False, repr=False, compare=False)
+    stats: list[dict] = field(hash=False, repr=False, compare=False)
+    team_h_difficulty: int = field(hash=False, repr=False, compare=False)
+    team_a_difficulty: int = field(hash=False, repr=False, compare=False)
+    pulse_id: int = field(repr=False, compare=False)
 
     def __str__(self) -> str:
         return f"{self.team_h} v {self.team_a}"
@@ -40,8 +41,12 @@ class BaseFixture(Element[basefixture], Generic[basefixture]):
     def __pre_init__(cls, new_instance: dict[str, Any]) -> dict[str, Any]:
         new_instance = super().__pre_init__(new_instance)
 
-        new_instance["kickoff_time"] = \
-            string_to_datetime(new_instance["kickoff_time"])
+        if new_instance["kickoff_time"] is None:
+            new_instance["kickoff_time"] = datetime.max
+            new_instance["event"] = 0
+        else:
+            new_instance["kickoff_time"] = \
+                string_to_datetime(new_instance["kickoff_time"])
 
         return new_instance
 
@@ -55,7 +60,7 @@ class BaseFixture(Element[basefixture], Generic[basefixture]):
             In form: 'Spurs (1) v Wolves (0)'.
         """
         # If game has not happened yet.
-        if self.kickoff_time > datetime.now():
+        if self.kickoff_time > datetime.now() or self.kickoff_time == datetime.min:
             return f"{self.team_h} v {self.team_a}"
 
         return f"({self.team_h}) {self.team_h_score} - {self.team_a_score} ({self.team_a})"
@@ -90,9 +95,9 @@ class BaseFixture(Element[basefixture], Generic[basefixture]):
         ElementGroup[basefixture]
             All fixtures and results a team has.
         """
-        foo = cls.get(method_="or", team_h=team_id, team_a=team_id)
+        team_games = cls.get(method_="or", team_h=team_id, team_a=team_id)
 
-        return foo.sort("kickoff_time", reverse=False)
+        return team_games
 
     @classmethod
     def get_latest_api(cls) -> list[dict[str, Any]]:

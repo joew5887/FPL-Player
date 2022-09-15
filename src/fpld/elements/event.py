@@ -5,6 +5,7 @@ from typing import Generic, Optional, TypeVar, Union, Any
 from ..util import API
 from ..constants import URLS, string_to_datetime
 from dataclasses import dataclass, field
+from functools import cache
 
 
 baseevent = TypeVar("baseevent", bound="BaseEvent")
@@ -14,35 +15,41 @@ baseevent = TypeVar("baseevent", bound="BaseEvent")
 class BaseEvent(Element[baseevent], Generic[baseevent]):
     """Event / Gameweek element, unlinked from other FPL elements.
     """
-    id: int = field(compare=True)
-    name: str = field(hash=False)
+
     deadline_time: datetime = field(hash=False)
-    average_entry_score: int = field(hash=False, repr=False)
-    finished: bool = field(hash=False, repr=False)
-    data_checked: bool = field(hash=False, repr=False)
-    highest_scoring_entry: int = field(hash=False, repr=False)
-    is_previous: bool = field(hash=False, repr=False)
-    is_current: bool = field(hash=False, repr=False)
-    is_next: bool = field(hash=False, repr=False)
-    cup_leagues_created: bool = field(hash=False, repr=False)
-    h2h_ko_matches_created: bool = field(hash=False, repr=False)
+    id: int = field()
+
+    name: str = field(hash=False, compare=False)
+    average_entry_score: int = field(hash=False, repr=False, compare=False)
+    finished: bool = field(hash=False, repr=False, compare=False)
+    data_checked: bool = field(hash=False, repr=False, compare=False)
+    highest_scoring_entry: int = field(hash=False, repr=False, compare=False)
+    is_previous: bool = field(hash=False, repr=False, compare=False)
+    is_current: bool = field(hash=False, repr=False, compare=False)
+    is_next: bool = field(hash=False, repr=False, compare=False)
+    cup_leagues_created: bool = field(hash=False, repr=False, compare=False)
+    h2h_ko_matches_created: bool = field(hash=False, repr=False, compare=False)
     chip_plays: list[dict[str, Union[str, int]]
-                     ] = field(hash=False, repr=False)
-    most_selected: int = field(hash=False, repr=False)
-    most_transferred_in: int = field(hash=False, repr=False)
-    top_element: int = field(hash=False, repr=False)
-    top_element_info: dict[str, int] = field(hash=False, repr=False)
-    transfers_made: int = field(hash=False, repr=False)
-    most_captained: int = field(hash=False, repr=False)
-    most_vice_captained: int = field(hash=False, repr=False)
+                     ] = field(hash=False, repr=False, compare=False)
+    most_selected: int = field(hash=False, repr=False, compare=False)
+    most_transferred_in: int = field(hash=False, repr=False, compare=False)
+    top_element: int = field(hash=False, repr=False, compare=False)
+    top_element_info: dict[str, int] = field(
+        hash=False, repr=False, compare=False)
+    transfers_made: int = field(hash=False, repr=False, compare=False)
+    most_captained: int = field(hash=False, repr=False, compare=False)
+    most_vice_captained: int = field(hash=False, repr=False, compare=False)
 
     @classmethod
     def __pre_init__(cls, new_instance: dict[str, Any]) -> dict[str, Any]:
         new_instance = super().__pre_init__(new_instance)
 
         # converts string datetime to datetime object
-        new_instance["deadline_time"] = \
-            string_to_datetime(new_instance["deadline_time"])
+        if new_instance["deadline_time"] is not None:
+            new_instance["deadline_time"] = \
+                string_to_datetime(new_instance["deadline_time"])
+        else:
+            new_instance["deadline_time"] = datetime.max
 
         return new_instance
 
@@ -158,8 +165,7 @@ class BaseEvent(Element[baseevent], Generic[baseevent]):
         return URLS["BOOTSTRAP-STATIC"]
 
     @classmethod
-    @property
-    def previous_gw(cls) -> baseevent:
+    def get_previous_gw(cls) -> baseevent:
         """Returns the previous gameweek at the time of program execution.
 
         Returns
@@ -170,8 +176,7 @@ class BaseEvent(Element[baseevent], Generic[baseevent]):
         return cls.__find_until_true("is_previous")
 
     @classmethod
-    @property
-    def current_gw(cls) -> baseevent:
+    def get_current_gw(cls) -> baseevent:
         """Returns current gameweek at the time of program execution.
 
         Returns
@@ -182,8 +187,7 @@ class BaseEvent(Element[baseevent], Generic[baseevent]):
         return cls.__find_until_true("is_current")
 
     @classmethod
-    @property
-    def next_gw(cls) -> baseevent:
+    def get_next_gw(cls) -> baseevent:
         """Returns the next gameweek at the time of program execution.
 
         Returns
@@ -194,10 +198,9 @@ class BaseEvent(Element[baseevent], Generic[baseevent]):
         return cls.__find_until_true("is_next")
 
     @classmethod
-    @property
-    def model_gw(cls) -> baseevent:
-        current_gw = cls.current_gw
-        next_gw = cls.next_gw
+    def get_model_gw(cls) -> baseevent:
+        current_gw = cls.get_current_gw()
+        next_gw = cls.get_next_gw()
 
         if current_gw.finished:
             return next_gw
@@ -208,7 +211,18 @@ class BaseEvent(Element[baseevent], Generic[baseevent]):
     def get_latest_api(cls) -> list[dict[str, Any]]:
         api = super().get_latest_api()
         api = API(cls.api_link)
-        return api.data["events"]
+        data: list
+        data = api.data["events"]
+
+        data.append({
+            "id": 0, "name": "No Gameweek", "deadline_time": None, "average_entry_score": 0,
+            "finished": False, "data_checked": False, "highest_scoring_entry": 0, "is_previous": False,
+            "is_current": False, "is_next": False, "cup_leagues_created": False, "h2h_ko_matches_created": False,
+            "chip_plays": [], "most_selected": -1, "most_transferred_in": -1, "top_element": -1,
+            "top_element_info": dict(), "transfers_made": 0, "most_captained": -1, "most_vice_captained": -1
+        })
+
+        return data
 
     @classmethod
     def past_and_future(cls) -> tuple[ElementGroup[baseevent], ElementGroup[baseevent]]:
@@ -219,7 +233,7 @@ class BaseEvent(Element[baseevent], Generic[baseevent]):
         tuple[ElementGroup[baseevent], ElementGroup[baseevent]]
             The first group is the completed gameweeks, with the rest in group 2.
         """
-        all_events = cls.get_all()
+        all_events = cls.get_scheduled_events()
 
         return all_events.split(finished=True)
 
@@ -244,3 +258,14 @@ class BaseEvent(Element[baseevent], Generic[baseevent]):
                 return event
 
         return None
+
+    @classmethod
+    @property
+    def none(cls) -> baseevent:
+        return cls.get_by_id(0)
+
+    @classmethod
+    def get_scheduled_events(cls) -> ElementGroup[baseevent]:
+        all_events = cls.get_all()
+
+        return ElementGroup[baseevent]([event for event in all_events if event != cls.none])
