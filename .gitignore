@@ -139,3 +139,4 @@ src/points_model_test.ipynb
 # GUI - Work in Progress
 src/gui/
 src/fplgui.py
+src/main.py
