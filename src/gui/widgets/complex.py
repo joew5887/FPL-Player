@@ -1,4 +1,5 @@
 from __future__ import annotations
+from typing import Callable
 from PyQt5.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout, QTableWidget, QLabel, QMainWindow
 )
@@ -130,16 +131,14 @@ class TitleWidget(ComplexWidget):
         self._title_lbl.setAlignment(Qt.AlignHCenter)
 
 
-class FilterBox(ComplexWidget):
-    def __init__(self, filter_name: str, filters: list[str], *, all_option: bool = True):
-        super().__init__(filter_name=filter_name, filters=filters, all_option=all_option)
+class RefineSearchWidget(ComplexWidget):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
     def define_widgets(self, **kwargs) -> None:
         super().define_widgets(**kwargs)
 
-        self.__layout = QVBoxLayout()
         self._filter_lbl = Label.get(kwargs["filter_name"])
-        self.filter_box = ComboBox.get(kwargs["filters"], kwargs["all_option"])
 
     def setup(self) -> None:
         super().setup()
@@ -149,30 +148,54 @@ class FilterBox(ComplexWidget):
 
         self._filter_lbl.setMaximumHeight(50)
 
-        self.filter_box.currentIndexChanged.connect(
-            self.reset_current_option
-        )
-        self.reset_current_option()
+        self.filter_changed(self.set_current_option)
+        self.set_current_option()
+
+    @abstractmethod
+    def filter_changed(self, action: Callable) -> None:
+        return
+
+    @abstractmethod
+    def _access_value(self) -> str:
+        return
+
+    def get_current_option(self) -> str:
+        return self.__current_option
+
+    def set_current_option(self) -> None:
+        self.__current_option = self._access_value()
+
+
+class FilterBox(RefineSearchWidget):
+    def __init__(self, filter_name: str, filters: list[str], *, all_option: bool = True):
+        super().__init__(filter_name=filter_name, filters=filters, all_option=all_option)
+
+    def define_widgets(self, **kwargs) -> None:
+        super().define_widgets(**kwargs)
+
+        self.__layout = QVBoxLayout()
+        self._filter_box = ComboBox.get(
+            kwargs["filters"], kwargs["all_option"])
 
     def add_widgets(self) -> None:
         super().add_widgets()
 
         self.__layout.addWidget(self._filter_lbl)
-        self.__layout.addWidget(self.filter_box)
+        self.__layout.addWidget(self._filter_box)
         self.setLayout(self.__layout)
 
-    def get_current_option(self) -> str:
-        return self.__current_option
+    def filter_changed(self, action: Callable) -> None:
+        self._filter_box.currentIndexChanged.connect(action)
 
-    def reset_current_option(self) -> None:
-        self.__current_option = self.filter_box.currentText()
+    def _access_value(self) -> None:
+        return self._filter_box.currentText()
 
 
 class SearchTable(ContentWidget):
     _filters: list[FilterBox]
     _sort: FilterBox
 
-    def __init__(self, filters: list[FilterBox], sort_by: FilterBox):
+    def __init__(self, filters: list[RefineSearchWidget], sort_by: RefineSearchWidget):
         super().__init__(filters=filters, sort_by=sort_by)
 
     def define_widgets(self, **kwargs) -> None:
@@ -190,11 +213,10 @@ class SearchTable(ContentWidget):
         super().setup()
 
         for filter in self._filters:
-            filter.filter_box.currentIndexChanged.connect(self.update_query)
+            filter.filter_changed(self.update_query)
 
         if self._sort is not None:
-            self._sort.filter_box.currentIndexChanged.connect(
-                self.update_query)
+            self._sort.filter_changed(self.update_query)
 
         self.update_query()
 

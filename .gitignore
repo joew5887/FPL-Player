@@ -135,3 +135,7 @@ src/points_model_test.ipynb
 
 # VS code workspace
 .vscode/
+
+# GUI - WIP
+src/gui
+src/fplgui.py

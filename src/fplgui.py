@@ -1,15 +1,16 @@
 import fpld
-from typing import TypeVar, Generic
+from typing import Callable, TypeVar, Generic
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QTabWidget, QWidget, QHBoxLayout, QVBoxLayout, QLabel, QPushButton, QScrollArea, QSpinBox
 from fpld.constants import datetime_to_string
 from gui.widgets import FilterBox, SearchTable
-from gui.widgets.complex import ContentWidget, LineGraph
+from gui.widgets.complex import ContentWidget, LineGraph, RefineSearchWidget
 from gui.widgets.simple import Label, Table
 from gui.widgets.thread import Thread
 from gui.windows import Window
 from gui.widgets import TitleWidget, AddDefaultHeaders
 import pandas as pd
+import os
 
 
 _E = TypeVar("_E", bound=fpld.element.Element)  # need element type restriction
@@ -230,6 +231,47 @@ class FilterBoxes:
         return cls.__sort(items)
 
 
+class EventRangeWidget(RefineSearchWidget):
+    def __init__(self):
+        super().__init__(filter_name="Event Range")
+
+    def define_widgets(self, **kwargs) -> None:
+        super().define_widgets(**kwargs)
+
+        self.__layout = QVBoxLayout()
+        self.__filter_box = QSpinBox()
+
+    def setup(self) -> None:
+        super().setup()
+
+        self.__filter_box.setValue(1)
+        self.__filter_box.setMinimum(1)
+        self.__filter_box.setMaximum(38)
+
+    def add_widgets(self) -> None:
+        super().add_widgets()
+
+        self.__layout.addWidget(self._filter_lbl)
+        self.__layout.addWidget(self.__filter_box)
+        self.setLayout(self.__layout)
+
+    def filter_changed(self, action: Callable) -> None:
+        self.__filter_box.valueChanged.connect(action)
+
+    def _access_value(self) -> str:
+        return self.__filter_box.value()
+
+    def get_current_option(self) -> int:
+        return super().get_current_option()
+
+    def get_event_range(self, event: fpld.Event) -> None:
+        event_range = fpld.Event.range(event, 0, self.get_current_option(), 1)
+        new_max = 39 - event.unique_id if event.unique_id >= 30 else 10
+        self.__filter_box.setMaximum(new_max)
+
+        return event_range
+
+
 class PlayerSearchTable(SearchTable):
     def __init__(self):
         super().__init__([FilterBoxes.teams(),
@@ -367,7 +409,7 @@ class FixtureDifficultyTable(SearchTable):
 
 class EventSearchTable(SearchTable):
     def __init__(self):
-        super().__init__([], None)
+        super().__init__([EventRangeWidget()], None)
 
     def update_query(self) -> None:
         query_thread = Thread(lambda: fpld.get_events())
@@ -387,21 +429,28 @@ class PointsPredictionTable(SearchTable):
     def __init__(self, points_model: fpld.predict.PointsModel):
         self._model = points_model
 
-        super().__init__([FilterBoxes.events(fpld.Event.past_and_future()[1], all_option=False), FilterBoxes.teams(), FilterBoxes.position()],
+        super().__init__([FilterBoxes.events(fpld.Event.past_and_future()[1], all_option=False), FilterBoxes.teams(), FilterBoxes.position(), EventRangeWidget()],
                          FilterBoxes.points_prediction_sort())
 
     def update_query(self) -> None:
+        event_range_widget = self._filters[3]
+        event_range_widget: EventRangeWidget
+
         event = self._filters[0].get_current_option()
+        event_name = event.split(" - ")[0]
+        event_found = fpld.Event.get(name=event_name)[0]
+
         team = self._filters[1].get_current_option()
         position = self._filters[2].get_current_option()
+        event_range = event_range_widget.get_event_range(event_found)
         sort_by = self._sort.get_current_option()
 
         query_thread = Thread(lambda: self.get_query(
-            event, team, position, sort_by))
+            event, event_range, team, position, sort_by))
         query_thread.signal.return_value.connect(self.update_table)
         self._thread_pool.start(query_thread)
 
-    def get_query(self, event: str, team: str, position: str, sort_by: str) -> pd.DataFrame:
+    def get_query(self, event: str, event_range: fpld.ElementGroup[fpld.Event], team: str, position: str, sort_by: str) -> pd.DataFrame:
         df = fpld.get_players(team=team, position=position)
         # Remove default sort column from `get_players()`
         df = df.drop(columns=["total_points"])
@@ -411,14 +460,16 @@ class PointsPredictionTable(SearchTable):
         event_found = fpld.Event.get(name=event_name)[0]
 
         if sort_by == "Total":
-            df["Total"] = [self._model.get_final_value(
-                player, event_found) for player in df["player"]]
+            df["Total"] = df["player"].apply(lambda p: sum(
+                self._model.get_final_value(p, e) for e in event_range))
             df = df.sort_values(by=["Total"], ascending=False)
         if sort_by == "Model":
-            df["Model"] = [self._model.get_predicted_points(
-                player, event_found) for player in df["player"]]
+            df["Model"] = df["player"].apply(lambda p: sum(
+                self._model.get_predicted_points(p, e) for e in event_range))
             df = df.sort_values(by=["Model"], ascending=False)
         if sort_by == "Multiplier":
+            '''df["Multiplier"] = df["player"].apply(lambda p: sum(
+                self._model.get_multiplier_value(p, e) for e in event_range))'''
             df["Multiplier"] = [self._model.get_multiplier_value(
                 player, event_found) for player in df["player"]]
             df = df.sort_values(by=["Multiplier"], ascending=False)
@@ -439,7 +490,9 @@ class PointsPredictionTable(SearchTable):
         return label
 
     def get_default_footer(self) -> QWidget:
-        return QWidget()
+        label = Label.get()
+
+        return label
 
 
 class SquadWidget(ContentWidget):
@@ -471,6 +524,7 @@ class SquadWidget(ContentWidget):
 
     def setup(self) -> None:
         self.__add_players()
+        self.__layout.setSpacing(0)
         super().setup()
 
     def add_widgets(self) -> None:
@@ -480,6 +534,14 @@ class SquadWidget(ContentWidget):
         def_widget = QWidget()
         mid_widget = QWidget()
         fwd_widget = QWidget()
+
+        LIGHT_GREEN = "rgb(96, 168, 48)"
+        DARK_GREEN = "rgb(9, 148, 65)"
+        gk_widget.setStyleSheet(f"background-color:{DARK_GREEN};")
+        mid_widget.setStyleSheet(f"background-color:{DARK_GREEN};")
+        def_widget.setStyleSheet(f"background-color:{LIGHT_GREEN};")
+        fwd_widget.setStyleSheet(f"background-color:{LIGHT_GREEN};")
+
         bench_widget = QWidget()
 
         gk_widget.setLayout(self.__gk_layout)
