@@ -1,5 +1,5 @@
 from typing import Generic, TypeVar, Any
-from .element import Element, ElementGroup
+from .element import _Element, ElementGroup
 from ..util import API
 from ..constants import URLS, string_to_datetime
 from datetime import datetime
@@ -10,7 +10,7 @@ basefixture = TypeVar("basefixture", bound="BaseFixture")
 
 
 @dataclass(frozen=True, order=True, kw_only=True)
-class BaseFixture(Element[basefixture], Generic[basefixture]):
+class BaseFixture(_Element[basefixture], Generic[basefixture]):
     """Fixture / result element, unlinked from other FPL elements.
     """
     _ATTR_FOR_STR = None

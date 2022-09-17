@@ -1,6 +1,6 @@
 from datetime import datetime
 
-__STR_TO_DATETIME = "%Y-%m-%dT%H:%M:%SZ"
+__STR_TO_DATETIME = "%Y-%m-%dT%H:%M:%SZ"  # Format of dates in FPL API
 API_URL_STEM = "https://fantasy.premierleague.com/api/"
 URLS = {
     "API": API_URL_STEM,

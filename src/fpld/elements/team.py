@@ -1,5 +1,5 @@
 from typing import TypeVar, Generic, Any
-from .element import Element
+from .element import _Element
 from ..util import API
 from ..constants import URLS
 from dataclasses import dataclass, field
@@ -9,7 +9,7 @@ base_team = TypeVar("base_team", bound="BaseTeam")
 
 
 @dataclass(frozen=True, order=True, kw_only=True)
-class BaseTeam(Element[base_team], Generic[base_team]):
+class BaseTeam(_Element[base_team], Generic[base_team]):
     """Element for team in the Premier League, unlinked from other FPL elements.
     """
     id: int = field()

@@ -2,7 +2,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from types import NoneType
 from .elements import Player, Team, Event, Fixture
-from .elements.element import Element, ElementGroup
+from .elements.element import _Element, ElementGroup
 import pandas as pd
 from typing import Any, TypeVar, Generic, Union
 from sklearn.linear_model import LinearRegression
@@ -14,7 +14,7 @@ import numpy as np
 import pickle
 
 
-elem = TypeVar("elem", bound=Element)
+elem = TypeVar("elem", bound=_Element)
 model_type = TypeVar("model_type")
 data_type = TypeVar("data_type", bound="AttributeModelData")
 
