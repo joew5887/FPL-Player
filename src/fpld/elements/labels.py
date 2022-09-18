@@ -3,11 +3,11 @@ from dataclasses import dataclass
 from typing import Any, TypeVar
 from ..util import API
 from ..constants import URLS
-from .element import Element
+from .element import _Element
 
 
 @dataclass(frozen=True, order=True, kw_only=True)
-class Label(Element["Label"]):
+class Label(_Element["Label"]):
     """Name for FPL player attribute.
     """
     _DEFAULT_ID = "name"

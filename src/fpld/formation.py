@@ -1,58 +1,130 @@
 from __future__ import annotations
-from fpld import Player, Position
+from .elements import Player, Position, ElementGroup
+from .elements.element import id_uniqueness_check
 
 
 class Formation:
-    def __init__(self, **position_to_players: dict[Position, list[Player]]):
-        self.__position_to_players = position_to_players
+    """Display a team's formation.
 
-    def as_numbers(self, ignore_gk: bool = True) -> str:
-        all_positions = Position.get()
-        gk = Position.get_by_id(1)
-        output_str = ""
+    Validated upon __init__.
+    """
 
-        position: Position
+    def __init__(self, players: ElementGroup[Player]):
+        Formation.is_valid_team(players)
+
+        all_positions = Position.get_all()
+
+        self.__player_to_position: dict[Position, list[Player]] = dict()
+
         for position in all_positions:
-            if ignore_gk and position == gk:
-                continue
+            players_in_position = players.filter(
+                element_type=position.unique_id)
+            self.__player_to_position[position] = players_in_position.to_list()
 
-            output_str += f"{len(self.players_in_position(position.singular_name_short))}-"
+    def __str__(self) -> str:
+        """Display formation as numbers.
 
-        return output_str[:-1]
+        Returns
+        -------
+        str
+            E.g. '4-4-2'.
+        """
+        position_to_num = self.as_numbers()
 
-    def as_players(self, ignore_gk: bool = False) -> str:
-        all_positions = Position.get()
-        gk = Position.get_by_id(1)
+        return "-".join(map(str, position_to_num.values()))
 
-        names = []
-        for pos in all_positions:
-            if ((ignore_gk) and (pos == gk)):
-                continue
+    def as_numbers(self, ignore_gkp: bool = True) -> dict[Position, int]:
+        """Display number of players in each position.
 
-            names.append(
-                " ".join([f"'{player.web_name}'" for player in self.players_in_position(pos.singular_name_short)]))
+        E.g. `{'DEF': 3, 'MID': 4, 'FWD': 3}` or `{'GKP': 1, 'DEF': 4, 'MID': 3, 'FWD': 3}`
 
-        length = max([len(row) for row in names])
+        Parameters
+        ----------
+        ignore_gkp : bool, optional
+            Ignore goalkeeper (4-4-2 becomes 1-4-4-2) in the start of the formation, by default True.
+
+        Returns
+        -------
+        dict[Position, int]
+            Number of players in each position.
+        """
+        return {pos: len(pos_players) for pos, pos_players in self.as_players(ignore_gkp=ignore_gkp).items()}
+
+    def as_players(self, ignore_gkp: bool = False) -> dict[Position, list[Player]]:
+        """Get all players by formation.
+
+        Parameters
+        ----------
+        ignore_gkp : bool, optional
+            Ignore returning the goalkeeper in the dictionary, by default False.
+
+        Returns
+        -------
+        dict[Position, list[Player]]
+            Position by the players in that position.
+        """
+        if ignore_gkp:
+            gk = Position.get_by_name("GKP")
+            return {pos: players for pos, players in self.__player_to_position.items() if pos != gk}
+
+        return self.__player_to_position
+
+    def as_text(self) -> str:
+        """Outputs player names in the formation.
+
+        Returns
+        -------
+        str
+            Player names in formation.
+
+        Example
+        -------
+        For a 5-4-1 formation,
+        ```
+                                'Iversen'
+        'CanÃ³s' 'Johnson' 'Colwill' 'Dunk' 'Varane'
+                       'Sancho' 'Martinelli'
+               'Bamford' 'Haaland' 'Firmino'
+        ```
+        """
+        players_to_position = self.as_players()
+
+        player_names = []
+        for players in players_to_position.values():
+            player_names.append(
+                " ".join([f"'{player}'" for player in players]))
+
+        # All other lines are centred by longest line
+        length = max(len(row) for row in player_names)
 
         output_str = ""
-
-        for row in names:
+        row: str
+        for row in player_names:
             output_str += row.center(length) + "\n"
 
-        output_str = output_str[:-1]
+        output_str = output_str[:-1]  # Remove last '\n'
 
         return output_str
 
-    def players_in_position(self, position: Position) -> list[Player]:
-        return self.__position_to_players.get(position)
+    @staticmethod
+    def is_valid_team(players: ElementGroup[Player]):
+        """Determines if the team passed into `Formation.__init__` is valid.
 
-    @classmethod
-    def from_list(cls, players: list[Player]) -> Formation:
-        all_positions = Position.get()
-        position_count = {pos.singular_name_short: [] for pos in all_positions}
+        Make sure there is only one goalkeeper and 11 players.
 
-        for player in players:
-            position_count[player.element_type.singular_name_short].append(
-                player)
+        Parameters
+        ----------
+        players : ElementGroup[Player]
+            An element group of size 11.
 
-        return cls(**position_count)
+        Raises
+        ------
+        Exception
+            If there are not 11 players in `players`.
+        """
+        gk = Position.get_by_name("GKP")
+        gks = players.filter(element_type=gk.unique_id)
+        id_uniqueness_check(gks)
+
+        if len(players) != 11:
+            raise Exception("Invalid number of players.")

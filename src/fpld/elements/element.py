@@ -3,7 +3,6 @@ from abc import ABC, abstractmethod
 from types import NoneType
 from typing import Any, Iterable, Iterator, SupportsIndex, TypeVar, Generic, Union, overload, Callable
 from dataclasses import fields
-from PyQt5.QtWidgets import QPushButton
 from attr import asdict
 from ..util import all_attributes_present, all_field_names, Percentile
 from functools import cache
@@ -11,10 +10,10 @@ from random import choice, sample
 import pandas as pd
 
 
-element = TypeVar("element", bound="Element")  # generic type of `Element`
+element = TypeVar("element", bound="_Element")  # generic type of `Element`
 
 
-class Element(ABC, Generic[element]):
+class _Element(ABC, Generic[element]):
     """Template class for an FPL element.
 
     E.g. Players, Teams, Fixtures
@@ -241,10 +240,9 @@ class Element(ABC, Generic[element]):
         filter_ = {cls.unique_id_col: id_}
         element_group = cls.get(**filter_)
 
-        if len(element_group) > 1:
-            raise Exception(
-                f"Expected only one element, got {len(element_group)}.")
-        elif len(element_group) == 0:
+        try:
+            id_uniqueness_check(element_group)
+        except IDMatchesZeroElements:
             return None
         else:
             return element_group[0]
@@ -344,7 +342,7 @@ class ElementGroup(ABC, Generic[element]):
             for attr, values in attr_to_value.items():
                 elem_attr = getattr(elem, attr)
 
-                if isinstance(elem_attr, Element):
+                if isinstance(elem_attr, _Element):
                     elem_attr = elem_attr.unique_id
 
                 for value in values:
@@ -572,6 +570,47 @@ class ElementGroup(ABC, Generic[element]):
         return output
 
 
+class InvalidQueryResult(Exception):
+    pass
+
+
+class IDNotUnique(InvalidQueryResult):
+    pass
+
+
+class IDMatchesZeroElements(InvalidQueryResult):
+    pass
+
+
+def id_uniqueness_check(query_result_from_id: ElementGroup[Any]) -> None:
+    """Checks if result from ID search produces a valid result.
+
+    Parameters
+    ----------
+    query_result_from_id : ElementGroup[Any]
+        Result from searching for an item by its ID, usually using `cls.get_by_id()`.
+
+    Raises
+    ------
+    IDNotUnique
+        If the query result has more than 1 element.
+    IDMatchesZeroElements
+        If the query result has 0 elements.
+    InvalidQueryResult
+        The query result does not have a length of 1.
+    """
+    if len(query_result_from_id) == 1:
+        return
+
+    if len(query_result_from_id) > 1:
+        raise IDNotUnique(
+            f"Expected only one element, got {len(query_result_from_id)}.")
+    elif len(query_result_from_id) == 0:
+        raise IDMatchesZeroElements(f"ID matches 0 elements.")
+    else:
+        raise InvalidQueryResult("Length is less than 0.")
+
+
 def _method_choice(method_: str) -> Callable:
     """Checks if method choice passed from `get` is acceptable.
 
@@ -632,7 +671,7 @@ def _format_attr_to_value(attr_to_value: dict[str, Union[Any, tuple[Any]]]) -> d
         temp = []
 
         for value in values:
-            if isinstance(value, Element):
+            if isinstance(value, _Element):
                 temp.append(value.unique_id)
             else:
                 temp.append(value)

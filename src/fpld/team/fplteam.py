@@ -1,13 +1,17 @@
 from __future__ import annotations
-from fpld.util.external import API
-from fpld.constants import URLS
-from fpld.elements import Player, Position, Team
-from fpld.formation import Formation
+from typing import Iterable
+from ..elements import Player, Position, Team, ElementGroup
+from ..formation import Formation
 from random import randrange
 from .validation import LPSquad, FPLTeamVD, player_in_team
 
 
 class Squad:
+    """A FPL team builder.
+
+    Simulates choosing captains and benches.
+    """
+
     def __init__(
             self, starting_team: list[Player], bench: list[Player],
             captain: Player, vice_captain: Player):
@@ -19,7 +23,25 @@ class Squad:
         # self._check_constraints()
 
     def __str__(self) -> str:
-        temp = self.formation.as_players()
+        """Shows player names and where they are in the team, position and starting.
+
+        Returns
+        -------
+        str
+            First section is the XI, the next is the bench.
+
+        Example
+        -------
+        ```
+                                'Iversen'
+        'CanÃ³s' 'Johnson' 'Colwill' 'Dunk' 'Varane'
+                        'Sancho' 'Martinelli'
+                   'Bamford' 'Haaland' 'Firmino'
+        --------------------------------------------------
+        'Dubravka' 'Kulusevski' 'GÃ¼ndogan' 'Son'
+        ```
+        """
+        temp = self.formation.as_text()
         each_pos = temp.split("\n")
         bench_str = " ".join([f"'{player.web_name}'" for player in self.bench])
 
@@ -75,7 +97,8 @@ class Squad:
             raise Exception("Vice captain not in new team.")"""
 
         self.__starting_team = new_starting_team
-        self.__formation = Formation.from_list(self.__starting_team)
+        self.__formation = Formation(
+            ElementGroup[Player](self.__starting_team))
 
     @property
     def bench(self) -> list[Player]:
@@ -94,7 +117,7 @@ class Squad:
         return sum([p.now_cost for p in self.starting_team + self.bench])
 
     @classmethod
-    def random(cls, player_pool: list[Player], **kwargs) -> Squad:
+    def random(cls, player_pool: Iterable[Player], **kwargs) -> Squad:
         player_pool_to_value = {
             p: [randrange(1, 10)] for p in player_pool}
 

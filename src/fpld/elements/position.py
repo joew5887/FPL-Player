@@ -3,14 +3,11 @@ from dataclasses import dataclass, field
 from typing import TypeVar, Any
 from ..util import API
 from ..constants import URLS
-from .element import Element
-
-
-position = TypeVar("position", bound="Position")
+from .element import _Element, IDMatchesZeroElements, id_uniqueness_check
 
 
 @dataclass(frozen=True, order=True, kw_only=True)
-class Position(Element[position]):
+class Position(_Element["Position"]):
     """Position for FPL player. E.g. 'Midfielder'.
 
     Replaces `player.element_type`.
@@ -42,17 +39,16 @@ class Position(Element[position]):
         return api.data["element_types"]
 
     @classmethod
-    def get_all_names(cls) -> list[str]:
-        """Gets every position and returns their name.
+    def get_by_name(cls, singular_name_short: str) -> Position:
+        position = cls.get(singular_name_short=singular_name_short)
 
-        Returns
-        -------
-        list[str]
-            E.g. ['Goalkeeper', 'Defender', 'Midfielder', 'Forward']
-        """
-        all_positions = cls.get()
-
-        return all_positions.to_string_list()
+        try:
+            id_uniqueness_check(position)
+        except IDMatchesZeroElements:
+            raise IDMatchesZeroElements(
+                f"'{singular_name_short}' is not a Position")
+        else:
+            return position[0]
 
     @classmethod
     def get_all_dict(cls) -> dict[str, Position]:

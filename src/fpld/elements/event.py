@@ -1,5 +1,5 @@
 from types import NoneType
-from .element import Element, ElementGroup
+from .element import _Element, ElementGroup
 from datetime import datetime
 from typing import Generic, Optional, TypeVar, Union, Any
 from ..util import API
@@ -12,7 +12,7 @@ baseevent = TypeVar("baseevent", bound="BaseEvent")
 
 
 @dataclass(frozen=True, order=True, kw_only=True)
-class BaseEvent(Element[baseevent], Generic[baseevent]):
+class BaseEvent(_Element[baseevent], Generic[baseevent]):
     """Event / Gameweek element, unlinked from other FPL elements.
     """
 

@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 from dataclasses import Field, dataclass, field, fields
 from datetime import datetime
 from ..util.attribute import CategoricalVar, ContinuousVar
-from .element import Element, ElementGroup
+from .element import _Element, ElementGroup
 from typing import Optional, TypeVar, Generic, Any, get_type_hints, Iterable
 from ..util import API
 from ..constants import URLS
@@ -18,7 +18,7 @@ player_history_past = TypeVar(
 
 
 @dataclass(frozen=True, order=True, kw_only=True)
-class BasePlayer(Element[base_player], Generic[base_player]):
+class BasePlayer(_Element[base_player], Generic[base_player]):
     """Player element, unlinked from other FPL elements.
     """
     _ATTR_FOR_STR = "web_name"
