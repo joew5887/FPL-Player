@@ -1,0 +1,5 @@
+pandas==1.4.2
+sklearn==0.0
+numpy==1.22.3
+requests==2.27.1
+PuLP==2.6.0
