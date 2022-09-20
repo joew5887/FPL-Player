@@ -128,15 +128,10 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-# Test file
-src/test.py
-src/points_graph_test.ipynb
-src/points_model_test.ipynb
+# Custom Test files
+tests/test.py
+tests/points_graph_test.ipynb
+tests/points_model_test.ipynb
 
 # VS code workspace
 .vscode/
-
-# GUI - Work in Progress
-src/gui/
-src/fplgui.py
-src/main.py

@@ -11,15 +11,21 @@ class FPLTeam:
 
     @property
     def squad_size(self) -> int:
-        return self.__game_settings["squad_squadsize"]
+        squad_size: int = int(self.__game_settings["squad_squadsize"])
+
+        return squad_size
 
     @property
     def starting_size(self) -> int:
-        return self.__game_settings["squad_squadplay"]
+        starting_size: int = int(self.__game_settings["squad_squadplay"])
+
+        return starting_size
 
     @property
     def squad_team_limit(self) -> int:
-        return self.__game_settings["squad_team_limit"]
+        team_limit: int = int(self.__game_settings["squad_team_limit"])
+
+        return team_limit
 
 
 class FPLTeamVD(FPLTeam):
@@ -244,6 +250,8 @@ class LPSquad:
 
     @required_players.setter
     def required_players(self, required_players: list[Player]) -> None:
+        self.__required_players: list[Player]
+
         if required_players is None:
             self.__required_players = []
         else:

@@ -10,7 +10,7 @@ from random import choice, sample
 import pandas as pd
 
 
-element = TypeVar("element", bound="_Element")  # generic type of `Element`
+element = TypeVar("element", bound="_Element[Any]")  # generic type of `Element`
 
 
 class _Element(ABC, Generic[element]):
@@ -50,7 +50,7 @@ class _Element(ABC, Generic[element]):
         str
             Text name of element.
         """
-        return getattr(self, type(self)._ATTR_FOR_STR, None)
+        return str(getattr(self, type(self)._ATTR_FOR_STR, None))
 
     @property
     def info(self) -> str:
@@ -80,9 +80,9 @@ class _Element(ABC, Generic[element]):
             If the ID cannot be found from the `unique_id_col`.
         """
         id_col = type(self).unique_id_col
-        id_ = getattr(self, id_col, None)
+        id_: int = getattr(self, id_col, -1)
 
-        if id_ is None:
+        if id_ == -1:
             raise AttributeError(
                 (
                     f"'{id_col}' not in object. "
@@ -105,7 +105,7 @@ class _Element(ABC, Generic[element]):
         str
             API URL.
         """
-        return
+        return ""
 
     @ classmethod
     @ property
@@ -152,7 +152,7 @@ class _Element(ABC, Generic[element]):
 
     @classmethod
     @cache
-    def get(cls, *, method_: str = "all", **attr_to_value: dict[str, Union[Any, Iterable[Any]]]) -> ElementGroup[element]:
+    def get(cls, *, method_: str = "all", **attr_to_value: Union[Any, Iterable[Any]]) -> ElementGroup[element]:
         """Gets a group of elements based on filters and conditions passed.
 
         Conditions passed by `attr_to_value`. E.g. `web_name="Spurs"`
@@ -207,19 +207,17 @@ class _Element(ABC, Generic[element]):
 
         return cls._api
 
-    @classmethod
-    @cache
     @overload
+    @classmethod
     def get_by_id(cls, id_: int) -> Union[element, NoneType]: ...
 
-    @classmethod
-    @cache
     @overload
+    @classmethod
     def get_by_id(cls, id_: str) -> Union[element, NoneType]: ...
 
     @classmethod
     @cache
-    def get_by_id(cls, id_: Any) -> Union[element, NoneType]:
+    def get_by_id(cls, id_: Any) -> Union[element, None]:
         """Get an element by their unique id.
 
         Parameters
@@ -259,7 +257,7 @@ class _Element(ABC, Generic[element]):
         list[dict[str, Any]]
             Latest data for the class.
         """
-        return
+        return []
 
 
 class ElementGroup(ABC, Generic[element]):
@@ -267,7 +265,7 @@ class ElementGroup(ABC, Generic[element]):
     """
 
     def __init__(self, objects: Iterable[element]):
-        #objects_no_duplicates = set(objects)
+        # Need to find a method of removing duplicates whilst preserving order.
         self.__objects = list(objects)
 
     @overload
@@ -312,7 +310,7 @@ class ElementGroup(ABC, Generic[element]):
         """
         return f"{self.__class__.__name__} of {len(self)} elements."
 
-    def filter(self, *, method_: bool = "all", **attr_to_value: dict[str, Union[Any, Iterable[Any]]]) -> ElementGroup[element]:
+    def filter(self, *, method_: str = "all", **attr_to_value: Union[Any, Iterable[Any]]) -> ElementGroup[element]:
         """Filters an ElementGroup into a group that satisfies all the conditions passed.
 
         Parameters
@@ -436,7 +434,7 @@ class ElementGroup(ABC, Generic[element]):
 
         return {attr: ElementGroup[element](elems) for attr, elems in groups.items()}
 
-    def is_compatible(self, other: ElementGroup) -> bool:
+    def is_compatible(self, other: ElementGroup[Any]) -> bool:
         """Checks if two ElementGroups store the same element.
 
         Parameters
@@ -482,7 +480,7 @@ class ElementGroup(ABC, Generic[element]):
 
         return ElementGroup(elements_sorted)
 
-    def split(self, *, method_: bool = "all", **attr_to_value: dict[str, Union[Any, Iterable[Any]]]) -> tuple[ElementGroup[element], ElementGroup[element]]:
+    def split(self, *, method_: str = "all", **attr_to_value: Union[Any, Iterable[Any]]) -> tuple[ElementGroup[element], ElementGroup[element]]:
         """Splits an ElementGroup into two sub-groups, where one group satisfies the filters, the other does not.
 
         Parameters
@@ -502,7 +500,7 @@ class ElementGroup(ABC, Generic[element]):
 
         return filtered_elems, not_filtered_elems
 
-    def to_df(self, *attributes: tuple[str]) -> pd.DataFrame:
+    def to_df(self, *attributes: str) -> pd.DataFrame:
         """Gets a list of like elements and puts them into a dataframe.
 
         With the chosen attributes as columns.
@@ -606,7 +604,7 @@ def id_uniqueness_check(query_result_from_id: ElementGroup[Any]) -> None:
         raise IDNotUnique(
             f"Expected only one element, got {len(query_result_from_id)}.")
     elif len(query_result_from_id) == 0:
-        raise IDMatchesZeroElements(f"ID matches 0 elements.")
+        raise IDMatchesZeroElements("ID matches 0 elements.")
     else:
         raise InvalidQueryResult("Length is less than 0.")
 
@@ -665,7 +663,7 @@ def _format_attr_to_value(attr_to_value: dict[str, Union[Any, tuple[Any]]]) -> d
         else:
             attr_to_value[attr] = [values]
 
-    no_elem_attr_to_value = dict()
+    no_elem_attr_to_value: dict[str, tuple[Any]] = dict()
 
     for attr, values in attr_to_value.items():
         temp = []

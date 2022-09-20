@@ -13,7 +13,7 @@ URLS = {
 def date_to_string(date_: datetime) -> str:
     """Converts the date from a datetime object to a string.
 
-    E.g. '10-02-2000' becomes 'Thu 10 February 2000' 
+    E.g. '10-02-2000' becomes 'Thu 10 February 2000'
 
     Parameters
     ----------

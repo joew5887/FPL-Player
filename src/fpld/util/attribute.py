@@ -1,6 +1,5 @@
 from dataclasses import fields
 from typing import Any, Generic, Iterator, TypeVar, Union
-from datetime import datetime
 
 
 t = TypeVar("t")
@@ -9,6 +8,11 @@ _KT = TypeVar("_KT")
 
 
 class Percentile(Generic[_KT]):
+    __name_to_value: dict[_KT, Union[int, float]]
+    __name_to_percentile: dict[_KT, int]
+    __name_to_rank: dict[_KT, int]
+    __rank_to_name: dict[int, _KT]
+
     def __init__(self, name_to_value: dict[_KT, Union[float, int]]):
         self.__set_name_to_value(name_to_value)
 
@@ -31,7 +35,7 @@ class Percentile(Generic[_KT]):
     def max_rank(self) -> int:
         return len(self) - 1
 
-    def __set_name_to_value(self, new_name_to_value: dict[Any, Union[int, float]]) -> None:
+    def __set_name_to_value(self, new_name_to_value: dict[_KT, Union[int, float]]) -> None:
         self.__name_to_value = new_name_to_value
         self.__values = list(self.__name_to_value.values())
         self.__update_ranks()
@@ -81,13 +85,13 @@ class Percentile(Generic[_KT]):
 
         return round(percentile)
 
-    def x_axis_data(self) -> list:
+    def x_axis_data(self) -> list[Union[int, float]]:
         ub = int(max(self.__values) + 1)
         lb = int(min(self.__values) - 1)
 
         return list(range(lb, ub))
 
-    def y_axis_data(self) -> list:
+    def y_axis_data(self) -> list[int]:
         x = self.x_axis_data()
         y = [0] * len(x)
 
@@ -98,7 +102,7 @@ class Percentile(Generic[_KT]):
 
         return y
 
-    def graph_axes(self) -> tuple:
+    def graph_axes(self) -> tuple[list[Union[int, float]], list[int]]:
         x = self.x_axis_data()
         y = self.y_axis_data()
 

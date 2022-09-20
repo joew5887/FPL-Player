@@ -44,6 +44,7 @@ class BaseTeam(_Element[base_team], Generic[base_team]):
     def get_latest_api(cls) -> list[dict[str, Any]]:
         api = super().get_latest_api()
         api = API(cls.api_link)
+
         return api.data["teams"]
 
     @classmethod

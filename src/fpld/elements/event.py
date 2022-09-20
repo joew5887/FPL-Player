@@ -5,7 +5,6 @@ from typing import Generic, Optional, TypeVar, Union, Any
 from ..util import API
 from ..constants import URLS, string_to_datetime
 from dataclasses import dataclass, field
-from functools import cache
 
 
 baseevent = TypeVar("baseevent", bound="BaseEvent")

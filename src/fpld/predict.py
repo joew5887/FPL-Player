@@ -4,10 +4,10 @@ from types import NoneType
 from .elements import Player, Team, Event, Fixture
 from .elements.element import _Element, ElementGroup
 import pandas as pd
-from typing import Any, TypeVar, Generic, Union
-from sklearn.linear_model import LinearRegression
-from sklearn.preprocessing import MinMaxScaler
-from sklearn.pipeline import Pipeline
+from typing import TypeVar, Generic, Union
+# from sklearn.linear_model import LinearRegression
+# from sklearn.preprocessing import MinMaxScaler
+# from sklearn.pipeline import Pipeline
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 import numpy as np
@@ -43,11 +43,11 @@ class AttributeModelData(ABC):
     def target(self) -> pd.DataFrame:
         return self.data[type(self).target_column]
 
-    def save(self, path: str) -> bool:
+    def save(self, path: str) -> None:
         with open(path, "wb") as f:
             pickle.dump(self, f)
 
-    def train_test_split_by_random(self, **kwargs) -> tuple:
+    def train_test_split_by_random(self, **kwargs) -> tuple[pd.DataFrame]:
         x_train, x_test, y_train, y_test = train_test_split(
             self.features, self.target, **kwargs)
 
@@ -55,10 +55,10 @@ class AttributeModelData(ABC):
 
     def train_test_split_by_event(self, testing_events: ElementGroup[Event]) -> tuple:
         # range validation needed
-        event_ids = [event.unique_id for event in testing_events]
+        event_ids = {"events": [event.unique_id for event in testing_events]}
 
-        testing = self.__data.query("event in @event_ids")
-        training = self.__data.query("event not in @event_ids")
+        testing = self.__data.query("event in @events", local_dict=event_ids)
+        training = self.__data.query("event not in @events", local_dict=event_ids)
 
         return training[type(self).feature_columns], testing[type(self).feature_columns], \
             training[type(self).target_column], testing[type(
@@ -72,13 +72,13 @@ class AttributeModelData(ABC):
     @property
     @abstractmethod
     def feature_columns(cls) -> list[str]:
-        return
+        return []
 
     @classmethod
     @property
     @abstractmethod
     def target_column(cls) -> str:
-        return
+        return ""
 
     @classmethod
     def from_file(cls, path: str) -> AttributeModelData:
@@ -129,6 +129,7 @@ class __Model(ABC, Generic[data_type, model_type]):
     __x_test: np.ndarray
     __y_train: np.ndarray
     __y_test: np.ndarray
+    __training_method: str
 
     def __init__(self, data: data_type, model: model_type):
         self.__model = model
@@ -138,6 +139,7 @@ class __Model(ABC, Generic[data_type, model_type]):
         self.__x_test = None
         self.__y_train = None
         self.__y_test = None
+        self.__training_method = None
 
     def __str__(self) -> str:
         return f"""
@@ -169,7 +171,7 @@ class __Model(ABC, Generic[data_type, model_type]):
     def get_multiplier_value(self, player: Player, event: Event) -> float:
         return 0.0
 
-    def save(self, path: str) -> bool:
+    def save(self, path: str) -> None:
         self.__data.save(path)
 
     def fit_by_random(self, **kwargs) -> None:

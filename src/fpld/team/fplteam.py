@@ -1,9 +1,9 @@
 from __future__ import annotations
 from typing import Iterable
-from ..elements import Player, Position, Team, ElementGroup
+from ..elements import Player, ElementGroup
 from ..formation import Formation
 from random import randrange
-from .validation import LPSquad, FPLTeamVD, player_in_team
+from .validation import LPSquad, FPLTeamVD
 
 
 class Squad:
@@ -113,8 +113,8 @@ class Squad:
         return self.__formation
 
     @property
-    def cost(self) -> float:
-        return sum([p.now_cost for p in self.starting_team + self.bench])
+    def cost(self) -> int:
+        return sum(p.now_cost for p in self.starting_team + self.bench)
 
     @classmethod
     def random(cls, player_pool: Iterable[Player], **kwargs) -> Squad:

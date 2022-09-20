@@ -32,8 +32,9 @@ class Team(BaseTeam["Team"]):
         fixtures_to_play = Fixture.split_fixtures_by_finished(all_fixtures)[1]
         all_fixtures_by_event = Fixture.group_fixtures_by_gameweek(
             fixtures_to_play)
-        score = 0
-        multiplier = 0.9
+
+        score: float = 0.0
+        multiplier: float = 0.9
 
         i = 0
         for fixtures in all_fixtures_by_event.values():
@@ -105,7 +106,7 @@ class Team(BaseTeam["Team"]):
         """
         return self.players.filter(element_type=position)
 
-    def player_total(self, *cols: tuple[str], by_position: Position = None) -> Union[float, int]:
+    def player_total(self, *cols: str, by_position: Position = None) -> float:
         """Total points for all the players in a team, for a given attribute.
 
         Parameters
@@ -115,7 +116,7 @@ class Team(BaseTeam["Team"]):
 
         Returns
         -------
-        Union[float, int]
+        float
             Total points.
 
         Raises
@@ -130,7 +131,7 @@ class Team(BaseTeam["Team"]):
         else:
             players = self.players
 
-        total = 0
+        total = 0.0
 
         player: Player
         for player in players:
@@ -144,7 +145,7 @@ class Team(BaseTeam["Team"]):
                         raise AttributeError(
                             f"'{col}' must return float or int value.")
 
-                total += value
+                total += float(value)
 
         return total
 
@@ -163,7 +164,7 @@ class Team(BaseTeam["Team"]):
         """
         cols = ["goals_scored", "assists"]
 
-        return self.player_total(*cols, by_position=by_position)
+        return int(self.player_total(*cols, by_position=by_position))
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -172,7 +173,7 @@ class PlayerHistory(BasePlayerHistory):
     opponent_team: CategoricalVar[Team] = field(hash=False, repr=False)
 
     @classmethod
-    def _edit_stat_from_api(cls, field: Field, attr_list: list[Any]) -> dict[str, list[Any]]:
+    def _edit_stat_from_api(cls, field: Field[Any], attr_list: list[Any]) -> list[Any]:
         if field.name == "fixture":
             attr_list = [Fixture.get_by_id(id_) for id_ in attr_list]
         elif field.name == "opponent_team":
@@ -364,25 +365,23 @@ class Fixture(BaseFixture["Fixture"]):
 
         return new_instance
 
-    def get_difficulty(self, team: Union[int, Team], raise_value_error: bool = True) -> Union[int, NoneType]:
+    def get_difficulty(self, team: Union[int, Team]) -> int:
         """Gets the difficulty of a fixture for a team.
 
         Parameters
         ----------
         team : Union[int, Team]
             Team to find difficulty for.
-        raise_value_error : bool, optional
-            True raises a 'ValueError', False returns None, by default True
 
         Returns
         -------
-        Union[int, NoneType]
-            Difficulty of the game for `team`. 
+        int
+            Difficulty of the game for `team`.
 
         Raises
         ------
         ValueError
-            If `team` is not in fixture and `raise_value_error` is True.
+            If `team` is not in fixture.
         """
         if isinstance(team, Team):
             team_id = team.unique_id
@@ -391,34 +390,29 @@ class Fixture(BaseFixture["Fixture"]):
 
         if self.team_h.unique_id == team_id:
             return self.team_h_difficulty
-        if self.team_a.unique_id == team_id:
+        elif self.team_a.unique_id == team_id:
             return self.team_a_difficulty
-
-        if raise_value_error:
+        else:
             raise ValueError(
                 f"Team '{team}' not in fixture, '{str(self)}'")
 
-        return None
-
-    def is_home(self, team: Union[int, Team], raise_value_error: bool = True) -> Union[bool, NoneType]:
+    def is_home(self, team: Union[int, Team]) -> bool:
         """Determines whether team passed is at home or away.
 
         Parameters
         ----------
         team : Union[int, Team]
             Team to find home or away for.
-        raise_value_error : bool, optional
-            True raises a 'ValueError', False returns None, by default True
 
         Returns
         -------
-        Union[bool, NoneType]
+        bool
             True if home, False otherwise.
 
         Raises
         ------
         ValueError
-            If `team` is not in fixture and `raise_value_error` is True.
+            If `team` is not in fixture.
         """
         if isinstance(team, Team):
             team_id = team.unique_id
@@ -427,16 +421,13 @@ class Fixture(BaseFixture["Fixture"]):
 
         if self.team_h.unique_id == team_id:
             return True
-        if self.team_a.unique_id == team_id:
+        elif self.team_a.unique_id == team_id:
             return False
-
-        if raise_value_error:
+        else:
             raise ValueError(
                 f"Team '{team}' not in fixture, '{str(self)}'")
 
-        return None
-
-    @classmethod
+    '''@classmethod
     def group_fixtures_by_gameweek(cls, fixtures: ElementGroup[Fixture]) -> dict[Event, ElementGroup[Fixture]]:
         """Groups an ElementGroup of fixtures by gameweek.
 
@@ -450,7 +441,7 @@ class Fixture(BaseFixture["Fixture"]):
         dict[Event, ElementGroup[fixture]]
             The key is the event, the value is the fixtures in that gameweek.
         """
-        return super().group_fixtures_by_gameweek(fixtures)
+        return super().group_fixtures_by_gameweek(fixtures)'''
 
 
 def get_players(*, team: str = "All", position: str = "All", sort_by: str = "Total Points") -> pd.DataFrame:

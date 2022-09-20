@@ -1,6 +1,6 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
-from typing import TypeVar, Any
+from typing import Any
 from ..util import API
 from ..constants import URLS
 from .element import _Element, IDMatchesZeroElements, id_uniqueness_check
@@ -24,7 +24,7 @@ class Position(_Element["Position"]):
     squad_min_play: int = field(hash=False, repr=False, compare=False)
     squad_max_play: int = field(hash=False, repr=False, compare=False)
     ui_shirt_specific: bool = field(hash=False, repr=False, compare=False)
-    sub_positions_locked: list = field(hash=False, repr=False, compare=False)
+    sub_positions_locked: list[int] = field(hash=False, repr=False, compare=False)
     element_count: int = field(hash=False, repr=False, compare=False)
 
     @classmethod
