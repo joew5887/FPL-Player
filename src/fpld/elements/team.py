@@ -5,7 +5,7 @@ from ..constants import URLS
 from dataclasses import dataclass, field
 
 
-base_team = TypeVar("base_team", bound="BaseTeam")
+base_team = TypeVar("base_team", bound="BaseTeam[Any]")
 
 
 @dataclass(frozen=True, order=True, kw_only=True)
@@ -42,10 +42,11 @@ class BaseTeam(_Element[base_team], Generic[base_team]):
 
     @classmethod
     def get_latest_api(cls) -> list[dict[str, Any]]:
-        api = super().get_latest_api()
         api = API(cls.api_link)
 
-        return api.data["teams"]
+        data_from_api: list[dict[str, Any]] = api.data["teams"]
+
+        return data_from_api
 
     @classmethod
     def get_all_names(cls) -> list[str]:
@@ -59,10 +60,3 @@ class BaseTeam(_Element[base_team], Generic[base_team]):
         all_teams = cls.get()
 
         return all_teams.to_string_list()
-
-    '''@classmethod
-    def gui_get(cls, team_name: str) -> ElementGroup[base_team]:
-        if team_name == "All":
-            return cls.get()
-
-        return cls.get(name=team_name)'''

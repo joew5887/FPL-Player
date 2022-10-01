@@ -10,7 +10,7 @@ from .element import _Element
 class Label(_Element["Label"]):
     """Name for FPL player attribute.
     """
-    _DEFAULT_ID = "name"
+    UNIQUE_ID_COL = "name"
     _ATTR_FOR_STR = "label"
 
     label: str
@@ -36,5 +36,7 @@ class Label(_Element["Label"]):
         data.append({"label": "Percent Team",
                     "name": "percent_team"})
         data.append({"label": "Total Points", "name": "total_points"})
+        data.append({"label": "Transfers in for next Gameweek", "name": "transfers_in_event"})
+        data.append({"label": "Transfers out for next Gameweek", "name": "transfers_out_event"})
 
         return data

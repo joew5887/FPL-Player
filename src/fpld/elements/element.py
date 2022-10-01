@@ -1,6 +1,5 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from types import NoneType
 from typing import Any, Iterable, Iterator, SupportsIndex, TypeVar, Generic, Union, overload, Callable
 from dataclasses import fields
 from attr import asdict
@@ -19,7 +18,7 @@ class _Element(ABC, Generic[element]):
     E.g. Players, Teams, Fixtures
     """
 
-    _DEFAULT_ID = "id"
+    UNIQUE_ID_COL = "id"
     _api = None
     _ATTR_FOR_STR = "name"
 
@@ -50,7 +49,7 @@ class _Element(ABC, Generic[element]):
         str
             Text name of element.
         """
-        return str(getattr(self, type(self)._ATTR_FOR_STR, None))
+        return str(getattr(self, type(self)._ATTR_FOR_STR))
 
     @property
     def info(self) -> str:
@@ -79,7 +78,7 @@ class _Element(ABC, Generic[element]):
         AttributeError
             If the ID cannot be found from the `unique_id_col`.
         """
-        id_col = type(self).unique_id_col
+        id_col: str = type(self).UNIQUE_ID_COL
         id_: int = getattr(self, id_col, -1)
 
         if id_ == -1:
@@ -106,18 +105,6 @@ class _Element(ABC, Generic[element]):
             API URL.
         """
         return ""
-
-    @ classmethod
-    @ property
-    def unique_id_col(cls) -> str:
-        """Attribute name that is a unique ID for any object of that class.
-
-        Returns
-        -------
-        str
-            Attribute name.
-        """
-        return cls._DEFAULT_ID
 
     @classmethod
     def from_dict(cls, new_instance: dict[str, Any]) -> element:
@@ -209,11 +196,11 @@ class _Element(ABC, Generic[element]):
 
     @overload
     @classmethod
-    def get_by_id(cls, id_: int) -> Union[element, NoneType]: ...
+    def get_by_id(cls, id_: int) -> Union[element, None]: ...
 
     @overload
     @classmethod
-    def get_by_id(cls, id_: str) -> Union[element, NoneType]: ...
+    def get_by_id(cls, id_: str) -> Union[element, None]: ...
 
     @classmethod
     @cache
@@ -227,7 +214,7 @@ class _Element(ABC, Generic[element]):
 
         Returns
         -------
-        Union[element, NoneType]
+        Union[element, None]
             The found element. May return None if no element has been found.
 
         Raises
@@ -235,7 +222,7 @@ class _Element(ABC, Generic[element]):
         Exception
             If more than one element was found, ID should be unique.
         """
-        filter_ = {cls.unique_id_col: id_}
+        filter_ = {cls.UNIQUE_ID_COL: id_}
         element_group = cls.get(**filter_)
 
         try:
@@ -257,7 +244,7 @@ class _Element(ABC, Generic[element]):
         list[dict[str, Any]]
             Latest data for the class.
         """
-        return []
+        return [{}]
 
 
 class ElementGroup(ABC, Generic[element]):
@@ -372,7 +359,7 @@ class ElementGroup(ABC, Generic[element]):
         ElementGroup[element]
             Group of top elements of size `n`.
         """
-        return ElementGroup(self.sort(col_by, reverse=reverse)[:n])
+        return ElementGroup[element](self.sort(col_by, reverse=reverse)[:n])
 
     def get_random(self) -> element:
         """Gets random element from objects list.
@@ -603,13 +590,11 @@ def id_uniqueness_check(query_result_from_id: ElementGroup[Any]) -> None:
     if len(query_result_from_id) > 1:
         raise IDNotUnique(
             f"Expected only one element, got {len(query_result_from_id)}.")
-    elif len(query_result_from_id) == 0:
+    if len(query_result_from_id) == 0:
         raise IDMatchesZeroElements("ID matches 0 elements.")
-    else:
-        raise InvalidQueryResult("Length is less than 0.")
 
 
-def _method_choice(method_: str) -> Callable:
+def _method_choice(method_: str) -> Callable[[Iterable[bool]], bool]:
     """Checks if method choice passed from `get` is acceptable.
 
     Parameters
@@ -619,7 +604,7 @@ def _method_choice(method_: str) -> Callable:
 
     Returns
     -------
-    Callable
+    Callable[[Iterable[bool]], bool]
         Either `any()` or `all()`.
 
     Raises

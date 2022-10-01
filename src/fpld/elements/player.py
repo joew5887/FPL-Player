@@ -10,7 +10,7 @@ from ..constants import URLS
 from .position import Position
 
 
-base_player = TypeVar("base_player", bound="BasePlayer")
+_player = TypeVar("_player", bound="_Player[Any]")
 playerfull = TypeVar("playerfull", bound="BasePlayerFull")
 player_history = TypeVar("player_history", bound="BasePlayerHistory")
 player_history_past = TypeVar(
@@ -18,7 +18,7 @@ player_history_past = TypeVar(
 
 
 @dataclass(frozen=True, order=True, kw_only=True)
-class BasePlayer(_Element[base_player], Generic[base_player]):
+class _Player(_Element[_player], Generic[_player]):
     """Player element, unlinked from other FPL elements.
     """
     _ATTR_FOR_STR = "web_name"
@@ -52,7 +52,7 @@ class BasePlayer(_Element[base_player], Generic[base_player]):
     special: bool = field(hash=False, repr=False, compare=False)
     squad_number: Optional[int] = field(hash=False, repr=False, compare=False)
     status: str = field(hash=False, repr=False, compare=False)
-    team: int = field(hash=False, compare=False)
+    team: Any = field(hash=False, compare=False)
     team_code: int = field(hash=False, repr=False, compare=False)
     total_points: int = field(hash=False, repr=False, compare=False)
     transfers_in: int = field(hash=False, repr=False, compare=False)
@@ -164,13 +164,13 @@ class BasePlayer(_Element[base_player], Generic[base_player]):
 
     @classmethod
     def in_cost_range(
-            cls, player_pool: ElementGroup[base_player],
-            *, lower: int = 0, upper: int = 150, include_boundaries: bool = True) -> ElementGroup[base_player]:
+            cls, player_pool: ElementGroup[_player],
+            *, lower: int = 0, upper: int = 150, include_boundaries: bool = True) -> ElementGroup[_player]:
         """Filters a group of players based on if their cost lies between two values.
 
         Parameters
         ----------
-        player_pool : ElementGroup[base_player]
+        player_pool : ElementGroup[_player]
             Players to filter.
         lower : int, optional
            Lower bound cost, by default 0
@@ -181,7 +181,7 @@ class BasePlayer(_Element[base_player], Generic[base_player]):
 
         Returns
         -------
-        ElementGroup[base_player]
+        ElementGroup[_player]
             Players between `lower` and `upper` costs.
         """
 
@@ -192,7 +192,12 @@ class BasePlayer(_Element[base_player], Generic[base_player]):
                 if (player.now_cost <= upper and include_boundaries) or (player.now_cost < upper):
                     players_found.append(player)
 
-        return ElementGroup[base_player](players_found)
+        return ElementGroup[_player](players_found)
+
+
+@dataclass(frozen=True, order=True, kw_only=True)
+class BasePlayer(_Player["_Player"]):
+    team: int = field(hash=False, compare=False)
 
 
 class BasePlayerFull(Generic[player_history, player_history_past]):
@@ -356,7 +361,7 @@ class BasePlayerStats(ABC):
         str
             Name of field.
         """
-        return
+        return ""
 
 
 @dataclass(frozen=True, kw_only=True)

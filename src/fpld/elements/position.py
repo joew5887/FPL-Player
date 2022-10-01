@@ -34,7 +34,6 @@ class Position(_Element["Position"]):
 
     @classmethod
     def get_latest_api(cls) -> list[dict[str, Any]]:
-        api = super().get_latest_api()
         api = API(cls.api_link)
         return api.data["element_types"]
 

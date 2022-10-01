@@ -1,10 +1,7 @@
-def percent(numerator: int, denominator: int, *, round_: bool = True) -> float:
+def to_percent(numerator: int, denominator: int) -> float:
     if denominator == 0:
         return 0.0
 
-    percent = (numerator / denominator) * 100
-
-    if round_:
-        return round(percent, 3)
+    percent = float((numerator / denominator) * 100)
 
     return percent

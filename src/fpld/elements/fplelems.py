@@ -1,14 +1,13 @@
 from __future__ import annotations
 import math
-from types import NoneType
 from typing import Any, Union
 from ..constants import URLS, datetime_to_string
-from ..util.percent import percent
+from ..util.percent import to_percent
 from ..util import API
 from .team import BaseTeam
-from .player import BasePlayer, BasePlayerFull, BasePlayerHistory, BasePlayerHistoryPast
-from .fixture import BaseFixture
-from .event import BaseEvent
+from .player import _Player, BasePlayerFull, BasePlayerHistory, BasePlayerHistoryPast
+from .fixture import _Fixture
+from .event import _Event
 from .position import Position
 from .labels import Label
 from dataclasses import Field, dataclass, field
@@ -221,7 +220,7 @@ class PlayerFull(BasePlayerFull[PlayerHistory, PlayerHistoryPast]):
 
 
 @dataclass(frozen=True, order=True, kw_only=True)
-class Player(BasePlayer["Player"]):
+class Player(_Player["Player"]):
     """Player element, linked to other FPL elements.
     """
     team: Team = field(hash=False, compare=False)
@@ -246,7 +245,7 @@ class Player(BasePlayer["Player"]):
         """
         position_total = self.team.total_goal_contributions(
             by_position=self.element_type)
-        return percent(self.goal_contributions, position_total)
+        return to_percent(self.goal_contributions, position_total)
 
     @property
     def percent_team(self) -> float:
@@ -258,7 +257,7 @@ class Player(BasePlayer["Player"]):
             player contributions / team contributions.
         """
         team_total = self.team.total_goal_contributions()
-        return percent(self.goal_contributions, team_total)
+        return to_percent(self.goal_contributions, team_total)
 
     def attribute_in_event(self, attribute: str, event: Event) -> list[Any]:
         """Gets all values of `attribute` for gameweek `event`.
@@ -309,7 +308,7 @@ class Player(BasePlayer["Player"]):
 
 
 @dataclass(frozen=True, order=True, kw_only=True)
-class Event(BaseEvent["Event"]):
+class Event(_Event["Event"]):
     """Event / gameweek element, linked to other FPL elements.
     """
     most_selected: Player = field(hash=False, repr=False, compare=False)
@@ -348,7 +347,7 @@ class Event(BaseEvent["Event"]):
 
 
 @dataclass(frozen=True, order=True, kw_only=True)
-class Fixture(BaseFixture["Fixture"]):
+class Fixture(_Fixture["Fixture"]):
     """Fixture / result element, linked to other FPL elements.
     """
     event: Event = field(hash=False, compare=False)
