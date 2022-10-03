@@ -158,9 +158,11 @@ class _Player(_Element[_player], Generic[_player]):
 
     @ classmethod
     def get_latest_api(cls) -> list[dict[str, Any]]:
-        api = super().get_latest_api()
         api = API(cls.api_link)
-        return api.data["elements"]
+
+        data_from_api: list[dict[str, Any]] = api.data["elements"]
+
+        return data_from_api
 
     @classmethod
     def in_cost_range(
@@ -196,7 +198,7 @@ class _Player(_Element[_player], Generic[_player]):
 
 
 @dataclass(frozen=True, order=True, kw_only=True)
-class BasePlayer(_Player["_Player"]):
+class BasePlayer(_Player["BasePlayer"]):
     team: int = field(hash=False, compare=False)
 
 

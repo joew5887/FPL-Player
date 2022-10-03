@@ -1,5 +1,5 @@
 from dataclasses import fields
-from typing import Any, Generic, Iterator, TypeVar, Union
+from typing import Any, Generic, Iterator, TypeVar, Union, List
 
 
 t = TypeVar("t")

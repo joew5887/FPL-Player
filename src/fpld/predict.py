@@ -47,13 +47,13 @@ class AttributeModelData(ABC):
         with open(path, "wb") as f:
             pickle.dump(self, f)
 
-    def train_test_split_by_random(self, **kwargs) -> tuple[pd.DataFrame]:
+    def train_test_split_by_random(self, **kwargs) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         x_train, x_test, y_train, y_test = train_test_split(
             self.features, self.target, **kwargs)
 
         return x_train, x_test, y_train, y_test
 
-    def train_test_split_by_event(self, testing_events: ElementGroup[Event]) -> tuple:
+    def train_test_split_by_event(self, testing_events: ElementGroup[Event]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         # range validation needed
         event_ids = {"events": [event.unique_id for event in testing_events]}
 

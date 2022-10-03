@@ -258,7 +258,7 @@ class LPSquad:
             self.__required_players = required_players
 
     def values_for_player(self, player: Player) -> list[float]:
-        return self.__player_pool_to_values.get(player)
+        return self.__player_pool_to_values[player]
 
     def player_lp_variable(self, player: Player) -> LpVariable:
         return self.__variables.get(player)
@@ -278,8 +278,8 @@ class LPSquad:
 
         starting_team = type(self).__lp_result(problem)
         bench = list(set(full_team).difference(set(starting_team)))
-        player_to_first_value = [[p,
-                                  self.values_for_player(p)[0]] for p in starting_team]
+        player_to_first_value: list[list[Player, float]] = [[p,
+                                                             self.values_for_player(p)[0]] for p in starting_team]
         player_to_first_value = sorted(
             player_to_first_value, key=lambda p: p[1], reverse=True)
         captain = player_to_first_value[0][0]

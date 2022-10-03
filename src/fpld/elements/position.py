@@ -35,7 +35,10 @@ class Position(_Element["Position"]):
     @classmethod
     def get_latest_api(cls) -> list[dict[str, Any]]:
         api = API(cls.api_link)
-        return api.data["element_types"]
+
+        data_from_api: list[dict[str, Any]] = api.data["element_types"]
+
+        return data_from_api
 
     @classmethod
     def get_by_name(cls, singular_name_short: str) -> Position:

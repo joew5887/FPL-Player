@@ -13,7 +13,6 @@ _fixture = TypeVar("_fixture", bound="_Fixture[Any]")
 class _Fixture(_Element[_fixture], Generic[_fixture]):
     """Fixture / result element, unlinked from other FPL elements.
     """
-    _ATTR_FOR_STR = None
 
     kickoff_time: datetime = field(hash=False, repr=False)
     id: int = field()
@@ -101,10 +100,11 @@ class _Fixture(_Element[_fixture], Generic[_fixture]):
 
     @classmethod
     def get_latest_api(cls) -> list[dict[str, Any]]:
-        api = super().get_latest_api()
         api = API(cls.api_link)
 
-        return api.data
+        data_from_api: list[dict[str, Any]] = api.data
+
+        return data_from_api
 
     @classmethod
     def group_fixtures_by_gameweek(cls, fixtures: ElementGroup[_fixture]) -> dict[int, ElementGroup[_fixture]]:
@@ -158,7 +158,7 @@ class _Fixture(_Element[_fixture], Generic[_fixture]):
 
 
 @dataclass(frozen=True, order=True, kw_only=True)
-class BaseFixture(_Element["BaseFixture"]):
+class BaseFixture(_Fixture["BaseFixture"]):
     event: int = field(hash=False, compare=False)
     team_h: int = field(hash=False, compare=False)
     team_a: int = field(hash=False, compare=False)

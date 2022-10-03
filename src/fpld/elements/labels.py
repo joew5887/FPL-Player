@@ -22,11 +22,9 @@ class Label(_Element["Label"]):
         return URLS["BOOTSTRAP-STATIC"]
 
     @classmethod
-    def get_latest_api(cls) -> list[dict[str, Any]]:
-        api = super().get_latest_api()
+    def get_latest_api(cls) -> list[dict[str, str]]:
         api = API(cls.api_link)
-        data: list
-        data = api.data["element_stats"]
+        data: list[dict[str, str]] = api.data["element_stats"]
 
         # New player labels
         data.append({"label": "Goal Contributions",

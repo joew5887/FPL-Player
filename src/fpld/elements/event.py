@@ -147,7 +147,7 @@ class _Event(_Element[_event], Generic[_event]):
             If the length of the range is less than the length of events.
             Happens at each end of the season.
         """
-        group = [
+        group: list[_event] = [
             start_gw + i for i in range(start, end, step) if start_gw + i is not None]
 
         if len(group) == 0:
@@ -208,10 +208,9 @@ class _Event(_Element[_event], Generic[_event]):
 
     @classmethod
     def get_latest_api(cls) -> list[dict[str, Any]]:
-        api = super().get_latest_api()
         api = API(cls.api_link)
-        data: list
-        data = api.data["events"]
+
+        data: list[dict[str, Any]] = api.data["events"]
 
         data.append({
             "id": 0, "name": "No Gameweek", "deadline_time": None, "average_entry_score": 0,
@@ -237,7 +236,7 @@ class _Event(_Element[_event], Generic[_event]):
         return all_events.split(finished=True)
 
     @classmethod
-    def __find_until_true(cls, attr: str) -> Optional[_event]:
+    def __find_until_true(cls, attr: str) -> _event:
         """Iterates through all gameweeks until the attribute is True.
 
         Parameters
@@ -247,8 +246,8 @@ class _Event(_Element[_event], Generic[_event]):
 
         Returns
         -------
-        Optional[event]
-            The first gameweek where the attribute is True, may be None if they are all False.
+        event
+            The first gameweek where the attribute is True, may be no gameweek if they are all False.
         """
         all_events = cls.get_all()
 
@@ -256,7 +255,7 @@ class _Event(_Element[_event], Generic[_event]):
             if getattr(event, attr):
                 return event
 
-        return None
+        return cls.none
 
     @classmethod
     @property
