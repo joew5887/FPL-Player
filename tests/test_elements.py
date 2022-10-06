@@ -1,6 +1,7 @@
 from abc import ABC
 import pytest
 from fpld import elements as elems
+from fpld.elements.element import IDMatchesZeroElements
 from fpld.util import Percentile
 from typing import Any, Callable, SupportsIndex, TypeVar, Generic, Union
 
@@ -9,20 +10,21 @@ _element = TypeVar("_element", bound=elems.element._Element)
 
 
 class Element(ABC, Generic[_element]):
+    expected: dict[str, Any] = {
+        "__str__": "",
+        "__repr__": "",
+        "unique_id": 0
+    }
+
     @property
     def element_to_test(self) -> _element:
         raise NotImplementedError
 
-    @property
-    def str_output(self) -> str:
-        raise NotImplementedError
-
-    @property
-    def unique_id(self) -> str:
-        raise NotImplementedError
-
     def test_str(self) -> None:
-        assert str(self.element_to_test) == self.str_output
+        assert str(self.element_to_test) == self.expected["__str__"]
+
+    def test_repr(self) -> None:
+        assert repr(self.element_to_test) == self.expected["__repr__"]
 
     def test_info(self) -> None:
         info = self.element_to_test.info
@@ -32,39 +34,68 @@ class Element(ABC, Generic[_element]):
     def test_unique_id(self) -> None:
         id_found = self.element_to_test.unique_id
 
-        assert id_found == self.unique_id
+        assert id_found == self.expected["unique_id"]
 
 
-class TestPlayer(Element[elems.Player]):
+class TestPlayerExample(Element[elems.Player]):
     element_to_test: elems.Player = elems.Player.get_by_id(427)
-    str_output = "Kane"
-    unique_id = 427
+    expected: dict[str, Any] = {
+        "__str__": "Kane",
+        "__repr__": "",
+        "unique_id": 427,
+    }
 
 
-class TestSpurs(Element[elems.Team]):
-    element_to_test: elems.Team = elems.Team.get_by_id(18)
-    str_output = "Spurs"
-    unique_id = 18
+class TestPositionExample(Element[elems.Position]):
+    element_to_test: elems.Position = elems.Position.get_by_id(4)
+    expected: dict[str, Any] = {
+        "__str__": "Forward",
+        "__repr__": "Position(id=4, singular_name='Forward', singular_name_short='FWD')",
+        "unique_id": 4,
+    }
 
 
-class ElementClass(Generic[_element]):
+class TestLabelExample(Element[elems.Label]):
+    element_to_test: elems.Label = elems.Label.get_by_id("goals_scored")
+    expected: dict[str, Any] = {
+        "__str__": "Goals scored",
+        "__repr__": "Label(label='Goals scored', name='goals_scored')",
+        "unique_id": "goals_scored",
+    }
+
+
+class TestEventExample(Element[elems.Label]):
+    element_to_test: elems.Event = elems.Event.get_by_id(1)
+    expected: dict[str, Any] = {
+        "__str__": "Gameweek 1",
+        "__repr__": "Event(id=1, name='Gameweek 1')",
+        "unique_id": 1,
+        "started": True,
+    }
+
+    def test_started(self) -> None:
+        assert self.element_to_test.started == self.expected["started"]
+
+
+class ElementClass(ABC, Generic[_element]):
+    expected: dict[str, Any] = {
+        "unique_id_col": "id",
+        "api_link": "https://fantasy.premierleague.com/api/bootstrap-static/",
+    }
+
     @property
     def class_to_test(self) -> _element:
         raise NotImplementedError
 
-    @property
-    def unique_id_col(self) -> str:
-        return "id"
-
     def test_api_link(self) -> None:
         api_link = self.class_to_test.api_link
 
-        assert "http" in api_link
+        assert api_link == self.expected["api_link"]
 
     def test_unique_id_col(self) -> None:
         unique_id_col = self.class_to_test.UNIQUE_ID_COL
 
-        assert unique_id_col == self.unique_id_col
+        assert unique_id_col == self.expected["unique_id_col"]
 
     def test_incorrect_attributes_from_dict(self) -> None:
         invalid_input = {"not_existing_attr": 0}
@@ -95,10 +126,63 @@ class ElementClass(Generic[_element]):
 
 class TestPlayerClass(ElementClass[elems.Player]):
     class_to_test = elems.Player
+    expected: dict[str, Any] = {
+        "unique_id_col": "id",
+        "api_link": "https://fantasy.premierleague.com/api/bootstrap-static/"
+    }
 
     @pytest.mark.parametrize("id_input,expected_output",
                              [
                                  (427, elems.Player.get(web_name="Kane")[0]),
+                                 (-1, None)
+                             ]
+                             )
+    def test_get_by_id(self, id_input: int, expected_output: Union[_element, None]) -> None:
+        return super().test_get_by_id(id_input, expected_output)
+
+
+class TestPositionClass(ElementClass[elems.Position]):
+    class_to_test = elems.Position
+    expected: dict[str, Any] = {
+        "unique_id_col": "id",
+        "api_link": "https://fantasy.premierleague.com/api/bootstrap-static/",
+        "get_all_dict": {
+            "GKP": elems.Position.get_by_id(1), "DEF": elems.Position.get_by_id(2),
+            "MID": elems.Position.get_by_id(3), "FWD": elems.Position.get_by_id(4)
+        }
+    }
+
+    @pytest.mark.parametrize("id_input,expected_output",
+                             [
+                                 (1, elems.Position.get(singular_name_short="GKP")[0]),
+                                 (-1, None)
+                             ]
+                             )
+    def test_get_by_id(self, id_input: int, expected_output: Union[_element, None]) -> None:
+        return super().test_get_by_id(id_input, expected_output)
+
+    @pytest.mark.parametrize("singular_name_short,expected_id", [("GKP", 1), ("DEF", 2), ("MID", 3), ("FWD", 4)])
+    def test_get_by_name(self, singular_name_short:  str, expected_id: int) -> None:
+        assert self.class_to_test.get_by_name(singular_name_short).unique_id == expected_id
+
+    def test_invalid_get_by_name(self) -> None:
+        with pytest.raises(IDMatchesZeroElements):
+            self.class_to_test.get_by_name("FOO")
+
+    def test_get_all_dict(self) -> None:
+        assert self.class_to_test.get_all_dict() == self.expected["get_all_dict"]
+
+
+class TestLabelClass(ElementClass[elems.Label]):
+    class_to_test = elems.Label
+    expected: dict[str, Any] = {
+        "unique_id_col": "name",
+        "api_link": "https://fantasy.premierleague.com/api/bootstrap-static/",
+    }
+
+    @pytest.mark.parametrize("id_input,expected_output",
+                             [
+                                 ("assists", elems.Label.get(label="Assists")[0]),
                                  (-1, None)
                              ]
                              )
@@ -238,3 +322,10 @@ class TestMethodChoice:
     def test_not_in_choices(self) -> None:
         with pytest.raises(Exception):
             elems.element._method_choice("foo")
+
+
+if __name__ == "__main__":
+    pytest.main([__file__])
+    from examples import PLAYERS
+else:
+    from .examples import PLAYERS

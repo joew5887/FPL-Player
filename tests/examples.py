@@ -20,3 +20,8 @@ PLAYERS = {
     "FWD2": fpld.Player.get_by_id(318),  # Haaland
     "FWD3": fpld.Player.get_by_id(80)  # Toney
 }
+
+POSITIONS = {
+    "GKP": fpld.Position.get_by_id(1), "DEF": fpld.Position.get_by_id(2),
+    "MID": fpld.Position.get_by_id(3), "MID": fpld.Position.get_by_id(4)
+}

@@ -89,7 +89,7 @@ class TestPercentileCases:
 
 class TestAttributeExample:
     attribute = VALID_ATTRIBUTE
-    expected = {
+    expected: dict[str, Any] = {
         "__str__": "foo - [1, 2, 3, 4, 5]",
         "__len__": 5,
         "__iter__": [1, 2, 3, 4, 5],
@@ -113,7 +113,7 @@ class TestAttributeExample:
 class TestCategoricalVarExample:
     attribute = VALID_CATEGORICAL_ATTRIBUTE
 
-    expected = {
+    expected: dict[str, Any] = {
         "__str__": "bar - ['yes', 'no']",
         "__len__": 2,
         "__iter__": ["yes", "no"],
@@ -125,7 +125,7 @@ class TestCategoricalVarExample:
 class TestContinuousVarExample:
     attribute = VALID_CONTINUOUS_ATTRIBUTE
 
-    continuous_expected = {
+    continuous_expected: dict[str, Any] = {
         "average": 3.0
     }
 
@@ -141,6 +141,3 @@ class TestAttributeCases:
 
 if __name__ == "__main__":
     pytest.main([__file__])
-    from examples import PLAYERS
-else:
-    from .examples import PLAYERS

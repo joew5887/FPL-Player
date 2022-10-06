@@ -42,6 +42,31 @@ class Position(_Element["Position"]):
 
     @classmethod
     def get_by_name(cls, singular_name_short: str) -> Position:
+        """Get a Position object by its singular short name.
+
+        Parameters
+        ----------
+        singular_name_short : str
+            Short name of position. Options: ['GKP', 'DEF', 'MID', 'FWD']
+
+        Returns
+        -------
+        Position
+            Position found from valid `singular_name_short`.
+
+        Raises
+        ------
+        IDMatchesZeroElements
+            If `singular_name_short` does not translate to a position.
+
+        Example
+        -------
+        ```
+        > position = Position.get_by_name("GKP")
+        > str(position)
+        Goalkeeper
+        ```
+        """
         position = cls.get(singular_name_short=singular_name_short)
 
         try:
@@ -54,6 +79,13 @@ class Position(_Element["Position"]):
 
     @classmethod
     def get_all_dict(cls) -> dict[str, Position]:
+        """Get all positions, with the keys as the `singular_name_short`.
+
+        Returns
+        -------
+        dict[str, Position]
+            ```{"GKP": Goalkeeper, ..., "FWD": Forward}```
+        """
         positions = cls.get_all()
 
         return {position.singular_name_short: position for position in positions}

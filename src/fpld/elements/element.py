@@ -79,7 +79,8 @@ class _Element(ABC, Generic[element]):
             If the ID cannot be found from the `unique_id_col`.
         """
         id_col: str = type(self).UNIQUE_ID_COL
-        id_: int = getattr(self, id_col, -1)
+        id_: int = getattr(self, id_col)
+        '''id_: int = getattr(self, id_col, -1)
 
         if id_ == -1:
             raise AttributeError(
@@ -87,7 +88,7 @@ class _Element(ABC, Generic[element]):
                     f"'{id_col}' not in object. "
                     "Unique ID could not be found."
                 )
-            )
+            )'''
 
         return id_
 

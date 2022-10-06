@@ -1,6 +1,5 @@
 from __future__ import annotations
 from dataclasses import dataclass
-from typing import Any
 from ..util import API
 from ..constants import URLS
 from .element import _Element
