@@ -1,4 +1,5 @@
 from __future__ import annotations
+from typing import Optional
 from fpld.util.external import API
 from fpld import Player, Position, Team, URLS
 from pulp import LpProblem, lpSum, LpMaximize, LpVariable
@@ -67,6 +68,7 @@ class FPLTeamVD(FPLTeam):
 
             actual_num_of_pos = len(
                 players_in_position_starting + players_in_position_bench)
+
             if actual_num_of_pos != position.squad_select:
                 raise Exception(
                     f"Expected {position.squad_select} players for {position}, not {actual_num_of_pos}")
@@ -76,27 +78,21 @@ class FPLTeamVD(FPLTeam):
                 raise Exception(
                     f"Got {num_of_pos_starting} for {position}, expected between {position.squad_min_play} and {position.squad_max_play}")
 
-    def check(self, starting_team: list[Player], bench: list[Player]) -> bool:
-        if starting_team is None or bench is None:
-            return True
+    def check(self, starting_team: list[Player], bench: list[Player]) -> None:
+        '''if starting_team is None or bench is None:
+            return True'''
 
         full_team = starting_team + bench
 
-        try:
-            self.num_players_from_teams(full_team)
-            self.num_players_in_position(starting_team, bench)
-            self.num_players_in_starting(starting_team)
-            self.num_players_in_team(full_team)
-        except Exception as err:
-            print(err)
-            return False
-        else:
-            return True
+        self.num_players_from_teams(full_team)
+        self.num_players_in_position(starting_team, bench)
+        self.num_players_in_starting(starting_team)
+        self.num_players_in_team(full_team)
 
 
 def player_in_team(player: Player, team: list[Player]) -> bool:
-    if player is None or team is None:
-        return True
+    '''if player is None or team is None:
+        return True'''
 
     return player in team
 
@@ -209,13 +205,13 @@ class FPLTeamConstraint(FPLTeam):
 
 
 class LPSquad:
-    __DEFAULT_BUDGET_INTERVAL = 0.3
+    __DEFAULT_BUDGET_INTERVAL = 3
     __DEFAULT_BUDGET = 1000
 
     def __init__(
             self, player_pool_to_values: dict[Player, list[float]],
             budget: int = __DEFAULT_BUDGET,
-            required_players: list[Player] = None,
+            required_players: Optional[list[Player]] = None,
             budget_interval: float = __DEFAULT_BUDGET_INTERVAL):
 
         self.__budget_interval = budget_interval
@@ -249,8 +245,8 @@ class LPSquad:
         return self.__required_players
 
     @required_players.setter
-    def required_players(self, required_players: list[Player]) -> None:
-        self.__required_players: list[Player]
+    def required_players(self, required_players: Optional[list[Player]]) -> None:
+        self.__required_players: Optional[list[Player]]
 
         if required_players is None:
             self.__required_players = []
@@ -261,7 +257,7 @@ class LPSquad:
         return self.__player_pool_to_values[player]
 
     def player_lp_variable(self, player: Player) -> LpVariable:
-        return self.__variables.get(player)
+        return self.__variables[player]
 
     def sum_value_for_player(self, player: Player) -> float:
         return sum(self.values_for_player(player))

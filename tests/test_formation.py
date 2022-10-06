@@ -2,33 +2,37 @@ import pytest
 import fpld
 
 
-GK = fpld.Player.get_by_id(425)  # Lloris
-DEF1 = fpld.Player.get_by_id(443)  # Romero
-DEF2 = fpld.Player.get_by_id(106)  # Dunk
-DEF3 = fpld.Player.get_by_id(357)  # Trippier
-DEF4 = fpld.Player.get_by_id(332)  # Shaw
-MID1 = fpld.Player.get_by_id(301)  # KDB
-MID2 = fpld.Player.get_by_id(440)  # Bentancur
-MID3 = fpld.Player.get_by_id(325)  # Kalvin Phillips
-MID4 = fpld.Player.get_by_id(407)  # JWP
-FWD1 = fpld.Player.get_by_id(427)  # Kane
-FWD2 = fpld.Player.get_by_id(318)  # Haaland
-MID5 = fpld.Player.get_by_id(233)  # Jack Harrison
-
-
 @pytest.fixture
 def valid_442_group() -> fpld.ElementGroup[fpld.Player]:
-    return fpld.ElementGroup([GK, DEF1, DEF2, DEF3, DEF4, MID1, MID2, MID3, MID4, FWD1, FWD2])
+    return fpld.ElementGroup(
+        [
+            PLAYERS["GK1"], PLAYERS["DEF1"], PLAYERS["DEF2"], PLAYERS["DEF3"],
+            PLAYERS["DEF4"], PLAYERS["MID1"], PLAYERS["MID2"], PLAYERS["MID3"],
+            PLAYERS["MID4"], PLAYERS["FWD1"], PLAYERS["FWD2"]
+        ]
+    )
 
 
 @pytest.fixture
 def invalid_no_gk_group() -> fpld.ElementGroup[fpld.Player]:
-    return fpld.ElementGroup([DEF1, DEF2, DEF3, DEF4, MID1, MID2, MID3, MID4, MID5, FWD1, FWD2])
+    return fpld.ElementGroup(
+        [
+            PLAYERS["DEF1"], PLAYERS["DEF2"], PLAYERS["DEF3"], PLAYERS["DEF4"],
+            PLAYERS["MID1"], PLAYERS["MID2"], PLAYERS["MID3"], PLAYERS["MID4"],
+            PLAYERS["MID5"], PLAYERS["FWD1"], PLAYERS["FWD2"]
+        ]
+    )
 
 
-@pytest.fixture
+@ pytest.fixture
 def invalid_not_11_group() -> fpld.ElementGroup[fpld.Player]:
-    return fpld.ElementGroup([GK, DEF1, DEF2, DEF3, DEF4, MID1, MID2, MID3, FWD1, FWD2])
+    return fpld.ElementGroup(
+        [
+            PLAYERS["GK1"], PLAYERS["DEF1"], PLAYERS["DEF2"], PLAYERS["DEF3"],
+            PLAYERS["DEF4"], PLAYERS["MID1"], PLAYERS["MID2"], PLAYERS["MID3"],
+            PLAYERS["FWD1"], PLAYERS["FWD2"]
+        ]
+    )
 
 
 def test_valid_team(valid_442_group: fpld.ElementGroup[fpld.Player]) -> None:
@@ -54,15 +58,22 @@ def test_as_numbers_include_gk(valid_442_group: fpld.ElementGroup[fpld.Player]) 
 
 
 def test_as_players_include_gk(valid_442_group: fpld.ElementGroup[fpld.Player]) -> None:
-    expected = {fpld.Position.get_by_name("GKP"): [GK], fpld.Position.get_by_name(
-        "DEF"): [DEF1, DEF2, DEF3, DEF4], fpld.Position.get_by_name("MID"): [MID1, MID2, MID3, MID4], fpld.Position.get_by_name("FWD"): [FWD1, FWD2]}
+    expected = {
+        fpld.Position.get_by_name("GKP"): [PLAYERS["GK1"]],
+        fpld.Position.get_by_name("DEF"): [PLAYERS["DEF1"], PLAYERS["DEF2"], PLAYERS["DEF3"], PLAYERS["DEF4"]],
+        fpld.Position.get_by_name("MID"): [PLAYERS["MID1"], PLAYERS["MID2"], PLAYERS["MID3"], PLAYERS["MID4"]],
+        fpld.Position.get_by_name("FWD"): [PLAYERS["FWD1"], PLAYERS["FWD2"]]
+    }
 
     assert fpld.Formation(valid_442_group).as_players() == expected
 
 
 def test_as_players_ignore_gk(valid_442_group: fpld.ElementGroup[fpld.Player]) -> None:
-    expected = {fpld.Position.get_by_name(
-        "DEF"): [DEF1, DEF2, DEF3, DEF4], fpld.Position.get_by_name("MID"): [MID1, MID2, MID3, MID4], fpld.Position.get_by_name("FWD"): [FWD1, FWD2]}
+    expected = {
+        fpld.Position.get_by_name("DEF"): [PLAYERS["DEF1"], PLAYERS["DEF2"], PLAYERS["DEF3"], PLAYERS["DEF4"]],
+        fpld.Position.get_by_name("MID"): [PLAYERS["MID1"], PLAYERS["MID2"], PLAYERS["MID3"], PLAYERS["MID4"]],
+        fpld.Position.get_by_name("FWD"): [PLAYERS["FWD1"], PLAYERS["FWD2"]]
+    }
 
     assert fpld.Formation(valid_442_group).as_players(True) == expected
 
@@ -85,3 +96,6 @@ def test_not_11_players_error(invalid_not_11_group: fpld.ElementGroup[fpld.Playe
 
 if __name__ == "__main__":
     pytest.main([__file__])
+    from examples import PLAYERS
+else:
+    from .examples import PLAYERS

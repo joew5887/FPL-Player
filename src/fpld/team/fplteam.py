@@ -3,7 +3,7 @@ from typing import Iterable
 from ..elements import Player, ElementGroup
 from ..formation import Formation
 from random import randrange
-from .validation import LPSquad, FPLTeamVD
+from .validation import LPSquad, FPLTeamVD, player_in_team
 
 
 class Squad:
@@ -12,15 +12,19 @@ class Squad:
     Simulates choosing captains and benches.
     """
 
+    __captain: Player
+    __vice_captain: Player
+
     def __init__(
             self, starting_team: list[Player], bench: list[Player],
             captain: Player, vice_captain: Player):
+
+        Squad.is_valid_team(starting_team, bench)
 
         self.starting_team = starting_team
         self.bench = bench
         self.captain = captain
         self.vice_captain = vice_captain
-        # self._check_constraints()
 
     def __str__(self) -> str:
         """Shows player names and where they are in the team, position and starting.
@@ -36,7 +40,7 @@ class Squad:
                                 'Iversen'
         'CanÃ³s' 'Johnson' 'Colwill' 'Dunk' 'Varane'
                         'Sancho' 'Martinelli'
-                   'Bamford' 'Haaland' 'Firmino'
+                   'Bamford' 'Haaland (C)' 'Firmino (VC)'
         --------------------------------------------------
         'Dubravka' 'Kulusevski' 'GÃ¼ndogan' 'Son'
         ```
@@ -46,6 +50,7 @@ class Squad:
         bench_str = " ".join([f"'{player.web_name}'" for player in self.bench])
 
         current_length = max([len(row) for row in each_pos])
+
         if len(bench_str) > current_length:
             length = len(bench_str)
             each_pos = [row_str.center(length) for row_str in each_pos]
@@ -57,19 +62,14 @@ class Squad:
 
         return "\n".join(output)
 
-    def _check_constraints(self) -> None:
-        vd = FPLTeamVD()
-        if not vd.check(self.starting_team, self.bench):
-            raise Exception
-
     @property
     def captain(self) -> Player:
         return self.__captain
 
     @captain.setter
     def captain(self, new_captain: Player) -> None:
-        """if not player_in_team(new_captain, self.starting_team):
-            raise Exception("Captain not in team.")"""
+        if not player_in_team(new_captain, self.starting_team):
+            raise Exception("Captain not in team.")
 
         self.__captain = new_captain
 
@@ -79,8 +79,8 @@ class Squad:
 
     @vice_captain.setter
     def vice_captain(self, new_vice_captain: Player) -> None:
-        """if not player_in_team(new_vice_captain, self.starting_team):
-            raise Exception("Vice captain not in team.")"""
+        if not player_in_team(new_vice_captain, self.starting_team):
+            raise Exception("Vice captain not in team.")
 
         self.__vice_captain = new_vice_captain
 
@@ -126,4 +126,11 @@ class Squad:
     @classmethod
     def optimal_team(cls, player_pool_to_values: dict[Player, list[float]], **kwargs) -> Squad:
         lp_problem = LPSquad(player_pool_to_values, **kwargs)
-        return cls(*lp_problem.new_team())
+        starting_team, bench, captain, vice_captain = lp_problem.new_team()
+
+        return cls(starting_team, bench, captain, vice_captain)
+
+    @staticmethod
+    def is_valid_team(starting_team: list[Player], bench: list[Player]) -> None:
+        vd = FPLTeamVD()
+        vd.check(starting_team, bench)
