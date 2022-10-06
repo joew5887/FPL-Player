@@ -119,7 +119,7 @@ class Squad:
     @classmethod
     def random(cls, player_pool: Iterable[Player], **kwargs) -> Squad:
         player_pool_to_value = {
-            p: [randrange(1, 10)] for p in player_pool}
+            p: [float(randrange(1, 10))] for p in player_pool}
 
         return cls.optimal_team(player_pool_to_value, **kwargs)
 

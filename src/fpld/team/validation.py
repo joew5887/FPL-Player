@@ -144,6 +144,9 @@ class FPLTeamConstraint(FPLTeam):
         return problem
 
     def required_players(self, problem: LpProblem) -> LpProblem:
+        if self.__squad.required_players is None:
+            return problem
+
         for player in self.__squad.required_players:
             var = self.__squad.player_lp_variable(player)
             problem += lpSum(var) == 1
@@ -241,7 +244,7 @@ class LPSquad:
         return self.__budget_lb
 
     @property
-    def required_players(self) -> list[Player]:
+    def required_players(self) -> Optional[list[Player]]:
         return self.__required_players
 
     @required_players.setter
@@ -274,12 +277,15 @@ class LPSquad:
 
         starting_team = type(self).__lp_result(problem)
         bench = list(set(full_team).difference(set(starting_team)))
-        player_to_first_value: list[list[Player, float]] = [[p,
+        '''player_to_first_value: list[list[Player, float]] = [[p,
                                                              self.values_for_player(p)[0]] for p in starting_team]
         player_to_first_value = sorted(
-            player_to_first_value, key=lambda p: p[1], reverse=True)
-        captain = player_to_first_value[0][0]
-        vice_captain = player_to_first_value[1][0]
+            player_to_first_value, key=lambda p: p[1], reverse=True)'''
+        player_to_first_value = {p: self.values_for_player(p)[0] for p in starting_team}
+        players_ranked = list(sorted(player_to_first_value, key=lambda p: player_to_first_value[p], reverse=True))
+
+        captain = players_ranked[0]
+        vice_captain = players_ranked[1]
 
         # sort bench
         bench = sorted(bench, key=lambda p: p.element_type)
