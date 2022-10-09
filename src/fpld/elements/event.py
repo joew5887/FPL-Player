@@ -14,8 +14,8 @@ class _Event(_Element[_event], Generic[_event]):
     """Event / Gameweek element, unlinked from other FPL elements.
     """
 
-    deadline_time: datetime = field(hash=False)
-    id: int = field()
+    deadline_time: datetime = field(repr=False, hash=False)
+    id: int = field(repr=False)
 
     name: str = field(hash=False, compare=False)
     average_entry_score: int = field(hash=False, repr=False, compare=False)

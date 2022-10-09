@@ -6,7 +6,7 @@ from ..util.attribute import CategoricalVar, ContinuousVar
 from .element import _Element, ElementGroup
 from typing import Optional, TypeVar, Generic, Any, get_type_hints, Iterable
 from ..util import API
-from ..constants import URLS
+from ..constants import URLS, round_value
 from .position import Position
 
 
@@ -23,7 +23,7 @@ class _Player(_Element[_player], Generic[_player]):
     """
     _ATTR_FOR_STR = "web_name"
 
-    id: int = field()
+    id: int = field(repr=False)
 
     chance_of_playing_next_round: Optional[int] = field(
         hash=False, repr=False, compare=False)
@@ -44,7 +44,7 @@ class _Player(_Element[_player], Generic[_player]):
     in_dreamteam: bool = field(hash=False, repr=False, compare=False)
     news: str = field(hash=False, repr=False, compare=False)
     news_added: str = field(hash=False, repr=False, compare=False)
-    now_cost: int = field(hash=False, compare=False)
+    now_cost: int = field(hash=False, repr=False, compare=False)
     photo: str = field(hash=False, repr=False, compare=False)
     points_per_game: float = field(hash=False, repr=False, compare=False)
     second_name: str = field(hash=False, repr=False, compare=False)
@@ -117,7 +117,7 @@ class _Player(_Element[_player], Generic[_player]):
         float
             The higher, the more points for the cost.
         """
-        return round(self.total_points / self.now_cost, 2)
+        return round_value(self.total_points / self.now_cost)
 
     @property
     def goal_contributions(self) -> int:

@@ -14,12 +14,12 @@ class Position(_Element["Position"]):
     """
     _ATTR_FOR_STR = "singular_name"
 
-    id: int = field()
+    id: int = field(repr=False)
 
     plural_name: str = field(hash=False, repr=False, compare=False)
     plural_name_short: str = field(hash=False, repr=False, compare=False)
     singular_name: str = field(compare=False)
-    singular_name_short: str = field(compare=False)
+    singular_name_short: str = field(repr=False, compare=False)
     squad_select: int = field(hash=False, repr=False, compare=False)
     squad_min_play: int = field(hash=False, repr=False, compare=False)
     squad_max_play: int = field(hash=False, repr=False, compare=False)

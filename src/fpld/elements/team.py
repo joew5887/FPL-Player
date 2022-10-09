@@ -12,7 +12,7 @@ base_team = TypeVar("base_team", bound="BaseTeam[Any]")
 class BaseTeam(_Element[base_team], Generic[base_team]):
     """Element for team in the Premier League, unlinked from other FPL elements.
     """
-    id: int = field()
+    id: int = field(repr=False)
     code: int = field(repr=False)
 
     draw: int = field(hash=False, repr=False, compare=False)
@@ -22,7 +22,7 @@ class BaseTeam(_Element[base_team], Generic[base_team]):
     played: int = field(hash=False, repr=False, compare=False)
     points: int = field(hash=False, repr=False, compare=False)
     position: int = field(hash=False, repr=False, compare=False)
-    short_name: str = field(hash=False, compare=False)
+    short_name: str = field(hash=False, repr=False, compare=False)
     strength: int = field(hash=False, repr=False, compare=False)
     team_division: None = field(hash=False, repr=False, compare=False)
     unavailable: bool = field(hash=False, repr=False, compare=False)

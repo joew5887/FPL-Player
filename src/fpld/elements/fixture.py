@@ -1,4 +1,4 @@
-from typing import Generic, TypeVar, Any
+from typing import Generic, Optional, TypeVar, Any
 from .element import _Element, ElementGroup
 from ..util import API
 from ..constants import URLS, string_to_datetime
@@ -15,7 +15,7 @@ class _Fixture(_Element[_fixture], Generic[_fixture]):
     """
 
     kickoff_time: datetime = field(hash=False, repr=False)
-    id: int = field()
+    id: int = field(repr=False)
 
     event: Any = field(hash=False, compare=False)
     code: int = field(repr=False, compare=False)
@@ -25,9 +25,9 @@ class _Fixture(_Element[_fixture], Generic[_fixture]):
     provisional_start_time: bool = field(hash=False, repr=False, compare=False)
     started: bool = field(hash=False, repr=False, compare=False)
     team_a: Any = field(hash=False, compare=False)
-    team_a_score: int = field(hash=False, repr=False, compare=False)
+    team_a_score: Optional[int] = field(hash=False, repr=False, compare=False)
     team_h: Any = field(hash=False, compare=False)
-    team_h_score: int = field(hash=False, repr=False, compare=False)
+    team_h_score: Optional[int] = field(hash=False, repr=False, compare=False)
     stats: list[dict[str, Any]] = field(hash=False, repr=False, compare=False)
     team_h_difficulty: int = field(hash=False, repr=False, compare=False)
     team_a_difficulty: int = field(hash=False, repr=False, compare=False)
@@ -65,7 +65,7 @@ class _Fixture(_Element[_fixture], Generic[_fixture]):
         return f"({self.team_h}) {self.team_h_score} - {self.team_a_score} ({self.team_a})"
 
     @property
-    def total_goals(self) -> int:
+    def total_goals(self) -> Optional[int]:
         """Total goals scored in a game.
 
         Returns
@@ -73,14 +73,18 @@ class _Fixture(_Element[_fixture], Generic[_fixture]):
         int
             Total goals scored in a game.
         """
+
+        if self.team_a_score is None or self.team_h_score is None:
+            return None
+
         return self.team_h_score + self.team_a_score
 
-    @classmethod
-    @property
+    @ classmethod
+    @ property
     def api_link(cls) -> str:
         return URLS["FIXTURES"]
 
-    @classmethod
+    @ classmethod
     def get_all_team_fixtures(cls, team_id: int) -> ElementGroup[_fixture]:
         """Gets all fixtures and results for a team.
 
@@ -98,7 +102,7 @@ class _Fixture(_Element[_fixture], Generic[_fixture]):
 
         return team_games
 
-    @classmethod
+    @ classmethod
     def get_latest_api(cls) -> list[dict[str, Any]]:
         api = API(cls.api_link)
 
@@ -106,7 +110,7 @@ class _Fixture(_Element[_fixture], Generic[_fixture]):
 
         return data_from_api
 
-    @classmethod
+    @ classmethod
     def group_fixtures_by_gameweek(cls, fixtures: ElementGroup[_fixture]) -> dict[int, ElementGroup[_fixture]]:
         """Groups an ElementGroup of fixtures by gameweek.
 
@@ -122,7 +126,7 @@ class _Fixture(_Element[_fixture], Generic[_fixture]):
         """
         return fixtures.group_by("event")
 
-    @classmethod
+    @ classmethod
     def split_fixtures_by_finished(cls, fixtures: ElementGroup[_fixture]) -> tuple[ElementGroup[_fixture], ElementGroup[_fixture]]:
         """Splits an ElementGroup of fixtures by whether they have finished.
 
@@ -138,7 +142,7 @@ class _Fixture(_Element[_fixture], Generic[_fixture]):
         """
         return fixtures.split(finished=True)
 
-    @classmethod
+    @ classmethod
     def get_fixtures_in_event(cls, fixtures: ElementGroup[_fixture], event_id: int) -> ElementGroup[_fixture]:
         """Gets fixtures from a gameweek from `fixtures`.
 
@@ -157,7 +161,7 @@ class _Fixture(_Element[_fixture], Generic[_fixture]):
         return fixtures.filter(event=event_id)
 
 
-@dataclass(frozen=True, order=True, kw_only=True)
+@ dataclass(frozen=True, order=True, kw_only=True)
 class BaseFixture(_Fixture["BaseFixture"]):
     event: int = field(hash=False, compare=False)
     team_h: int = field(hash=False, compare=False)
