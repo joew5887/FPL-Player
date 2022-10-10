@@ -1,11 +1,11 @@
 from dataclasses import fields
-from typing import Any, Generic, Iterator, TypeVar, Union, List
+from typing import Any, Generic, Iterator, Sequence, TypeVar, Union, List
 from .percent import to_percent
 from ..constants import round_value
 
 
 t = TypeVar("t")  # Attribute value
-b = TypeVar("b", int, float)  # Continuous attribute value type
+_b = TypeVar("_b", int, float)  # Continuous attribute value type
 _KT = TypeVar("_KT")  # label for Percentile
 
 
@@ -17,7 +17,7 @@ class Percentile(Generic[_KT]):
     __name_to_value: dict[_KT, Union[int, float]]
     __name_to_percentile: dict[_KT, int]
     __name_to_rank: dict[_KT, int]
-    __rank_to_name: dict[int, _KT]
+    __rank_to_name: list[_KT]
 
     def __init__(self, name_to_value: dict[_KT, Union[int, float]]):
         self.__set_name_to_value(name_to_value)
@@ -232,8 +232,8 @@ class Attribute(Generic[t]):
     """Stores values related to an attribute by its name.
     """
 
-    def __init__(self, values: list[t], attr_name: str):
-        self.values = values
+    def __init__(self, values: Sequence[t], attr_name: str):
+        self.values = list(values)
         self.__attr_name = attr_name
 
     def __str__(self) -> str:
@@ -278,7 +278,7 @@ class Attribute(Generic[t]):
         return self.__values
 
     @values.setter
-    def values(self, new_values: list[t]) -> None:
+    def values(self, new_values: List[t]) -> None:
         if len(new_values) == 0:  # Empty list check.
             raise Exception("Empty list passed!")
 
@@ -293,15 +293,15 @@ class CategoricalVar(Attribute[t]):
     """For attributes with categorical data values.
     """
 
-    def __init__(self, values: list[t], attr_name: str):
+    def __init__(self, values: Sequence[t], attr_name: str):
         super().__init__(values, attr_name)
 
 
-class ContinuousVar(Attribute[b]):
+class ContinuousVar(Attribute[_b]):
     """For attributes with continuous data values.
     """
 
-    def __init__(self, values: list[b], attr_name: str):
+    def __init__(self, values: Sequence[_b], attr_name: str):
         super().__init__(values, attr_name)
 
     '''def __edit_values(self) -> None:

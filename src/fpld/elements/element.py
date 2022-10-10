@@ -652,7 +652,7 @@ def _format_attr_to_value(attr_to_value: dict[str, Union[Any, tuple[Any]]]) -> d
     no_elem_attr_to_value: dict[str, tuple[Any]] = dict()
 
     for attr, values in attr_to_value.items():
-        temp = []
+        temp: list[Any] = []
 
         for value in values:
             if isinstance(value, _Element):

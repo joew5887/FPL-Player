@@ -4,6 +4,13 @@ from fpld import elements as elems
 from fpld.elements.element import IDMatchesZeroElements
 from fpld.util import Percentile
 from typing import Any, Callable, SupportsIndex, TypeVar, Generic, Union
+import pandas as pd
+
+
+if __name__ == "__main__":
+    from examples import PLAYERS, TEAM_DF
+else:
+    from .examples import PLAYERS, TEAM_DF
 
 
 _element = TypeVar("_element", bound=elems.element._Element)
@@ -249,7 +256,44 @@ class TestTeamClass(ElementClass[elems.Team]):
         assert len(output) == 20 and output[0] == "Arsenal"
 
 
-class TestElementGroup:
+class TestElementGroupExampleEmpty:
+    group_to_test: elems.ElementGroup[elems.Team] = elems.ElementGroup[elems.Team]([])
+    expected: dict[str, Any] = {
+        "__iter__": [],
+        "__len__": 0,
+        "__str__": "ElementGroup of 0 elements.",
+        "to_df": {"params": ("name", "short_name"), "output": pd.DataFrame([], columns=["name", "short_name"])},
+        "to_string_list": []
+    }
+
+    def test_iter(self) -> None:
+        assert [t for t in self.group_to_test] == self.expected["__iter__"]
+
+    def test_len(self) -> None:
+        assert len(self.group_to_test) == self.expected["__len__"]
+
+    def test_str(self) -> None:
+        assert str(self.group_to_test) == self.expected["__str__"]
+
+    def test_to_df(self) -> None:
+        assert (self.group_to_test.to_df(*self.expected["to_df"]["params"]).equals(self.expected["to_df"]["output"]))
+
+    def test_to_string_list(self) -> None:
+        assert self.group_to_test.to_string_list() == self.expected["to_string_list"]
+
+
+class TestElementGroupExample(TestElementGroupExampleEmpty):
+    group_to_test: elems.ElementGroup[elems.Team] = elems.Team.get_all()
+    expected: dict[str, Any] = {
+        "__iter__": [t for t in group_to_test.to_list()],
+        "__len__": 20,
+        "__str__": "ElementGroup of 20 elements.",
+        "to_df": {"params": ("name", "short_name"), "output": TEAM_DF},
+        "to_string_list": list(TEAM_DF["name"])
+    }
+
+
+class TestElementGroupCases:
     @pytest.mark.parametrize("group1,group2,expected_output",
                              [
                                  (elems.Player.get(team=18), elems.Player.get(element_type=1), elems.Player.get(method_="or", team=18, element_type=1))
@@ -303,20 +347,6 @@ class TestElementGroup:
     def test_getitem_incorrect_type(self, group: elems.ElementGroup[_element], idx: Any) -> None:
         with pytest.raises(NotImplementedError):
             group[idx]
-
-    def test_iter(self) -> None:
-        group = elems.Player.get(element_type=1)
-
-        assert all(e1 == e2 for e1, e2 in zip(group, group.to_list()))
-
-    def test_len(self) -> None:
-        group = elems.Team.get()
-
-        assert len(group) == 20
-
-    @pytest.mark.parametrize("group,expected", [(elems.Team.get_all(), "ElementGroup of 20 elements.")])
-    def test_str(self, group: elems.ElementGroup[_element], expected: str) -> None:
-        assert str(group) == expected
 
     @pytest.mark.parametrize("group,kwargs", [(elems.Team.get_all(), {"foo": 123})])
     def test_filter_invalid_attr(self, group: elems.ElementGroup[_element], kwargs: dict[str, Any]) -> None:
@@ -385,6 +415,3 @@ class TestMethodChoice:
 
 if __name__ == "__main__":
     pytest.main([__file__])
-    from examples import PLAYERS
-else:
-    from .examples import PLAYERS
