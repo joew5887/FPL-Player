@@ -301,7 +301,7 @@ class ContinuousVar(Attribute[_b]):
     """For attributes with continuous data values.
     """
 
-    def __init__(self, values: Sequence[_b], attr_name: str):
+    def __init__(self, values: Union[Sequence[int], Sequence[float]], attr_name: str):
         super().__init__(values, attr_name)
 
     '''def __edit_values(self) -> None:

@@ -3,12 +3,8 @@ from typing import Any
 import pytest
 import fpld
 from fpld.team.validation import FPLTeamVD, FPLTeamConstraint, LPSquad
-
-
-if __name__ == "__main__":
-    from examples import PLAYERS, VALID_SQUAD
-else:
-    from .examples import PLAYERS, VALID_SQUAD
+import random
+from .examples import PLAYERS, VALID_SQUAD, INVALID_SQUAD_EXTRA_TEAM_PLAYERS, INVALID_SQUAD_NOT_ENOUGH_GROUP
 
 
 class TestFPLTeamExample:
@@ -18,7 +14,9 @@ class TestFPLTeamExample:
 
     expected: dict[str, Any] = {
         "formation": "4-4-2",
-        "__str__": expected_str
+        "__str__": expected_str,
+        "captain": PLAYERS["FWD1"],
+        "vice_captain": PLAYERS["FWD2"]
     }
 
     def test_str(self) -> None:
@@ -26,6 +24,15 @@ class TestFPLTeamExample:
 
     def test_formation(self) -> None:
         assert str(self.team_to_test.formation) == self.expected["formation"]
+
+    def test_captain(self) -> None:
+        assert self.team_to_test.captain == self.expected["captain"]
+
+    def test_vice_captain(self) -> None:
+        assert self.team_to_test.vice_captain == self.expected["vice_captain"]
+
+    def test_cost(self) -> None:
+        assert isinstance(self.team_to_test.cost, int)
 
     def test_change_captain_in_team(self) -> None:
         valid_team_copy = deepcopy(self.team_to_test)
@@ -49,13 +56,12 @@ class TestFPLTeamExample:
         with pytest.raises(Exception):
             valid_team_copy.vice_captain = PLAYERS["DEF6"]
 
+    @pytest.mark.xfail
+    def test_change_captain_to_vice_captain(self) -> None:
+        valid_team_copy = deepcopy(self.team_to_test)
 
-@pytest.mark.xfail
-def test_change_captain_to_vice_captain(valid_team: fpld.Squad) -> None:
-    valid_team_copy = deepcopy(valid_team)
-
-    with pytest.raises(Exception):
-        valid_team_copy.vice_captain = valid_team_copy.captain
+        with pytest.raises(Exception):
+            valid_team_copy.vice_captain = valid_team_copy.captain
 
 
 class TestFPLTeamCases:
@@ -82,40 +88,70 @@ class TestFPLTeamCases:
         assert PLAYERS["MID6"] not in squad.starting_team or PLAYERS["MID6"] not in squad.bench
 
 
-@pytest.fixture
-def vd() -> FPLTeamVD:
-    return FPLTeamVD()
-
-
 # validation.py
 
 
-'''def test_fplteamvd_num_players_in_starting_valid(valid_team_group: tuple[list[fpld.Player], list[fpld.Player], fpld.Player, fpld.Player], vd: FPLTeamVD) -> None:
-    starting_team = valid_team_group[0]
+class TestFPLTeamVDCases:
+    vd = FPLTeamVD()
+    valid_group = VALID_SQUAD
+    extra_team_players_group = INVALID_SQUAD_EXTRA_TEAM_PLAYERS
+    not_enough_defenders_starting_group = INVALID_SQUAD_NOT_ENOUGH_GROUP
 
-    vd.num_players_in_starting(starting_team)
+    def test_check_unordered(self) -> None:
+        starting_team = self.valid_group[0]
+        bench = self.valid_group[1]
+        random.shuffle(starting_team)
+        random.shuffle(bench)
 
+        self.vd.check(starting_team, bench)
 
-def test_fplteamvd_num_players_in_starting_invalid(invalid_position_not_enough_group: tuple[list[fpld.Player], list[fpld.Player], fpld.Player, fpld.Player], vd: FPLTeamVD) -> None:
-    starting_team = invalid_position_not_enough_group[0]
-    starting_team.pop()
+    def test_check_ordered(self) -> None:
+        starting_team = self.valid_group[0]
+        bench = self.valid_group[1]
 
-    with pytest.raises(Exception):  # More specific
-        vd.num_players_in_starting(starting_team)
+        self.vd.check(starting_team, bench)
 
+    def test_num_players_in_starting_invalid(self) -> None:
+        starting_team = deepcopy(self.valid_group[0])
+        starting_team.pop()
+        # Becomes 10 players as 4-4-1
 
-def test_fplteamvd_num_players_in_team_invalid(valid_team_group: tuple[list[fpld.Player], list[fpld.Player], fpld.Player, fpld.Player], vd: FPLTeamVD) -> None:
-    full_team = valid_team_group[0] + valid_team_group[1] + PLAYERS["MID6"]
+        with pytest.raises(Exception):  # More specific
+            self.vd.num_players_in_starting(starting_team)
 
-    with pytest.raises(Exception):  # More specific
-        vd.num_players_in_team(full_team)
+    def test_num_players_in_team_invalid(self) -> None:
+        full_team = self.valid_group[0] + self.valid_group[1]
+        full_team.append(PLAYERS["MID6"])
 
+        with pytest.raises(Exception):  # More specific
+            self. vd.num_players_in_team(full_team)
 
-def test_fplteamvd_num_players_from_teams_invalid(invalid_extra_team_players_group: tuple[list[fpld.Player], list[fpld.Player], fpld.Player, fpld.Player], vd: FPLTeamVD) -> None:
-    full_team = invalid_extra_team_players_group[0] + invalid_extra_team_players_group[1]
+    def test_num_players_from_teams_invalid(self) -> None:
+        full_team = self.extra_team_players_group[0] + self.extra_team_players_group[1]
 
-    with pytest.raises(Exception):  # More specific
-        vd.num_players_from_teams(full_team)'''
+        with pytest.raises(Exception):  # More specific
+            self.vd.num_players_from_teams(full_team)
+
+    def test_num_players_in_position_inbalanced_full_team(self) -> None:
+        starting_team = deepcopy(self.valid_group[0])
+        starting_team.remove(PLAYERS["FWD2"])
+        starting_team.remove(PLAYERS["FWD1"])
+        starting_team.append(PLAYERS["MID5"])
+        starting_team.append(PLAYERS["DEF5"])
+        bench = deepcopy(self.valid_group[1])
+        bench.append(PLAYERS["FWD1"])
+        bench.append(PLAYERS["FWD2"])
+        # becomes 1-5-5-0
+
+        with pytest.raises(Exception):  # More specific
+            self.vd.num_players_in_position(starting_team, bench)
+
+    def test_num_players_in_position_inbalanced_starting_team(self) -> None:
+        starting_team = self.not_enough_defenders_starting_group[0]
+        bench = self.not_enough_defenders_starting_group[1]
+
+        with pytest.raises(Exception):  # More specific
+            self.vd.num_players_in_position(starting_team, bench)
 
 
 class TestLPSquad:
@@ -149,7 +185,3 @@ class TestLPSquad:
 
 class TestFPLTeamConstraints:
     pass
-
-
-if __name__ == "__main__":
-    pytest.main([__file__])

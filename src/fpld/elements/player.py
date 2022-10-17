@@ -11,7 +11,7 @@ from .position import Position
 
 
 _player = TypeVar("_player", bound="_Player[Any]")
-playerfull = TypeVar("playerfull", bound="BasePlayerFull")
+playerfull = TypeVar("playerfull", bound="BasePlayerFull[Any, Any]")
 player_history = TypeVar("player_history", bound="BasePlayerHistory")
 player_history_past = TypeVar(
     "player_history_past", bound="BasePlayerHistoryPast")
@@ -35,7 +35,7 @@ class _Player(_Element[_player], Generic[_player]):
     cost_change_start: int = field(hash=False, repr=False, compare=False)
     cost_change_start_fall: int = field(hash=False, repr=False, compare=False)
     dreamteam_count: int = field(hash=False, repr=False, compare=False)
-    element_type: Position = field(hash=False, compare=False)
+    element_type: Any = field(hash=False, compare=False)
     ep_next: float = field(hash=False, repr=False, compare=False)
     ep_this: float = field(hash=False, repr=False, compare=False)
     event_points: int = field(hash=False, repr=False, compare=False)
@@ -102,8 +102,6 @@ class _Player(_Element[_player], Generic[_player]):
     def __pre_init__(cls, new_instance: dict[str, Any]) -> dict[str, Any]:
         new_instance = super().__pre_init__(new_instance)
 
-        new_instance["element_type"] = Position.get_by_id(
-            new_instance["element_type"])
         new_instance["form"] = float(new_instance["form"])
 
         return new_instance
@@ -141,7 +139,7 @@ class _Player(_Element[_player], Generic[_player]):
         """
         return self.transfers_in_event - self.transfers_out_event
 
-    def in_full(self) -> BasePlayerFull:
+    def in_full(self) -> BasePlayerFull[player_history, player_history_past]:
         """Game by game, season by season data for a player.
 
         Returns
@@ -152,13 +150,12 @@ class _Player(_Element[_player], Generic[_player]):
         return BasePlayerFull.from_id(self.id)
 
     @ classmethod
-    @ property
     def api_link(cls) -> str:
         return URLS["BOOTSTRAP-STATIC"]
 
     @ classmethod
     def get_latest_api(cls) -> list[dict[str, Any]]:
-        api = API(cls.api_link)
+        api = API(cls.api_link())
 
         data_from_api: list[dict[str, Any]] = api.data["elements"]
 
@@ -200,6 +197,7 @@ class _Player(_Element[_player], Generic[_player]):
 @dataclass(frozen=True, order=True, kw_only=True)
 class BasePlayer(_Player["BasePlayer"]):
     team: int = field(hash=False, compare=False)
+    element_type: int = field(hash=False, compare=False)
 
 
 class BasePlayerFull(Generic[player_history, player_history_past]):
@@ -233,7 +231,7 @@ class BasePlayerFull(Generic[player_history, player_history_past]):
         return self._history_past
 
     @classmethod
-    def from_id(cls, player_id: int) -> BasePlayerFull:
+    def from_id(cls, player_id: int) -> BasePlayerFull[player_history, player_history_past]:
         """Takes a player ID, and returns full data for that player
 
         Parameters
@@ -248,7 +246,6 @@ class BasePlayerFull(Generic[player_history, player_history_past]):
         """
         url = URLS["ELEMENT-SUMMARY"].format(player_id)
         api = API(url)  # Need to have offline feature
-        print(api.data)
         history = BasePlayerHistory.from_api(api.data["history"])
         history_past = BasePlayerHistoryPast.from_api(
             api.data["history_past"])
@@ -370,8 +367,8 @@ class BasePlayerStats(ABC):
 class BasePlayerHistory(BasePlayerStats):
     """Player history, season by season, unlinked from other FPL elements.
     """
-    fixture: CategoricalVar[int] = field(hash=False, repr=False)
-    opponent_team: CategoricalVar[int] = field(hash=False, repr=False)
+    fixture: CategoricalVar[Any] = field(hash=False, repr=False)
+    opponent_team: CategoricalVar[Any] = field(hash=False, repr=False)
     total_points: ContinuousVar[int] = field(hash=False, repr=False)
     was_home: CategoricalVar[bool] = field(hash=False, repr=False)
     kickoff_time: CategoricalVar[datetime] = field(hash=False, repr=False)

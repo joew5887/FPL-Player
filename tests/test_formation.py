@@ -1,5 +1,6 @@
 import pytest
 import fpld
+from .examples import PLAYERS
 
 
 @pytest.fixture
@@ -92,10 +93,3 @@ def test_no_gk_error(invalid_no_gk_group: fpld.ElementGroup[fpld.Player]) -> Non
 def test_not_11_players_error(invalid_not_11_group: fpld.ElementGroup[fpld.Player]) -> None:
     with pytest.raises(Exception):
         fpld.Formation.is_valid_team(invalid_not_11_group)
-
-
-if __name__ == "__main__":
-    pytest.main([__file__])
-    from examples import PLAYERS
-else:
-    from .examples import PLAYERS

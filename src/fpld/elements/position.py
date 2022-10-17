@@ -28,13 +28,12 @@ class Position(_Element["Position"]):
     element_count: int = field(hash=False, repr=False, compare=False)
 
     @classmethod
-    @property
     def api_link(cls) -> str:
         return URLS["BOOTSTRAP-STATIC"]
 
     @classmethod
     def get_latest_api(cls) -> list[dict[str, Any]]:
-        api = API(cls.api_link)
+        api = API(cls.api_link())
 
         data_from_api: list[dict[str, Any]] = api.data["element_types"]
 

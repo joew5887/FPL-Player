@@ -36,13 +36,12 @@ class BaseTeam(_Element[base_team], Generic[base_team]):
     pulse_id: int = field(repr=False, compare=False)
 
     @classmethod
-    @property
     def api_link(cls) -> str:
         return URLS["BOOTSTRAP-STATIC"]
 
     @classmethod
     def get_latest_api(cls) -> list[dict[str, Any]]:
-        api = API(cls.api_link)
+        api = API(cls.api_link())
 
         data_from_api: list[dict[str, Any]] = api.data["teams"]
 

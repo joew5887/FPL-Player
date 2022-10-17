@@ -19,7 +19,8 @@ PLAYERS = {
     "MID6": fpld.Player.get_by_id(261),  # Maddison
     "FWD1": fpld.Player.get_by_id(427),  # Kane
     "FWD2": fpld.Player.get_by_id(318),  # Haaland
-    "FWD3": fpld.Player.get_by_id(80)  # Toney
+    "FWD3": fpld.Player.get_by_id(80),  # Toney
+    "FWD4": fpld.Player.get_by_id(66)  # Solanke
 }
 
 POSITIONS = {

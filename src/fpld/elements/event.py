@@ -159,7 +159,6 @@ class _Event(_Element[_event], Generic[_event]):
         return ElementGroup[_event](group)
 
     @classmethod
-    @property
     def api_link(cls) -> str:
         return URLS["BOOTSTRAP-STATIC"]
 
@@ -208,7 +207,7 @@ class _Event(_Element[_event], Generic[_event]):
 
     @classmethod
     def get_latest_api(cls) -> list[dict[str, Any]]:
-        api = API(cls.api_link)
+        api = API(cls.api_link())
 
         data: list[dict[str, Any]] = api.data["events"]
 

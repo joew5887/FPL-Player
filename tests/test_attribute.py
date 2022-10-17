@@ -137,7 +137,3 @@ class TestAttributeCases:
     def test_empty_input(self) -> None:
         with pytest.raises(Exception):
             Attribute[int]([], "foo")
-
-
-if __name__ == "__main__":
-    pytest.main([__file__])

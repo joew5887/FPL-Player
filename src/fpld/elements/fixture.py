@@ -80,7 +80,6 @@ class _Fixture(_Element[_fixture], Generic[_fixture]):
         return self.team_h_score + self.team_a_score
 
     @ classmethod
-    @ property
     def api_link(cls) -> str:
         return URLS["FIXTURES"]
 
@@ -104,7 +103,7 @@ class _Fixture(_Element[_fixture], Generic[_fixture]):
 
     @ classmethod
     def get_latest_api(cls) -> list[dict[str, Any]]:
-        api = API(cls.api_link)
+        api = API(cls.api_link())
 
         data_from_api: list[dict[str, Any]] = api.data
 

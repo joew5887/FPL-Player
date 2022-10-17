@@ -4,7 +4,7 @@ from types import NoneType
 from .elements import Player, Team, Event, Fixture
 from .elements.element import _Element, ElementGroup
 import pandas as pd
-from typing import TypeVar, Generic, Union
+from typing import Any, Optional, TypeVar, Generic, Union
 # from sklearn.linear_model import LinearRegression
 # from sklearn.preprocessing import MinMaxScaler
 # from sklearn.pipeline import Pipeline
@@ -14,7 +14,7 @@ import numpy as np
 import pickle
 
 
-elem = TypeVar("elem", bound=_Element)
+elem = TypeVar("elem", bound=_Element[Any])
 model_type = TypeVar("model_type")
 data_type = TypeVar("data_type", bound="AttributeModelData")
 
@@ -125,11 +125,11 @@ class PointsData(AttributeModelData):
 
 
 class __Model(ABC, Generic[data_type, model_type]):
-    __x_train: np.ndarray
-    __x_test: np.ndarray
-    __y_train: np.ndarray
-    __y_test: np.ndarray
-    __training_method: str
+    __x_train: Optional[np.ndarray]
+    __x_test: Optional[np.ndarray]
+    __y_train: Optional[np.ndarray]
+    __y_test: Optional[np.ndarray]
+    __training_method: Optional[str]
 
     def __init__(self, data: data_type, model: model_type):
         self.__model = model
@@ -264,6 +264,8 @@ class FuturePointsModel():
         if self.is_updated():
             return self
 
+        return self
+
     @classmethod
     def from_model(cls, model: __Model) -> FuturePointsModel:
         max_gw = max(model.data._events)
@@ -273,75 +275,3 @@ class FuturePointsModel():
             model_gw = max_gw
 
         return cls(model, model_gw)
-
-
-# Not used
-
-class PredictStats(ABC, Generic[elem]):
-    def __init__(self, element: elem):
-        self.__element = element
-
-    @ property
-    def element(self) -> elem:
-        return self.__element
-
-
-class PredictTeamStats(PredictStats[Team]):
-    def __init__(self, team: Team):
-        super().__init__(team)
-
-
-class GoalsConceded(AttributeModelData):
-    def _set_data(self) -> pd.DataFrame:
-        data = []
-
-        for event in self._events:
-            fixtures_in_event = Fixture.get(event=event.unique_id)
-            # last_event_conceded = {team: 1 for team in Team.get_all()}
-
-            fixture: Fixture
-            for fixture in fixtures_in_event:
-                team_h = fixture.team_h
-                team_a = fixture.team_a
-
-                data.append(
-                    [
-                        event.unique_id,
-                        team_h.strength_defence_home,
-                        team_a.strength_attack_away,
-                        1,
-                        team_h.code,
-                        fixture.team_h_difficulty,
-                        fixture.team_a_score,
-                    ]
-                )
-                data.append(
-                    [
-                        event.unique_id,
-                        team_a.strength_defence_away,
-                        team_h.strength_attack_home,
-                        0,
-                        team_a.code,
-                        fixture.team_a_difficulty,
-                        fixture.team_h_score,
-                    ]
-                )
-
-        data_df = pd.DataFrame(
-            data, columns=["event"] + type(self).feature_columns + [type(self).target_column])
-
-        return data_df
-
-    @classmethod
-    @property
-    def feature_columns(cls) -> list[str]:
-        return ["defence", "oppo_attack", "was_home", "team", "diff"]
-
-    @classmethod
-    @property
-    def target_column(cls) -> str:
-        return "conceded"
-
-    @ classmethod
-    def from_pickle(cls, path: str) -> GoalsConceded:
-        return

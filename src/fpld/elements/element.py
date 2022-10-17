@@ -1,8 +1,9 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from typing import Any, Iterable, Iterator, SupportsIndex, TypeVar, Generic, Union, overload, Callable
+from typing import Any, Iterable, Iterator, Optional, SupportsIndex, TypeVar, Generic, Union, overload, Callable
 from dataclasses import fields
 from attr import asdict
+from ..util.external import API
 from ..util import all_attributes_present, all_field_names, Percentile
 from functools import cache
 from random import choice, sample
@@ -18,9 +19,9 @@ class _Element(ABC, Generic[element]):
     E.g. Players, Teams, Fixtures
     """
 
-    UNIQUE_ID_COL = "id"
-    _api = None
-    _ATTR_FOR_STR = "name"
+    UNIQUE_ID_COL: str = "id"
+    _api: Optional[API] = None
+    _ATTR_FOR_STR: str = "name"
 
     @classmethod
     def __pre_init__(cls, new_instance: dict[str, Any]) -> dict[str, Any]:
@@ -93,19 +94,18 @@ class _Element(ABC, Generic[element]):
         return id_
 
     @classmethod
-    @property
     @abstractmethod
     def api_link(cls) -> str:
         """URL of API for objects of that class.
 
-        Used in `cls.get_api` property.
+            Used in `cls.get_api` property.
 
-        Returns
-        -------
-        str
-            API URL.
-        """
-        return ""
+            Returns
+            -------
+            str
+                API URL.
+            """
+        ...
 
     @classmethod
     def from_dict(cls, new_instance: dict[str, Any]) -> element:
@@ -195,13 +195,15 @@ class _Element(ABC, Generic[element]):
 
         return cls._api
 
-    @overload
+    '''@overload
     @classmethod
-    def get_by_id(cls, id_: int) -> Union[element, None]: ...
+    def get_by_id(cls, id_: int) -> Union[element, None]:
+        ...
 
     @overload
     @classmethod
-    def get_by_id(cls, id_: str) -> Union[element, None]: ...
+    def get_by_id(cls, id_: str) -> Union[element, None]:
+        ...'''
 
     @classmethod
     @cache
@@ -245,7 +247,7 @@ class _Element(ABC, Generic[element]):
         list[dict[str, Any]]
             Latest data for the class.
         """
-        return [{}]
+        ...
 
 
 class ElementGroup(ABC, Generic[element]):
@@ -298,7 +300,7 @@ class ElementGroup(ABC, Generic[element]):
         """
         return f"{self.__class__.__name__} of {len(self)} elements."
 
-    def filter(self, *, method_: str = "all", **attr_to_value: Union[Any, Iterable[Any]]) -> ElementGroup[element]:
+    def filter(self, *, method_: str = "all", **attr_to_value: Union[Any, tuple[Any]]) -> ElementGroup[element]:
         """Filters an ElementGroup into a group that satisfies all the conditions passed.
 
         Parameters

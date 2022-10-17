@@ -26,7 +26,3 @@ def test_string_to_datetime(input_str: str, expected: datetime) -> None:
 @pytest.mark.parametrize("input_value,expected", [(5.8888, 5.889), (3.1415654, 3.142)])
 def test_round_value(input_value: float, expected: float) -> None:
     assert fpld.constants.round_value(input_value) == expected
-
-
-if __name__ == "__main__":
-    pytest.main([__file__])

@@ -16,13 +16,12 @@ class Label(_Element["Label"]):
     name: str
 
     @classmethod
-    @property
     def api_link(cls) -> str:
         return URLS["BOOTSTRAP-STATIC"]
 
     @classmethod
     def get_latest_api(cls) -> list[dict[str, str]]:
-        api = API(cls.api_link)
+        api = API(cls.api_link())
         data: list[dict[str, str]] = api.data["element_stats"]
 
         # New player labels

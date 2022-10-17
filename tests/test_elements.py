@@ -5,12 +5,7 @@ from fpld.elements.element import IDMatchesZeroElements
 from fpld.util import Percentile
 from typing import Any, Callable, SupportsIndex, TypeVar, Generic, Union
 import pandas as pd
-
-
-if __name__ == "__main__":
-    from examples import PLAYERS, TEAM_DF
-else:
-    from .examples import PLAYERS, TEAM_DF
+from .examples import PLAYERS, TEAM_DF
 
 
 _element = TypeVar("_element", bound=elems.element._Element)
@@ -42,15 +37,6 @@ class Element(ABC, Generic[_element]):
         id_found = self.element_to_test.unique_id
 
         assert id_found == self.expected["unique_id"]
-
-
-class TestPlayerExample(Element[elems.Player]):
-    element_to_test: elems.Player = elems.Player.get_by_id(427)
-    expected: dict[str, Any] = {
-        "__str__": "Kane",
-        "__repr__": "Player(element_type=Position(singular_name='Forward'), team=Team(name='Spurs'), web_name='Kane')",
-        "unique_id": 427,
-    }
 
 
 class TestPositionExample(Element[elems.Position]):
@@ -132,7 +118,7 @@ class ElementClass(ABC, Generic[_element]):
         raise NotImplementedError
 
     def test_api_link(self) -> None:
-        api_link = self.class_to_test.api_link
+        api_link = self.class_to_test.api_link()
 
         assert api_link == self.expected["api_link"]
 
@@ -166,23 +152,6 @@ class ElementClass(ABC, Generic[_element]):
 
     def test_get_by_id(self, id_input: int, expected_output: Union[_element, None]) -> None:
         assert self.class_to_test.get_by_id(id_input) == expected_output
-
-
-class TestPlayerClass(ElementClass[elems.Player]):
-    class_to_test = elems.Player
-    expected: dict[str, Any] = {
-        "unique_id_col": "id",
-        "api_link": "https://fantasy.premierleague.com/api/bootstrap-static/"
-    }
-
-    @pytest.mark.parametrize("id_input,expected_output",
-                             [
-                                 (427, elems.Player.get(web_name="Kane")[0]),
-                                 (-1, None)
-                             ]
-                             )
-    def test_get_by_id(self, id_input: int, expected_output: Union[_element, None]) -> None:
-        return super().test_get_by_id(id_input, expected_output)
 
 
 class TestPositionClass(ElementClass[elems.Position]):

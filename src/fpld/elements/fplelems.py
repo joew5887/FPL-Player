@@ -1,6 +1,6 @@
 from __future__ import annotations
 import math
-from typing import Any, Union
+from typing import Any, Optional, Union
 from ..constants import URLS, datetime_to_string
 from ..util.percent import to_percent
 from ..util import API
@@ -105,12 +105,12 @@ class Team(BaseTeam["Team"]):
         """
         return self.players.filter(element_type=position)
 
-    def player_total(self, *cols: str, by_position: Position = None) -> float:
+    def player_total(self, *cols: str, by_position: Optional[Position] = None) -> float:
         """Total points for all the players in a team, for a given attribute.
 
         Parameters
         ----------
-        by_position : Position, optional
+        by_position : Optional[Position], optional
             Position to filter, None means all positions, by default None
 
         Returns
@@ -148,12 +148,12 @@ class Team(BaseTeam["Team"]):
 
         return total
 
-    def total_goal_contributions(self, *, by_position: Position = None) -> int:
+    def total_goal_contributions(self, *, by_position: Optional[Position] = None) -> int:
         """Total goal contributions for a team.
 
         Parameters
         ----------
-        by_position : Position, optional
+        by_position : Optional[Position], optional
             Position to filter, None means all positions, by default None
 
         Returns
@@ -195,7 +195,7 @@ class PlayerFull(BasePlayerFull[PlayerHistory, PlayerHistoryPast]):
         self._history_past = history_past
 
     @classmethod
-    def from_id(cls, player_id: int) -> PlayerFull:
+    def from_id(cls, player_id: int) -> PlayerFull[PlayerHistory, PlayerHistoryPast]:
         """Takes a player ID, and returns full data for that player
 
         Parameters
@@ -224,11 +224,14 @@ class Player(_Player["Player"]):
     """Player element, linked to other FPL elements.
     """
     team: Team = field(hash=False, compare=False)
+    element_type: Position = field(hash=False, compare=False)
 
     @classmethod
     def __pre_init__(cls, new_instance: dict[str, Any]) -> dict[str, Any]:
         new_instance = super().__pre_init__(new_instance)
 
+        new_instance["element_type"] = Position.get_by_id(
+            new_instance["element_type"])
         new_instance["team"] = Team.get_by_id(new_instance["team"])
 
         return new_instance
