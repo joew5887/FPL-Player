@@ -42,6 +42,20 @@ VALID_SQUAD: tuple[list[fpld.Player], list[fpld.Player], fpld.Player, fpld.Playe
     PLAYERS["FWD2"]
 )
 
+LONG_BENCH_VALID_SQUAD: tuple[list[fpld.Player], list[fpld.Player], fpld.Player, fpld.Player] = (
+    [
+        PLAYERS["GK1"],
+        PLAYERS["DEF1"], PLAYERS["DEF2"], PLAYERS["DEF3"], PLAYERS["DEF4"],
+        PLAYERS["MID2"], PLAYERS["MID3"], PLAYERS["MID5"],
+        PLAYERS["FWD1"], PLAYERS["FWD2"], PLAYERS["FWD3"]
+    ],
+    [
+        PLAYERS["GK2"], PLAYERS["DEF5"], PLAYERS["MID4"], PLAYERS["MID1"]
+    ],
+    PLAYERS["FWD1"],
+    PLAYERS["FWD2"]
+)
+
 INVALID_SQUAD_EXTRA_TEAM_PLAYERS: tuple[list[fpld.Player], list[fpld.Player], fpld.Player, fpld.Player] = (
     [
         PLAYERS["GK1"],

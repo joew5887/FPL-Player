@@ -12,18 +12,39 @@ class FPLTeam:
 
     @property
     def squad_size(self) -> int:
+        """Maximum size for a squad (starting team and bench).
+
+        Returns
+        -------
+        int
+            Number of allowed players in both the starting team and bench.
+        """
         squad_size: int = int(self.__game_settings["squad_squadsize"])
 
         return squad_size
 
     @property
     def starting_size(self) -> int:
+        """Maximum number of players in starting team.
+
+        Returns
+        -------
+        int
+            Number of players allowed in starting team (11).
+        """
         starting_size: int = int(self.__game_settings["squad_squadplay"])
 
         return starting_size
 
     @property
     def squad_team_limit(self) -> int:
+        """Maximum of players from the same club.
+
+        Returns
+        -------
+        int
+            Number of players allowed per club.
+        """
         team_limit: int = int(self.__game_settings["squad_team_limit"])
 
         return team_limit
@@ -88,13 +109,6 @@ class FPLTeamVD(FPLTeam):
         self.num_players_in_position(starting_team, bench)
         self.num_players_in_starting(starting_team)
         self.num_players_in_team(full_team)
-
-
-def player_in_team(player: Player, team: list[Player]) -> bool:
-    '''if player is None or team is None:
-        return True'''
-
-    return player in team
 
 
 class FPLTeamConstraint(FPLTeam):

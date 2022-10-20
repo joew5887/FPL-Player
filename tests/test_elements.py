@@ -1,7 +1,6 @@
 from abc import ABC
 import pytest
 from fpld import elements as elems
-from fpld.elements.element import IDMatchesZeroElements
 from fpld.util import Percentile
 from typing import Any, Callable, SupportsIndex, TypeVar, Generic, Union
 import pandas as pd
@@ -37,74 +36,6 @@ class Element(ABC, Generic[_element]):
         id_found = self.element_to_test.unique_id
 
         assert id_found == self.expected["unique_id"]
-
-
-class TestPositionExample(Element[elems.Position]):
-    element_to_test: elems.Position = elems.Position.get_by_id(4)
-    expected: dict[str, Any] = {
-        "__str__": "Forward",
-        "__repr__": "Position(singular_name='Forward')",
-        "unique_id": 4,
-    }
-
-
-class TestLabelExample(Element[elems.Label]):
-    element_to_test: elems.Label = elems.Label.get_by_id("goals_scored")
-    expected: dict[str, Any] = {
-        "__str__": "Goals scored",
-        "__repr__": "Label(label='Goals scored', name='goals_scored')",
-        "unique_id": "goals_scored",
-    }
-
-
-class TestTeamExample(Element[elems.Team]):
-    element_to_test: elems.Team = elems.Team.get_by_id(1)
-    expected: dict[str, Any] = {
-        "__str__": "Arsenal",
-        "__repr__": "Team(name='Arsenal')",
-        "unique_id": 1,
-    }
-
-
-class TestEventExample(Element[elems.Label]):
-    element_to_test: elems.Event = elems.Event.get_by_id(1)
-    expected: dict[str, Any] = {
-        "__str__": "Gameweek 1",
-        "__repr__": "Event(name='Gameweek 1')",
-        "unique_id": 1,
-        "started": True,
-    }
-
-    def test_started(self) -> None:
-        assert self.element_to_test.started == self.expected["started"]
-
-
-class TestFixtureExample(Element[elems.Fixture]):
-    element_to_test: elems.Fixture = elems.Fixture.get_by_id(1)
-    expected: dict[str, Any] = {
-        "__str__": "Crystal Palace v Arsenal",
-        "__repr__": "Fixture(event=Event(name='Gameweek 1'), team_a=Team(name='Arsenal'), team_h=Team(name='Crystal Palace'))",
-        "unique_id": 1,
-        "score": "(Crystal Palace) 0 - 2 (Arsenal)",
-        "total_goals": 2,
-    }
-
-    def test_score(self) -> None:
-        assert self.element_to_test.score == self.expected["score"]
-
-    def test_total_goals(self) -> None:
-        assert self.element_to_test.total_goals == self.expected["total_goals"]
-
-
-class TestFixtureFutureExample(TestFixtureExample):
-    element_to_test: elems.Fixture = elems.Fixture.get_by_id(380)
-    expected: dict[str, Any] = {
-        "__str__": "Southampton v Liverpool",
-        "__repr__": "Fixture(event=Event(name='Gameweek 38'), team_a=Team(name='Liverpool'), team_h=Team(name='Southampton'))",
-        "unique_id": 380,
-        "score": "Southampton v Liverpool",
-        "total_goals": None,
-    }
 
 
 class ElementClass(ABC, Generic[_element]):
@@ -152,77 +83,6 @@ class ElementClass(ABC, Generic[_element]):
 
     def test_get_by_id(self, id_input: int, expected_output: Union[_element, None]) -> None:
         assert self.class_to_test.get_by_id(id_input) == expected_output
-
-
-class TestPositionClass(ElementClass[elems.Position]):
-    class_to_test = elems.Position
-    expected: dict[str, Any] = {
-        "unique_id_col": "id",
-        "api_link": "https://fantasy.premierleague.com/api/bootstrap-static/",
-        "get_all_dict": {
-            "GKP": elems.Position.get_by_id(1), "DEF": elems.Position.get_by_id(2),
-            "MID": elems.Position.get_by_id(3), "FWD": elems.Position.get_by_id(4)
-        }
-    }
-
-    @pytest.mark.parametrize("id_input,expected_output",
-                             [
-                                 (1, elems.Position.get(singular_name_short="GKP")[0]),
-                                 (-1, None)
-                             ]
-                             )
-    def test_get_by_id(self, id_input: int, expected_output: Union[_element, None]) -> None:
-        return super().test_get_by_id(id_input, expected_output)
-
-    @pytest.mark.parametrize("singular_name_short,expected_id", [("GKP", 1), ("DEF", 2), ("MID", 3), ("FWD", 4)])
-    def test_get_by_name(self, singular_name_short:  str, expected_id: int) -> None:
-        assert self.class_to_test.get_by_name(singular_name_short).unique_id == expected_id
-
-    def test_invalid_get_by_name(self) -> None:
-        with pytest.raises(IDMatchesZeroElements):
-            self.class_to_test.get_by_name("FOO")
-
-    def test_get_all_dict(self) -> None:
-        assert self.class_to_test.get_all_dict() == self.expected["get_all_dict"]
-
-
-class TestLabelClass(ElementClass[elems.Label]):
-    class_to_test = elems.Label
-    expected: dict[str, Any] = {
-        "unique_id_col": "name",
-        "api_link": "https://fantasy.premierleague.com/api/bootstrap-static/",
-    }
-
-    @pytest.mark.parametrize("id_input,expected_output",
-                             [
-                                 ("assists", elems.Label.get(label="Assists")[0]),
-                                 (-1, None)
-                             ]
-                             )
-    def test_get_by_id(self, id_input: int, expected_output: Union[_element, None]) -> None:
-        return super().test_get_by_id(id_input, expected_output)
-
-
-class TestTeamClass(ElementClass[elems.Team]):
-    class_to_test = elems.Team
-    expected: dict[str, Any] = {
-        "unique_id_col": "id",
-        "api_link": "https://fantasy.premierleague.com/api/bootstrap-static/",
-    }
-
-    @pytest.mark.parametrize("id_input,expected_output",
-                             [
-                                 (1, elems.Team.get(name="Arsenal")[0]),
-                                 (-1, None)
-                             ]
-                             )
-    def test_get_by_id(self, id_input: int, expected_output: Union[_element, None]) -> None:
-        return super().test_get_by_id(id_input, expected_output)
-
-    def test_get_all_names(self) -> None:
-        output = self.class_to_test.get_all_names()
-
-        assert len(output) == 20 and output[0] == "Arsenal"
 
 
 class TestElementGroupExampleEmpty:

@@ -4,7 +4,7 @@ import pytest
 import fpld
 from fpld.team.validation import FPLTeamVD, FPLTeamConstraint, LPSquad
 import random
-from .examples import PLAYERS, VALID_SQUAD, INVALID_SQUAD_EXTRA_TEAM_PLAYERS, INVALID_SQUAD_NOT_ENOUGH_GROUP
+from .examples import PLAYERS, VALID_SQUAD, INVALID_SQUAD_EXTRA_TEAM_PLAYERS, INVALID_SQUAD_NOT_ENOUGH_GROUP, LONG_BENCH_VALID_SQUAD
 
 
 class TestFPLTeamExample:
@@ -62,6 +62,19 @@ class TestFPLTeamExample:
 
         with pytest.raises(Exception):
             valid_team_copy.vice_captain = valid_team_copy.captain
+
+
+class TestFPLTeamLongBenchStr(TestFPLTeamExample):
+    team_to_test: fpld.Squad = fpld.Squad(*LONG_BENCH_VALID_SQUAD)
+    with open("./tests/long_bench_squad_str.txt", "r") as f:
+        expected_str = f.read()
+
+    expected: dict[str, Any] = {
+        "formation": "4-3-3",
+        "__str__": expected_str,
+        "captain": PLAYERS["FWD1"],
+        "vice_captain": PLAYERS["FWD2"]
+    }
 
 
 class TestFPLTeamCases:

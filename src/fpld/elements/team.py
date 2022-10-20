@@ -5,11 +5,11 @@ from ..constants import URLS
 from dataclasses import dataclass, field
 
 
-base_team = TypeVar("base_team", bound="BaseTeam[Any]")
+_team = TypeVar("_team", bound="BaseTeam[Any]")
 
 
 @dataclass(frozen=True, order=True, kw_only=True)
-class BaseTeam(_Element[base_team], Generic[base_team]):
+class BaseTeam(_Element[_team], Generic[_team]):
     """Element for team in the Premier League, unlinked from other FPL elements.
     """
     id: int = field(repr=False)

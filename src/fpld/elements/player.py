@@ -265,7 +265,7 @@ class BasePlayerStats(ABC):
         return iter(elements)
 
     @classmethod
-    def _edit_stat_from_api(cls, field: Field, attr_list: list[Any]) -> list[Any]:
+    def _edit_stat_from_api(cls, field: Field[Any], attr_list: list[Any]) -> list[Any]:
         """Pre-format API data before passing it into the class.
 
         Like '__pre__init__()' from 'Element'.
@@ -315,7 +315,7 @@ class BasePlayerStats(ABC):
         return cls(**stat_attributes)
 
     @classmethod
-    def all_fields(cls) -> list[Field]:
+    def all_fields(cls) -> list[Field[Any]]:
         """All fields for a class.
 
         Returns

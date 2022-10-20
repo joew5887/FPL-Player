@@ -3,7 +3,7 @@ from typing import Iterable
 from ..elements import Player, ElementGroup
 from ..formation import Formation
 from random import randrange
-from .validation import LPSquad, FPLTeamVD, player_in_team
+from .validation import LPSquad, FPLTeamVD
 
 
 class Squad:
@@ -37,12 +37,13 @@ class Squad:
         Example
         -------
         ```
-                                'Iversen'
-        'CanÃ³s' 'Johnson' 'Colwill' 'Dunk' 'Varane'
-                        'Sancho' 'Martinelli'
-                   'Bamford' 'Haaland (C)' 'Firmino (VC)'
-        --------------------------------------------------
-        'Dubravka' 'Kulusevski' 'GÃ¼ndogan' 'Son'
+
+                        'Lloris'                  
+            'Romero' 'Dunk' 'Trippier' 'Shaw'      
+        'De Bruyne' 'Salah' 'Phillips' 'Ward-Prowse'
+                    'Kane' 'Haaland'              
+        --------------------------------------------
+            'Raya' 'Fofana' 'Harrison' 'Toney'     
         ```
         """
         temp = self.formation.as_text()
@@ -68,7 +69,7 @@ class Squad:
 
     @captain.setter
     def captain(self, new_captain: Player) -> None:
-        if not player_in_team(new_captain, self.starting_team):
+        if not (new_captain in self.starting_team):
             raise Exception("Captain not in team.")
 
         self.__captain = new_captain
@@ -79,7 +80,7 @@ class Squad:
 
     @vice_captain.setter
     def vice_captain(self, new_vice_captain: Player) -> None:
-        if not player_in_team(new_vice_captain, self.starting_team):
+        if not (new_vice_captain in self.starting_team):
             raise Exception("Vice captain not in team.")
 
         self.__vice_captain = new_vice_captain

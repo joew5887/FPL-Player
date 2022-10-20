@@ -120,12 +120,12 @@ class _Event(_Element[_event], Generic[_event]):
         return datetime.now() > self.deadline_time
 
     @classmethod
-    def range(cls, start_gw: _event,  start: int, end: int, step: int) -> ElementGroup[_event]:
+    def range(cls, start_gw: _event, start: int, end: int, step: int) -> ElementGroup[_event]:
         """Gets a range of events between two points.
 
         Parameters
         ----------
-        start_gw : event
+        start_gw : _event
             Event to start list from, may be included in list if `start` = 0.
         start : int
             Where to start incrementing from.
@@ -133,7 +133,6 @@ class _Event(_Element[_event], Generic[_event]):
             Where to stop incrementing.
         step : int
             How much to increment by.
-
         Returns
         -------
         ElementGroup[event]
@@ -148,7 +147,7 @@ class _Event(_Element[_event], Generic[_event]):
             Happens at each end of the season.
         """
         group: list[_event] = [
-            start_gw + i for i in range(start, end, step) if start_gw + i is not None]
+            start_gw.__add__(i) for i in range(start, end, step) if start_gw + i is not None]
 
         if len(group) == 0:
             raise ValueError("No gameweeks found")

@@ -42,6 +42,9 @@ class _Element(ABC, Generic[element]):
         """
         return new_instance
 
+    def __eq__(self, other: ElementGroup[Any]) -> bool:
+        return other.to_list() == self.to_list()
+
     def __str__(self) -> str:
         """Gets attribute called `cls._ATTR_FOR_STR`.
 
@@ -207,7 +210,7 @@ class _Element(ABC, Generic[element]):
 
     @classmethod
     @cache
-    def get_by_id(cls, id_: Any) -> Union[element, None]:
+    def get_by_id(cls, id_: Any) -> element:
         """Get an element by their unique id.
 
         Parameters
@@ -217,13 +220,8 @@ class _Element(ABC, Generic[element]):
 
         Returns
         -------
-        Union[element, None]
-            The found element. May return None if no element has been found.
-
-        Raises
-        ------
-        Exception
-            If more than one element was found, ID should be unique.
+        element
+            The found element. May raise error if no element has been found.
         """
         filter_ = {cls.UNIQUE_ID_COL: id_}
         element_group = cls.get(**filter_)

@@ -65,6 +65,8 @@ class TestEventClass(ElementClass[Event]):
                              )
     def test_add(self, input_event: Event, add_by: int, expected_output: Optional[Event]) -> None:
         assert input_event + add_by == expected_output
+        input_event += add_by
+        assert input_event == expected_output
 
     def test_add_invalid_type(self) -> None:
         with pytest.raises(NotImplementedError):
@@ -73,21 +75,62 @@ class TestEventClass(ElementClass[Event]):
     @pytest.mark.parametrize("input_event,sub_by,expected_output",
                              [
                                  (Event.get_by_id(11), 10, Event.get_by_id(1)),
-                                 (Event.get_by_id(1), 1, None)
+                                 (Event.get_by_id(1), 1, Event.none)
                              ]
                              )
     def test_sub(self, input_event: Event, sub_by: int, expected_output: Optional[Event]) -> None:
-        assert input_event + sub_by == expected_output
+        assert input_event - sub_by == expected_output
+        input_event -= sub_by
+        assert input_event == expected_output
 
     def test_sub_invalid_type(self) -> None:
         with pytest.raises(NotImplementedError):
             Event.get_by_id(1) - "foo"
 
-    '''@pytest.mark.parametrize("start_gw,start,end,step,expected_outputt",
+    @pytest.mark.parametrize("start_gw,start,end,step,expected_output",
                              [
-                                 (Event.get_by_id(1), 1, Event.get_by_id(1)),
-                                 (Event.get_by_id(1), 1, None)
+                                 (Event.get_by_id(1), 0, 3, 1, ElementGroup[Event]
+                                  ([Event.get_by_id(1), Event.get_by_id(2), Event.get_by_id(3)])),
+                                 (Event.get_by_id(1), 1, 3, 1, ElementGroup[Event]([Event.get_by_id(2), Event.get_by_id(3)]))
                              ]
                              )
     def test_range(self, start_gw: Event, start: int, end: int, step: int, expected_output: ElementGroup[Event]) -> None:
-        assert Event.range(start_gw, start, end, step).to_list() == expected_output.to_list()'''
+        assert Event.range(start_gw, start, end, step).to_list() == expected_output.to_list()
+
+    def test_empty_range(self) -> None:
+        with pytest.raises(ValueError):
+            Event.range(Event.get_by_id(1), -2, -9, -1)  # ids [-1, ..., -8]
+
+    def test_get_previous_gw(self) -> None:
+        prev_gw = Event.get_previous_gw()
+
+        assert prev_gw.is_previous == True
+
+    def test_get_current_gw(self) -> None:
+        curr_gw = Event.get_current_gw()
+
+        assert curr_gw.is_current == True
+
+    def test_get_next_gw(self) -> None:
+        next_gw = Event.get_next_gw()
+
+        assert next_gw.is_next == True
+
+    def test_get_model_gw(self) -> None:
+        model_gw = Event.get_model_gw()
+
+        assert isinstance(model_gw, Event)
+
+    def test_past_and_future(self) -> None:
+        past_events, future_events = Event.past_and_future()
+
+        assert any(gw.finished == True for gw in past_events)
+        assert any(gw.finished == False for gw in future_events)
+
+    def test_get_scheduled_events(self) -> None:
+        scheduled_events = Event.get_scheduled_events()
+
+        assert Event.none not in scheduled_events.to_list()
+
+    def test_find_until_true_no_true(self) -> None:
+        pass
