@@ -42,9 +42,6 @@ class _Element(ABC, Generic[element]):
         """
         return new_instance
 
-    def __eq__(self, other: ElementGroup[Any]) -> bool:
-        return other.to_list() == self.to_list()
-
     def __str__(self) -> str:
         """Gets attribute called `cls._ATTR_FOR_STR`.
 
@@ -255,6 +252,9 @@ class ElementGroup(ABC, Generic[element]):
     def __init__(self, objects: Iterable[element]):
         # Need to find a method of removing duplicates whilst preserving order.
         self.__objects = list(objects)
+
+    def __eq__(self, other: ElementGroup[Any]) -> bool:
+        return other.to_list() == self.to_list()
 
     @overload
     def __add__(self, obj: ElementGroup[element]) -> ElementGroup[element]: ...

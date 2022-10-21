@@ -2,9 +2,31 @@ from copy import deepcopy
 from typing import Any
 import pytest
 import fpld
-from fpld.team.validation import FPLTeamVD, FPLTeamConstraint, LPSquad
+from fpld.elements.element import ElementGroup
+from fpld.team.validation import FPLTeamVD, LPSquad2
 import random
 from .examples import PLAYERS, VALID_SQUAD, INVALID_SQUAD_EXTRA_TEAM_PLAYERS, INVALID_SQUAD_NOT_ENOUGH_GROUP, LONG_BENCH_VALID_SQUAD
+
+
+"""
+"players_to_rewards": {},
+{
+    "num_players": 15,
+    "num_players_starting": 11
+    "num_players_same_club": 3,
+    "budget_ub": 1000,
+    "budget_lb": 997,
+    "required_players: [],
+    "max_gkp": 2,
+    "min_gkp": 2,
+    "max_def": 5,
+    "min_def": 5,
+    "max_mid": 5,
+    "min_mid": 5,
+    "max_fwd": 3,
+    "min_fwd": 3,
+}
+"""
 
 
 class TestFPLTeamExample:
@@ -85,9 +107,8 @@ class TestFPLTeamCases:
     def test_random_sufficient_pool(self) -> None:
         players = fpld.Player.get_all()
 
-        fpld.Squad.random(players)
+        fpld.Squad.random(players, 1000, 997, [])
 
-    @pytest.mark.xfail
     def test_optimal_squad(self) -> None:
         player_pool = {
             PLAYERS["GK1"]: [1.0], PLAYERS["GK2"]: [1.0],
@@ -96,7 +117,7 @@ class TestFPLTeamCases:
             PLAYERS["FWD1"]: [1.0], PLAYERS["FWD2"]: [1.0], PLAYERS["FWD3"]: [1.0]
         }
 
-        squad = fpld.Squad.optimal_team(player_pool, budget=2000, budget_interval=600)
+        squad = fpld.Squad.optimal_team(player_pool, 3000, 500, [])
 
         assert PLAYERS["MID6"] not in squad.starting_team or PLAYERS["MID6"] not in squad.bench
 
@@ -168,33 +189,139 @@ class TestFPLTeamVDCases:
 
 
 class TestLPSquad:
-    def test_player_pool(self) -> None:
-        pass
-
-    def test_budget(self) -> None:
-        pass
-
-    def test_budget_bounds(self) -> None:
-        pass
-
-    def test_required_players(self) -> None:
-        pass
-
-    def test_values_for_player(self) -> None:
-        pass
-
-    def test_player_lp_variable_in_pool(self) -> None:
-        pass
-
-    def test_player_lp_variable_not_in_pool(self) -> None:
-        pass
-
-    def test_new_team(self) -> None:
-        pass
-
-    def test_new_squad(self) -> None:
-        pass
+    pass
 
 
 class TestFPLTeamConstraints:
-    pass
+    PLAYER_POOL: dict[fpld.Player, list[int]] = {p: [p.yellow_cards] for p in fpld.Player.get_all()}
+
+    @pytest.mark.parametrize("num_players", [15, 0])
+    def test_set_num_players_constraint(self, num_players: int) -> None:
+        lp_squad = LPSquad2(self.PLAYER_POOL)
+
+        lp_squad.constraint_engine.set_num_players(num_players)
+        sol = lp_squad.solve()
+
+        assert len(sol) == num_players
+
+    def test_reset_problem(self) -> None:
+        lp_squad = LPSquad2(self.PLAYER_POOL)
+
+        lp_squad.constraint_engine.set_num_players(11)
+        lp_squad.constraint_engine.reset_problem()
+
+        lp_squad.constraint_engine.set_num_players(10)
+        sol = lp_squad.solve()
+
+        assert len(sol) == 10
+
+    @pytest.mark.parametrize("num_players_same_club", [3, 1])
+    def test_num_players_same_club_constraint(self, num_players_same_club: int) -> None:
+        lp_squad = LPSquad2(self.PLAYER_POOL)
+
+        lp_squad.constraint_engine.set_num_players(10)
+        lp_squad.constraint_engine.num_players_same_club(num_players_same_club)
+        sol = lp_squad.solve()
+        group = fpld.ElementGroup[fpld.Player](sol)
+
+        assert any([len(players_from_team) <= num_players_same_club for players_from_team in group.group_by("team").values()])
+
+    def test_zero_players_same_club_constraint(self) -> None:
+        lp_squad = LPSquad2(self.PLAYER_POOL)
+
+        lp_squad.constraint_engine.num_players_same_club(0)
+        sol = lp_squad.solve()
+
+        assert sol == []
+
+    @pytest.mark.parametrize("budget_ub,budget_lb", [(1000, 990), (1000, 1000)])
+    def test_budget_constraint(self, budget_ub: int, budget_lb: int) -> None:
+        lp_squad = LPSquad2(self.PLAYER_POOL)
+
+        lp_squad.constraint_engine.set_num_players(10)
+        lp_squad.constraint_engine.budget(budget_ub, budget_lb)
+        sol = lp_squad.solve()
+
+        squad_cost = sum([p.now_cost for p in sol])
+
+        assert budget_lb <= squad_cost and squad_cost <= budget_ub
+
+    def test_budget_lb_bigger_constraint(self) -> None:
+        budget_ub = 990
+        budget_lb = 1000
+
+        lp_squad = LPSquad2(self.PLAYER_POOL)
+
+        with pytest.raises(ValueError):
+            lp_squad.constraint_engine.budget(budget_ub, budget_lb)
+
+    def test_zero_budget_constraint(self) -> None:
+        budget_ub = 0
+        budget_lb = 0
+
+        lp_squad = LPSquad2(self.PLAYER_POOL)
+
+        lp_squad.constraint_engine.budget(budget_ub, budget_lb)
+        sol = lp_squad.solve()
+
+        assert sol == []
+
+    def test_required_players(self) -> None:
+        required_players = [PLAYERS["MID1"]]
+
+        lp_squad = LPSquad2(self.PLAYER_POOL)
+
+        lp_squad.constraint_engine.set_num_players(10)
+        lp_squad.constraint_engine.required_players(required_players)
+        sol = lp_squad.solve()
+
+        assert PLAYERS["MID1"] in sol
+
+    def test_required_player_not_in_pool(self) -> None:
+        required_players = [PLAYERS["MID1"]]
+        player_pool = {k: v for k, v in self.PLAYER_POOL.items() if k != PLAYERS["MID1"]}
+        assert not(PLAYERS["MID1"] in player_pool)
+
+        lp_squad = LPSquad2(player_pool)
+
+        with pytest.raises(Exception):
+            lp_squad.constraint_engine.required_players(required_players)
+
+    def test_too_many_required_players(self) -> None:
+        required_players = [PLAYERS["MID1"], PLAYERS["MID2"]]
+        player_pool = {PLAYERS["MID1"]: [PLAYERS["MID1"].goals_scored]}
+
+        lp_squad = LPSquad2(player_pool)
+
+        lp_squad.constraint_engine.set_num_players(1)
+
+        with pytest.raises(Exception):
+            lp_squad.constraint_engine.required_players(required_players)
+
+    @pytest.mark.parametrize("position,min_players,max_players", [(fpld.Position.get_by_name("DEF"), 5, 5), (fpld.Position.get_by_name("DEF"), 3, 5)])
+    def test_position_min_max(self, position: fpld.Position, min_players: int, max_players: int) -> None:
+        lp_squad = LPSquad2(self.PLAYER_POOL)
+
+        lp_squad.constraint_engine.set_num_players(max_players)
+        lp_squad.constraint_engine.position_min_max(position, min_players, max_players)
+        sol = lp_squad.solve()
+
+        assert min_players <= len(sol) and len(sol) <= max_players
+
+    def test_position_min_max_min_bigger(self) -> None:
+        lp_squad = LPSquad2(self.PLAYER_POOL)
+        position = fpld.Position.get_by_name("MID")
+        max_players = 5
+        min_players = 6
+
+        with pytest.raises(ValueError):
+            lp_squad.constraint_engine.position_min_max(position, min_players, max_players)
+
+    def test_invalid_problem(self) -> None:
+        lp_squad = LPSquad2(self.PLAYER_POOL)
+
+        lp_squad.constraint_engine.set_num_players(11)
+        lp_squad.constraint_engine.position_min_max(fpld.Position.get_by_name("MID"), 12, 12)
+
+        with pytest.raises(Exception):
+            lp_squad.solve()

@@ -3,7 +3,7 @@ from typing import Iterable
 from ..elements import Player, ElementGroup
 from ..formation import Formation
 from random import randrange
-from .validation import LPSquad, FPLTeamVD
+from .validation import FPLTeamVD, create_squad, create_team
 
 
 class Squad:
@@ -118,18 +118,17 @@ class Squad:
         return sum(p.now_cost for p in self.starting_team + self.bench)
 
     @classmethod
-    def random(cls, player_pool: Iterable[Player], **kwargs) -> Squad:
+    def random(cls, player_pool: Iterable[Player], budget_ub: int, budget_lb: int, required_players: list[Player]) -> Squad:
         player_pool_to_value = {
             p: [float(randrange(1, 10))] for p in player_pool}
 
-        return cls.optimal_team(player_pool_to_value, **kwargs)
+        return cls.optimal_team(player_pool_to_value, budget_ub, budget_lb, required_players)
 
     @classmethod
-    def optimal_team(cls, player_pool_to_values: dict[Player, list[float]], **kwargs) -> Squad:
-        lp_problem = LPSquad(player_pool_to_values, **kwargs)
-        starting_team, bench, captain, vice_captain = lp_problem.new_team()
+    def optimal_team(cls, player_pool_to_values: dict[Player, list[float]], budget_ub: int, budget_lb: int, required_players: list[Player]) -> Squad:
+        squad = create_squad(player_pool_to_values, budget_ub, budget_lb, required_players)
 
-        return cls(starting_team, bench, captain, vice_captain)
+        return Squad(*create_team({p: player_pool_to_values[p] for p in squad}, []))
 
     @staticmethod
     def is_valid_team(starting_team: list[Player], bench: list[Player]) -> None:
