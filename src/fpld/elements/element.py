@@ -20,7 +20,7 @@ class _Element(ABC, Generic[element]):
     """
 
     UNIQUE_ID_COL: str = "id"
-    _api: Optional[API] = None
+    _api = None
     _ATTR_FOR_STR: str = "name"
 
     @classmethod
@@ -207,7 +207,7 @@ class _Element(ABC, Generic[element]):
 
     @classmethod
     @cache
-    def get_by_id(cls, id_: Any) -> element:
+    def get_by_id(cls, id_: Any) -> Optional[element]:
         """Get an element by their unique id.
 
         Parameters
@@ -217,8 +217,8 @@ class _Element(ABC, Generic[element]):
 
         Returns
         -------
-        element
-            The found element. May raise error if no element has been found.
+        Optional[element]
+            The found element. May return None if no element has been found.
         """
         filter_ = {cls.UNIQUE_ID_COL: id_}
         element_group = cls.get(**filter_)
@@ -253,20 +253,20 @@ class ElementGroup(ABC, Generic[element]):
         # Need to find a method of removing duplicates whilst preserving order.
         self.__objects = list(objects)
 
-    def __eq__(self, other: ElementGroup[Any]) -> bool:
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, ElementGroup):
+            raise NotImplementedError
+
         return other.to_list() == self.to_list()
 
-    @overload
-    def __add__(self, obj: ElementGroup[element]) -> ElementGroup[element]: ...
-
-    def __add__(self, obj: Any) -> Any:
-        if isinstance(obj, ElementGroup):
-            if not self.is_compatible(obj):
-                raise Exception("ElementGroups must have same type.")
-
-            return ElementGroup[element](self.to_list() + obj.to_list())
-        else:
+    def __add__(self, other: ElementGroup[element]) -> ElementGroup[element]:
+        if not isinstance(other, ElementGroup):
             raise NotImplementedError
+
+        if not self.is_compatible(other):
+            raise Exception("ElementGroups must have same type.")
+
+        return ElementGroup[element](self.to_list() + other.to_list())
 
     @overload
     def __getitem__(self, idx: SupportsIndex) -> element: ...
@@ -466,7 +466,7 @@ class ElementGroup(ABC, Generic[element]):
         elements_sorted = sorted(self.__objects, key=lambda elem: getattr(
             elem, sort_by), reverse=reverse)
 
-        return ElementGroup(elements_sorted)
+        return ElementGroup[element](elements_sorted)
 
     def split(self, *, method_: str = "all", **attr_to_value: Union[Any, Iterable[Any]]) -> tuple[ElementGroup[element], ElementGroup[element]]:
         """Splits an ElementGroup into two sub-groups, where one group satisfies the filters, the other does not.
@@ -626,7 +626,7 @@ def _method_choice(method_: str) -> Callable[[Iterable[bool]], bool]:
     return func
 
 
-def _format_attr_to_value(attr_to_value: dict[str, Union[Any, tuple[Any]]]) -> dict[str, tuple[Any]]:
+def _format_attr_to_value(attr_to_value: dict[str, Union[Any, tuple[Any, ...]]]) -> dict[str, tuple[Any, ...]]:
     """Formats query so the values are all tuples.
 
     Used by `ElementGroup.filter()`
@@ -649,7 +649,7 @@ def _format_attr_to_value(attr_to_value: dict[str, Union[Any, tuple[Any]]]) -> d
         else:
             attr_to_value[attr] = [values]
 
-    no_elem_attr_to_value: dict[str, tuple[Any]] = dict()
+    no_elem_attr_to_value: dict[str, tuple[Any, ...]] = dict()
 
     for attr, values in attr_to_value.items():
         temp: list[Any] = []

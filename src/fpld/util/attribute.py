@@ -297,11 +297,11 @@ class CategoricalVar(Attribute[t]):
         super().__init__(values, attr_name)
 
 
-class ContinuousVar(Attribute[_b]):
+class ContinuousVar(Attribute[float]):
     """For attributes with continuous data values.
     """
 
-    def __init__(self, values: Union[Sequence[int], Sequence[float]], attr_name: str):
+    def __init__(self, values: Sequence[float], attr_name: str):
         super().__init__(values, attr_name)
 
     '''def __edit_values(self) -> None:

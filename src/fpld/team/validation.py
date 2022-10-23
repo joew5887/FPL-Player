@@ -1,5 +1,4 @@
 from __future__ import annotations
-from typing import Sequence
 from ..elements.element import ElementGroup
 from ..elements import Player, Position
 from ..constants import URLS
@@ -8,6 +7,11 @@ from pulp import LpProblem, lpSum, LpMaximize, LpVariable
 
 
 class FPLSquadSettings:
+    """Contains useful properties for rules of an FPL team.
+
+    E.g. squad size, and squad team limit.
+    """
+
     def __init__(self):
         api = API(URLS["BOOTSTRAP-STATIC"])
         self.__game_settings = api.data["game_settings"]
@@ -52,10 +56,15 @@ class FPLSquadSettings:
         return team_limit
 
 
-SQUAD_SETTINGS = FPLSquadSettings()
+SQUAD_SETTINGS = FPLSquadSettings()  # Singleton instance for accessing class
 
 
 class FPLTeamVD(FPLSquadSettings):
+    """Validate a FPL squad by the official FPL rules.
+
+    Used by 'Squad' in 'fplteam.py'.
+    """
+
     def __init__(self):
         super().__init__()
 
@@ -178,11 +187,33 @@ class FPLTeamVD(FPLSquadSettings):
 
 
 class SquadConstraints:
+    """Apply constraints when constructing a new FPL squad by linear programming.
+
+    Used by 'LPSquad' to produce the problem and constraints.
+
+    Example
+    -------
+    ```
+    > lp = LPSquad(player_pool)
+    # Apply constraints here
+    > sol = lp.solve()
+    ```
+    """
+
     def __init__(self, lp_squad: LPSquad):
         self.__lp_squad = lp_squad
         self.__problem = self.define_problem()
 
     def define_problem(self) -> LpProblem:
+        """Generate LpProblem used to build a team.
+
+        Rewards and available players are added here.
+
+        Returns
+        -------
+        LpProblem
+            New problem with defined rewards and available players to choose from.
+        """
         problem = LpProblem("Team", LpMaximize)
         rewards = []
         player_vars = []
@@ -199,12 +230,37 @@ class SquadConstraints:
         return problem
 
     def reset_problem(self) -> None:
+        """Reset `self.__problem` to the output of `self.define_problem()`.
+        """
         self.__problem = self.define_problem()
 
     def set_num_players(self, num_players: int) -> None:
+        """Set the maximum number of players in solution.
+
+        Parameters
+        ----------
+        num_players : int
+            Number of players to choose from player pool.
+
+        Raises
+        ------
+        ValueError
+            If num_players > player_pool.
+        """
+
+        if len(self.__lp_squad.player_pool) < num_players:
+            raise ValueError("'num_players' exceeds available players in player pool")
+
         self.__problem += lpSum(self.__lp_squad.player_lp_vars) == num_players
 
     def num_players_same_club(self, num_players_same_club: int) -> None:
+        """Constraint for setting the maximum number of players from the same club.
+
+        Parameters
+        ----------
+        num_players_same_club : int
+            Maximum number of players from the same club.
+        """
         players_by_team = self.__lp_squad.player_pool.group_by("team")
 
         for team_player_pool in players_by_team.values():
@@ -212,6 +268,20 @@ class SquadConstraints:
             self.__problem += lpSum(players_in_team) <= num_players_same_club
 
     def budget(self, budget_ub: int, budget_lb: int) -> None:
+        """Set an upper and lower bound for the cost of the solution.
+
+        Parameters
+        ----------
+        budget_ub : int
+            Upper bound budget value.
+        budget_lb : int
+            Lower bound budget value.
+
+        Raises
+        ------
+        ValueError
+            If the lower bound budget is larger than the upper bound budget.
+        """
         if budget_lb > budget_ub:
             raise ValueError("Upper bound budget smaller than lower bound")
 
@@ -225,6 +295,18 @@ class SquadConstraints:
         self.__problem += lpSum(costs) >= budget_lb
 
     def required_players(self, required_players: list[Player]) -> None:
+        """Add any players that are required to be in the solution.
+
+        Parameters
+        ----------
+        required_players : list[Player]
+            List of players that will be in the solution.
+
+        Raises
+        ------
+        Exception
+            If a player in `required_players` is not in the player pool.
+        """
         for player in required_players:
             if player not in self.__lp_squad.player_pool:
                 raise Exception("Required player not in pool")
@@ -233,6 +315,22 @@ class SquadConstraints:
             self.__problem += lpSum(var) == 1
 
     def position_min_max(self, position: Position, min_players: int, max_players: int) -> None:
+        """Set bounds for the number of players for a given position.
+
+        Parameters
+        ----------
+        position : Position
+            Position to set bounds for.
+        min_players : int
+            Minimum number of players from `position`.
+        max_players : int
+            Maximum number of players from `position`.
+
+        Raises
+        ------
+        ValueError
+            If the maximum is smaller than the minimum player values.
+        """
         if min_players > max_players:
             raise ValueError("Upper bound number of players smaller than lower bound")
 
@@ -243,6 +341,18 @@ class SquadConstraints:
         self.__problem += lpSum(players_in_position_lp_var) >= min_players
 
     def solve(self) -> LPSolved:
+        """Find a solution for the problem.
+
+        Returns
+        -------
+        LPSolved
+            Indicates a successful solution has been found.
+
+        Raises
+        ------
+        Exception
+            If the problem is unsolvable.
+        """
         result_code = self.__problem.solve()
 
         if result_code == -1:
@@ -252,10 +362,29 @@ class SquadConstraints:
 
 
 class LPSolved:
+    """Access a solved problem from 'SquadConstraints'.
+
+    Example
+    -------
+    ```
+    > lp = LPSquad(player_pool)
+    # Apply constraints here
+    > sol = lp.solve()
+    > players_list = sol.find_players_in_solution()
+    ```
+    """
+
     def __init__(self, solved_problem: LpProblem):
         self.__solved_problem = solved_problem
 
     def find_players_in_solution(self) -> list[Player]:
+        """Finds players in solution to the solved problem.
+
+        Returns
+        -------
+        list[Player]
+            All players in solution.
+        """
         # https://medium.com/ml-everything/using-python-and-linear-programming-to-optimize-fantasy-football-picks-dc9d1229db81
         players_chosen = []
 
@@ -270,6 +399,17 @@ class LPSolved:
 
 
 class LPSquad:
+    """Builder for a FPL squad created by linear programming.
+
+    Example
+    -------
+    ```
+    > lp = LPSquad(player_pool)
+    # set constraints using `lp.constraint_engine`
+    > sol = lp.solve()
+    ```
+    """
+
     def __init__(self, player_pool_to_values: dict[Player, list[float]]):
         self.__player_pool_to_values = player_pool_to_values
         self.__variables = {p: LpVariable(
@@ -278,13 +418,34 @@ class LPSquad:
 
     @ property
     def player_pool(self) -> ElementGroup[Player]:
+        """All players to choose from for creating a team.
+
+        Returns
+        -------
+        ElementGroup[Player]
+            Group of players to choose from.
+        """
         return ElementGroup[Player](self.__player_pool_to_values.keys())
 
     @ property
     def player_lp_vars(self) -> list[LpVariable]:
+        """All LP variables for each player in `self.player_pool`.
+
+        Returns
+        -------
+        list[LpVariable]
+            In the form of [44563, ...] where the number is a player code.
+        """
         return list(self.__variables.values())
 
     def solve(self) -> list[Player]:
+        """Get recommended players by constraints in `self.constraint_engine`.
+
+        Returns
+        -------
+        list[Player]
+            All players from solution.
+        """
         solution = self.constraint_engine.solve()
 
         return solution.find_players_in_solution()
@@ -301,11 +462,6 @@ class LPSquad:
         -------
         list[float]
             Gets scores from `self.__player_pool_to_values`.
-
-        Example
-        -------
-        ```
-        ```
         """
         return self.__player_pool_to_values[player]
 
@@ -336,11 +492,6 @@ class LPSquad:
         -------
         float
             Gets sum of `self.values_for_player(player)`.
-
-        Example
-        -------
-        ```
-        ```
         """
         return sum(self.values_for_player(player))
 
@@ -349,27 +500,62 @@ class LPSquad:
 
 
 def create_squad(player_pool_to_values: dict[Player, list[float]], budget_ub: int, budget_lb: int, required_players: list[Player]) -> list[Player]:
-    lp_squad = LPSquad(player_pool_to_values)
+    """Create a FPL squad (starting team and bench).
 
+    Parameters
+    ----------
+    player_pool_to_values : dict[Player, list[float]]
+        Values to maximise.
+    budget_ub : int
+        Upper bound for budget.
+    budget_lb : int
+        Lower bound for budget.
+    required_players : list[Player]
+        Players that must be in the solution, irrelevant of value.
+
+    Returns
+    -------
+    list[Player]
+        All players in the squad (starting team and bench).
+    """
+    lp_squad = LPSquad(player_pool_to_values)
+    all_positions = Position.get_all()
+
+    # Apply constraints
     lp_squad.constraint_engine.set_num_players(SQUAD_SETTINGS.squad_size)
     lp_squad.constraint_engine.num_players_same_club(SQUAD_SETTINGS.squad_team_limit)
     lp_squad.constraint_engine.budget(budget_ub, budget_lb)
     lp_squad.constraint_engine.required_players(required_players)
-
-    all_positions = Position.get_all()
     for position in all_positions:
         lp_squad.constraint_engine.position_min_max(position, position.squad_select, position.squad_select)
 
+    # Solve
     return lp_squad.solve()
 
 
 def create_team(players_in_squad: dict[Player, list[float]], required_players: list[Player]) -> tuple[list[Player], list[Player], Player, Player]:
-    lp_squad = LPSquad(players_in_squad)
+    """Split the squad into a starting lineup and bench.
 
+    Output the captain and vice captain for the team.
+
+    Parameters
+    ----------
+    players_in_squad : dict[Player, list[float]]
+        All players in the squad.
+    required_players : list[Player]
+        Players that must be in the starting lineup, irrelevant of value.
+
+    Returns
+    -------
+    tuple[list[Player], list[Player], Player, Player]
+        Starting team, bench, captain, vice captain.
+    """
+    lp_squad = LPSquad(players_in_squad)
+    all_positions = Position.get_all()
+
+    # Apply constraints
     lp_squad.constraint_engine.set_num_players(SQUAD_SETTINGS.starting_size)
     lp_squad.constraint_engine.required_players(required_players)
-
-    all_positions = Position.get_all()
     for position in all_positions:
         lp_squad.constraint_engine.position_min_max(position, position.squad_min_play, position.squad_max_play)
 

@@ -10,7 +10,7 @@ VALID_PERCENTILE = Percentile[str]({
 })
 
 VALID_ATTRIBUTE = Attribute[int]([1, 2, 3, 4, 5], "foo")
-VALID_CONTINUOUS_ATTRIBUTE = ContinuousVar[int]([1, 2, 3, 4, 5], "foo")
+VALID_CONTINUOUS_ATTRIBUTE = ContinuousVar([1.0, 2.0, 3.0, 4.0, 5.0], "foo")
 VALID_CATEGORICAL_ATTRIBUTE = CategoricalVar[int](["yes", "no"], "bar")
 
 
