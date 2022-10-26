@@ -1,6 +1,6 @@
 from .element import _Element, ElementGroup
 from datetime import datetime
-from typing import Generic, Optional, TypeVar, Union, Any
+from typing import Generic, TypeVar, Union, Any
 from ..util import API
 from ..constants import URLS, string_to_datetime
 from dataclasses import dataclass, field
@@ -52,7 +52,7 @@ class _Event(_Element[_event], Generic[_event]):
 
         return new_instance
 
-    def __add__(self, other: int) -> Union[_event, None]:
+    def __add__(self, other: int) -> _event:
         """Increments the event by `other` gameweeks.
 
         Parameters
@@ -62,7 +62,7 @@ class _Event(_Element[_event], Generic[_event]):
 
         Returns
         -------
-        Union[event, None]
+        event
             Event at gameweek `self.unique_id + other`.
             May be None if outside season.
 
@@ -70,16 +70,23 @@ class _Event(_Element[_event], Generic[_event]):
         ------
         NotImplementedError
             `other` must be an int.
+        Exception
+            ID added goes outside of gameweek range.
         """
-        if isinstance(other, int):
-            return type(self).get_by_id(self.unique_id + other)
+        if not isinstance(other, int):
+            raise NotImplementedError
 
-        raise NotImplementedError
+        gw = type(self).get_by_id(self.unique_id + other)
 
-    def __iadd__(self, other: int) -> Union[_event, None]:
+        if gw is None:
+            raise Exception("No gameweek found.")
+
+        return gw
+
+    def __iadd__(self, other: int) -> _event:
         return self.__add__(other)
 
-    def __sub__(self, other: int) -> Union[_event, None]:
+    def __sub__(self, other: int) -> _event:
         """Decrements the event by `other` gameweeks.
 
         Parameters
@@ -89,7 +96,7 @@ class _Event(_Element[_event], Generic[_event]):
 
         Returns
         -------
-        Union[event, None]
+        event
             Event at gameweek `self.unique_id - other`.
             May be None if outside season.
 
@@ -98,12 +105,12 @@ class _Event(_Element[_event], Generic[_event]):
         NotImplementedError
             `other` must be an int.
         """
-        if isinstance(other, int):
-            return type(self).get_by_id(self.unique_id - other)
+        if not isinstance(other, int):
+            raise NotImplementedError
 
-        raise NotImplementedError
+        return self.__add__((-1) * other)
 
-    def __isub__(self, other: int) -> Union[_event, None]:
+    def __isub__(self, other: int) -> _event:
         return self.__sub__(other)
 
     @property
@@ -142,18 +149,12 @@ class _Event(_Element[_event], Generic[_event]):
         ------
         ValueError
             If the range produces an empty list.
-        Warning
-            If the length of the range is less than the length of events.
-            Happens at each end of the season.
         """
         group: list[_event] = [
-            start_gw.__add__(i) for i in range(start, end, step) if start_gw + i is not None]
+            start_gw.__add__(i) for i in range(start, end, step)]
 
         if len(group) == 0:
             raise ValueError("No gameweeks found")
-
-        '''if len(group) < len(range(start, end, step)):
-            raise Warning("Gameweek range has been cut.")'''
 
         return ElementGroup[_event](group)
 
@@ -196,6 +197,16 @@ class _Event(_Element[_event], Generic[_event]):
 
     @classmethod
     def get_model_gw(cls) -> _event:
+        """Gameweek for model.
+
+        Uses current gameweek.
+        If it has finished, the next gameweek is returned.
+
+        Returns
+        -------
+        _event
+            Model gw.
+        """
         current_gw = cls.get_current_gw()
         next_gw = cls.get_next_gw()
 
@@ -210,6 +221,7 @@ class _Event(_Element[_event], Generic[_event]):
 
         data: list[dict[str, Any]] = api.data["events"]
 
+        # none
         data.append({
             "id": 0, "name": "No Gameweek", "deadline_time": None, "average_entry_score": 0,
             "finished": False, "data_checked": False, "highest_scoring_entry": 0, "is_previous": False,
@@ -253,22 +265,39 @@ class _Event(_Element[_event], Generic[_event]):
             if getattr(event, attr):
                 return event
 
-        return cls.none
+        return cls.none()
 
     @classmethod
-    @property
     def none(cls) -> _event:
-        return cls.get_by_id(0)
+        """Default no gameweek Event element.
+
+        Used for fixtures that have been postponed and not rearranged to another gameweek.
+
+        Returns
+        -------
+        _event
+            No gameweek event.
+        """
+        return cls.get(id=0)[0]
 
     @classmethod
     def get_scheduled_events(cls) -> ElementGroup[_event]:
+        """Get all events, except the no gameweek element.
+
+        Returns
+        -------
+        ElementGroup[_event]
+            `cls.get_all()` except `cls.none()`.
+        """
         all_events = cls.get_all()
 
-        return ElementGroup[_event]([event for event in all_events if event != cls.none])
+        return ElementGroup[_event]([event for event in all_events if event != cls.none()])
 
 
 @dataclass(frozen=True, order=True, kw_only=True)
 class BaseEvent(_Event["BaseEvent"]):
+    """Independent Event element, not linked to any other FPL elements.
+    """
     most_selected: int = field(hash=False, repr=False, compare=False)
     most_transferred_in: int = field(hash=False, repr=False, compare=False)
     top_element: int = field(hash=False, repr=False, compare=False)

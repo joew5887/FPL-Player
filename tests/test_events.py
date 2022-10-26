@@ -41,6 +41,11 @@ class TestEventExample(Element[Event]):
     def test_started(self) -> None:
         assert self.element_to_test.started == self.expected["started"]
 
+    def test_fixtures(self) -> None:
+        fixtures_in_event = self.element_to_test.fixtures
+
+        assert any(self.element_to_test.id == f.event.id for f in fixtures_in_event)
+
 
 class TestEventClass(ElementClass[Event]):
     class_to_test = Event
@@ -60,7 +65,6 @@ class TestEventClass(ElementClass[Event]):
     @pytest.mark.parametrize("input_event,add_by,expected_output",
                              [
                                  (Event.get_by_id(1), 1, Event.get_by_id(2)),
-                                 (Event.get_by_id(38), 10, None)
                              ]
                              )
     def test_add(self, input_event: Event, add_by: int, expected_output: Optional[Event]) -> None:
@@ -72,10 +76,14 @@ class TestEventClass(ElementClass[Event]):
         with pytest.raises(NotImplementedError):
             Event.get_by_id(1) + "foo"
 
+    def test_add_exceed_gw_range(self) -> None:
+        with pytest.raises(Exception):
+            Event.get_by_id(38) + 10
+
     @pytest.mark.parametrize("input_event,sub_by,expected_output",
                              [
                                  (Event.get_by_id(11), 10, Event.get_by_id(1)),
-                                 (Event.get_by_id(1), 1, Event.none)
+                                 (Event.get_by_id(1), 1, Event.none())
                              ]
                              )
     def test_sub(self, input_event: Event, sub_by: int, expected_output: Optional[Event]) -> None:
@@ -99,7 +107,7 @@ class TestEventClass(ElementClass[Event]):
 
     def test_empty_range(self) -> None:
         with pytest.raises(ValueError):
-            Event.range(Event.get_by_id(1), -2, -9, -1)  # ids [-1, ..., -8]
+            Event.range(Event.get_by_id(1), 1, 1, 1)
 
     def test_get_previous_gw(self) -> None:
         prev_gw = Event.get_previous_gw()
