@@ -162,6 +162,8 @@ class _Fixture(_Element[_fixture], Generic[_fixture]):
 
 @ dataclass(frozen=True, order=True, kw_only=True)
 class BaseFixture(_Fixture["BaseFixture"]):
+    """Independent Fixture element, not linked to any other FPL elements.
+    """
     event: int = field(hash=False, compare=False)
     team_h: int = field(hash=False, compare=False)
     team_a: int = field(hash=False, compare=False)

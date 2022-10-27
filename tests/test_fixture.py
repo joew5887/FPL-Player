@@ -42,13 +42,36 @@ class TestFixtureExample(FixtureElement[Fixture]):
         "unique_id": 1,
         "score": "(Crystal Palace) 0 - 2 (Arsenal)",
         "total_goals": 2,
+        "difficulty_home": 3,
+        "difficulty_away": 3,
     }
+    team_id_not_in_fixture = 20
 
     def test_score(self) -> None:
         assert self.element_to_test.score == self.expected["score"]
 
     def test_total_goals(self) -> None:
         assert self.element_to_test.total_goals == self.expected["total_goals"]
+
+    def test_get_difficulty_home_team(self) -> None:
+        assert self.element_to_test.get_difficulty(self.element_to_test.team_h) == self.expected["difficulty_home"]
+
+    def test_get_difficulty_away_team(self) -> None:
+        assert self.element_to_test.get_difficulty(self.element_to_test.team_a) == self.expected["difficulty_away"]
+
+    def test_get_difficulty_invalid_team(self) -> None:
+        with pytest.raises(ValueError):
+            self.element_to_test.get_difficulty(self.team_id_not_in_fixture)
+
+    def test_is_home_home_team(self) -> None:
+        assert self.element_to_test.is_home(self.element_to_test.team_h) == True
+
+    def test_is_home_away_team(self) -> None:
+        assert self.element_to_test.is_home(self.element_to_test.team_a) == False
+
+    def test_get_difficulty_invalid_team(self) -> None:
+        with pytest.raises(ValueError):
+            self.element_to_test.is_home(self.team_id_not_in_fixture)
 
 
 class TestFixtureFutureExample(TestFixtureExample):
@@ -59,6 +82,8 @@ class TestFixtureFutureExample(TestFixtureExample):
         "unique_id": 380,
         "score": "Southampton v Liverpool",
         "total_goals": None,
+        "difficulty_home": 4,
+        "difficulty_away": 2,
     }
 
 
