@@ -1,20 +1,16 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import Field, dataclass, field, fields
-from datetime import datetime
-from ..util.attribute import CategoricalVar, ContinuousVar
+
+from fpld.util.attribute import CategoricalVar
 from .element import _Element, ElementGroup
-from typing import Optional, TypeVar, Generic, Any, get_type_hints, Iterable
+from typing import Optional, Type, TypeVar, Generic, Any, get_type_hints, Iterable
 from ..util import API
 from ..constants import URLS, round_value
-from .position import Position
+from .playerfull import _PlayerFull, _PlayerHistory, _PlayerHistoryPast
 
 
 _player = TypeVar("_player", bound="_Player[Any]")
-playerfull = TypeVar("playerfull", bound="BasePlayerFull[Any, Any]")
-player_history = TypeVar("player_history", bound="BasePlayerHistory")
-player_history_past = TypeVar(
-    "player_history_past", bound="BasePlayerHistoryPast")
 
 
 @dataclass(frozen=True, order=True, kw_only=True)
@@ -139,15 +135,16 @@ class _Player(_Element[_player], Generic[_player]):
         """
         return self.transfers_in_event - self.transfers_out_event
 
-    def in_full(self) -> BasePlayerFull[player_history, player_history_past]:
+    @abstractmethod
+    def in_full(self) -> Any:
         """Game by game, season by season data for a player.
 
         Returns
         -------
-        BasePlayerFull
+        _playerfull
             Game by game, season by season data for a player.
         """
-        return BasePlayerFull.from_id(self.id)
+        ...
 
     @ classmethod
     def api_link(cls) -> str:
@@ -196,239 +193,33 @@ class _Player(_Element[_player], Generic[_player]):
 
 @dataclass(frozen=True, order=True, kw_only=True)
 class BasePlayer(_Player["BasePlayer"]):
+    """Independent Player element, not linked to any other FPL elements.
+    """
     team: int = field(hash=False, compare=False)
     element_type: int = field(hash=False, compare=False)
 
+    def in_full(self) -> BasePlayerFull:
+        return BasePlayerFull.from_player_id(self.id)
 
-class BasePlayerFull(Generic[player_history, player_history_past]):
-    """Game by game, season by season data for a player, unlinked from other FPL elements.
-    """
 
-    def __init__(self, history: player_history, history_past: player_history_past):
-        self._history = history
-        self._history_past = history_past
+@dataclass(frozen=True, kw_only=True)
+class BasePlayerHistory(_PlayerHistory["BasePlayerHistory"]):
+    fixture: CategoricalVar[int] = field(hash=False, repr=False)
+    opponent_team: CategoricalVar[int] = field(hash=False, repr=False)
 
-    @property
-    def history(self) -> player_history:
-        """Player stats this season.
 
-        Returns
-        -------
-        player_history
-            Player stats this season.
-        """
-        return self._history
+@dataclass(frozen=True, kw_only=True)
+class BasePlayerHistoryPast(_PlayerHistoryPast["BasePlayerHistoryPast"]):
+    pass
 
-    @property
-    def history_past(self) -> player_history_past:
-        """Player stats, season by season.
 
-        Returns
-        -------
-        player_history_past
-            Player stats, season by season.
-        """
-        return self._history_past
-
+class BasePlayerFull(_PlayerFull[BasePlayerHistory, BasePlayerHistoryPast]):
     @classmethod
-    def from_id(cls, player_id: int) -> BasePlayerFull[player_history, player_history_past]:
-        """Takes a player ID, and returns full data for that player
+    def from_player_id(cls, player_id: int) -> BasePlayerFull:
+        data = cls.get_api(player_id)
 
-        Parameters
-        ----------
-        player_id : int
-            Player ID to get stats for.
-
-        Returns
-        -------
-        BasePlayerFull
-           Player stats, game by game, season by season.
-        """
-        url = URLS["ELEMENT-SUMMARY"].format(player_id)
-        api = API(url)  # Need to have offline feature
-        history = BasePlayerHistory.from_api(api.data["history"])
+        history = BasePlayerHistory.from_api(data["history"])
         history_past = BasePlayerHistoryPast.from_api(
-            api.data["history_past"])
+            data["history_past"])
+
         return BasePlayerFull(history, history_past)
-
-
-@dataclass(frozen=True, kw_only=True)
-class BasePlayerStats(ABC):
-    def __iter__(self) -> Iterable[dict[str, Any]]:
-        # In form: {"fixture": 1, "score": 0}, {"fixture": 2, "score": 1}
-        elements = []
-
-        for i in range(len(getattr(self, str(type(self).unique_id_col)))):
-            elements.append(
-                {f.name: getattr(self, f.name).values[i] for f in type(self).all_fields()})
-
-        return iter(elements)
-
-    @classmethod
-    def _edit_stat_from_api(cls, field: Field[Any], attr_list: list[Any]) -> list[Any]:
-        """Pre-format API data before passing it into the class.
-
-        Like '__pre__init__()' from 'Element'.
-
-        Parameters
-        ----------
-        field : Field
-            Attribute from class to create.
-        attr_list : list[Any]
-            Attribute values for `field`.
-
-        Returns
-        -------
-        list[Any]
-            Formatted `attr_list`.
-        """
-        return attr_list
-
-    @classmethod
-    def from_api(cls, api_data: list[dict[str, Any]]) -> BasePlayerStats:
-        """Converts data from API to a `BasePlayerStats` object.
-
-        Parameters
-        ----------
-        api_data : list[dict[str, Any]]
-            API data in JSON form.
-
-        Returns
-        -------
-        BasePlayerStats
-            Object containing `api_data`.
-        """
-        stat_attributes = {}
-        resolved_hints = get_type_hints(cls)  # Gets Generic Types for fields.
-
-        for f in cls.all_fields():
-            attr_list = []
-
-            for state in api_data:
-                # KeyError: 'fixture'.
-                attr_list.append(state[f.name])
-
-            attr_list = cls._edit_stat_from_api(f, attr_list)
-
-            stat_attributes[f.name] = resolved_hints[f.name](attr_list, f.name)
-
-        return cls(**stat_attributes)
-
-    @classmethod
-    def all_fields(cls) -> list[Field[Any]]:
-        """All fields for a class.
-
-        Returns
-        -------
-        list[Field]
-            All fields, including names of attributes.
-        """
-        return list(fields(cls))
-
-    @classmethod
-    @property
-    def categorical_vars(cls) -> list[str]:
-        """All categorical variables.
-
-        Returns
-        -------
-        list[str]
-            E.g. string variables.
-        """
-        return [f.name for f in cls.all_fields() if "CategoricalVar" in str(f.type)]
-
-    @classmethod
-    @property
-    def continuous_vars(cls) -> list[str]:
-        """All continuous variables.
-
-        Returns
-        -------
-        list[str]
-            E.g. integer and float variables.
-        """
-        return [f.name for f in cls.all_fields() if "ContinuousVar" in str(f.type)]
-
-    @classmethod
-    @property
-    @abstractmethod
-    def unique_id_col(cls) -> str:
-        """The field that identifies each different data entry, e.g. fixture.
-
-        Returns
-        -------
-        str
-            Name of field.
-        """
-        return ""
-
-
-@dataclass(frozen=True, kw_only=True)
-class BasePlayerHistory(BasePlayerStats):
-    """Player history, season by season, unlinked from other FPL elements.
-    """
-    fixture: CategoricalVar[Any] = field(hash=False, repr=False)
-    opponent_team: CategoricalVar[Any] = field(hash=False, repr=False)
-    total_points: ContinuousVar = field(hash=False, repr=False)
-    was_home: CategoricalVar[bool] = field(hash=False, repr=False)
-    kickoff_time: CategoricalVar[datetime] = field(hash=False, repr=False)
-    team_h_score: ContinuousVar = field(hash=False, repr=False)
-    team_a_score: ContinuousVar = field(hash=False, repr=False)
-    round: CategoricalVar[int] = field(hash=False, repr=False)
-    minutes: ContinuousVar = field(hash=False, repr=False)
-    goals_scored: ContinuousVar = field(hash=False, repr=False)
-    assists: ContinuousVar = field(hash=False, repr=False)
-    clean_sheets: ContinuousVar = field(hash=False, repr=False)
-    goals_conceded: ContinuousVar = field(hash=False, repr=False)
-    own_goals: ContinuousVar = field(hash=False, repr=False)
-    penalties_saved: ContinuousVar = field(hash=False, repr=False)
-    penalties_missed: ContinuousVar = field(hash=False, repr=False)
-    yellow_cards: ContinuousVar = field(hash=False, repr=False)
-    red_cards: ContinuousVar = field(hash=False, repr=False)
-    saves: ContinuousVar = field(hash=False, repr=False)
-    bonus: ContinuousVar = field(hash=False, repr=False)
-    bps: ContinuousVar = field(hash=False, repr=False)
-    influence: ContinuousVar = field(hash=False, repr=False)
-    creativity: ContinuousVar = field(hash=False, repr=False)
-    threat: ContinuousVar = field(hash=False, repr=False)
-    ict_index: ContinuousVar = field(hash=False, repr=False)
-    value: ContinuousVar = field(hash=False, repr=False)
-    transfers_balance: ContinuousVar = field(hash=False, repr=False)
-    selected: ContinuousVar = field(hash=False, repr=False)
-    transfers_in: ContinuousVar = field(hash=False, repr=False)
-    transfers_out: ContinuousVar = field(hash=False, repr=False)
-
-    @classmethod
-    @property
-    def unique_id_col(cls) -> str:
-        return "fixture"
-
-
-@dataclass(frozen=True, kw_only=True)
-class BasePlayerHistoryPast(BasePlayerStats):
-    season_name: CategoricalVar[str] = field(hash=False, repr=False)
-    start_cost: ContinuousVar = field(hash=False, repr=False)
-    end_cost: ContinuousVar = field(hash=False, repr=False)
-    total_points: ContinuousVar = field(hash=False, repr=False)
-    minutes: ContinuousVar = field(hash=False, repr=False)
-    goals_scored: ContinuousVar = field(hash=False, repr=False)
-    assists: ContinuousVar = field(hash=False, repr=False)
-    clean_sheets: ContinuousVar = field(hash=False, repr=False)
-    goals_conceded: ContinuousVar = field(hash=False, repr=False)
-    own_goals: ContinuousVar = field(hash=False, repr=False)
-    penalties_saved: ContinuousVar = field(hash=False, repr=False)
-    penalties_missed: ContinuousVar = field(hash=False, repr=False)
-    yellow_cards: ContinuousVar = field(hash=False, repr=False)
-    red_cards: ContinuousVar = field(hash=False, repr=False)
-    saves: ContinuousVar = field(hash=False, repr=False)
-    bonus: ContinuousVar = field(hash=False, repr=False)
-    bps: ContinuousVar = field(hash=False, repr=False)
-    influence: ContinuousVar = field(hash=False, repr=False)
-    creativity: ContinuousVar = field(hash=False, repr=False)
-    threat: ContinuousVar = field(hash=False, repr=False)
-    ict_index: ContinuousVar = field(hash=False, repr=False)
-
-    @classmethod
-    @property
-    def unique_id_col(cls) -> str:
-        return "season_name"

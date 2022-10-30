@@ -1,11 +1,12 @@
 from __future__ import annotations
 import math
-from typing import Any, Optional, Union
+from typing import Any, Optional, Type, Union
 from ..constants import URLS, datetime_to_string
 from ..util.percent import to_percent
 from ..util import API
 from .team import BaseTeam
-from .player import _Player, BasePlayerFull, BasePlayerHistory, BasePlayerHistoryPast
+from .player import _Player
+from .playerfull import _PlayerFull, _PlayerHistory, _PlayerHistoryPast
 from .fixture import _Fixture
 from .event import _Event
 from .position import Position
@@ -58,7 +59,7 @@ class Team(BaseTeam["Team"]):
         """
         return Player.get(team=self.unique_id)
 
-    def average_form(self) -> float:
+    '''def average_form(self) -> float:
         """Gets average form of playing players in a team.
 
         Returns
@@ -78,7 +79,7 @@ class Team(BaseTeam["Team"]):
 
         form_sum = sum(p.form for p in eligible_players)
 
-        return form_sum / len(eligible_players)
+        return form_sum / len(eligible_players)'''
 
     def get_all_fixtures(self) -> ElementGroup[Fixture]:
         """Gets all fixtures and results for a team.
@@ -167,7 +168,7 @@ class Team(BaseTeam["Team"]):
 
 
 @dataclass(frozen=True, kw_only=True)
-class PlayerHistory(BasePlayerHistory):
+class PlayerHistory(_PlayerHistory["PlayerHistory"]):
     fixture: CategoricalVar[Fixture] = field(hash=False, repr=False)
     opponent_team: CategoricalVar[Team] = field(hash=False, repr=False)
 
@@ -182,40 +183,22 @@ class PlayerHistory(BasePlayerHistory):
 
 
 @dataclass(frozen=True, kw_only=True)
-class PlayerHistoryPast(BasePlayerHistoryPast):
+class PlayerHistoryPast(_PlayerHistoryPast["PlayerHistoryPast"]):
     pass
 
 
-class PlayerFull(BasePlayerFull[PlayerHistory, PlayerHistoryPast]):
+class PlayerFull(_PlayerFull[PlayerHistory, PlayerHistoryPast]):
     """Game by game, season by season data for a player, linked to other FPL elements.
     """
 
-    def __init__(self, history: PlayerHistory, history_past: PlayerHistoryPast):
-        self._history = history
-        self._history_past = history_past
-
     @classmethod
-    def from_id(cls, player_id: int) -> PlayerFull[PlayerHistory, PlayerHistoryPast]:
-        """Takes a player ID, and returns full data for that player
+    def from_player_id(cls, player_id: int) -> PlayerFull:
+        data = cls.get_api(player_id)
 
-        Parameters
-        ----------
-        player_id : int
-            Player ID to get stats for.
+        history = PlayerHistory.from_api(data["history"])
+        history_past = PlayerHistoryPast.from_api(
+            data["history_past"])
 
-        Returns
-        -------
-        PlayerFull
-           Player stats, game by game, season by season.
-        """
-        url = URLS["ELEMENT-SUMMARY"].format(player_id)
-        api = API(url)  # Need to have offline feature
-
-        if api.data == "The game is being updated.":
-            raise ValueError("The game is being updated.")
-
-        history = PlayerHistory.from_api(api.data["history"])
-        history_past = PlayerHistoryPast.from_api(api.data["history_past"])
         return PlayerFull(history, history_past)
 
 
@@ -262,7 +245,7 @@ class Player(_Player["Player"]):
         team_total = self.team.total_goal_contributions()
         return to_percent(self.goal_contributions, team_total)
 
-    def attribute_in_event(self, attribute: str, event: Event) -> list[Any]:
+    '''def attribute_in_event(self, attribute: str, event: Event) -> list[Any]:
         """Gets all values of `attribute` for gameweek `event`.
 
         Parameters
@@ -297,17 +280,10 @@ class Player(_Player["Player"]):
             else:
                 values.append(value)
 
-        return values
+        return values'''
 
     def in_full(self) -> PlayerFull:
-        """Game by game, season by season data for a player.
-
-        Returns
-        -------
-        PlayerFull
-            Game by game, season by season data for a player.
-        """
-        return PlayerFull.from_id(self.id)
+        return PlayerFull.from_player_id(self.id)
 
 
 @dataclass(frozen=True, order=True, kw_only=True)

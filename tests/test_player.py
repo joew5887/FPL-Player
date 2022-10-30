@@ -24,6 +24,9 @@ class PlayerElement(Element[_player]):
     def test_ppm(self) -> None:
         assert self.element_to_test.ppm == self.expected["ppm"]
 
+    def test_transfer_diff(self) -> None:
+        assert self.element_to_test.transfer_diff == self.expected["transfer_diff"]
+
 
 class TestBasePlayerExample(PlayerElement[BasePlayer]):
     element_to_test: BasePlayer = BasePlayer.get_by_id(427)
@@ -47,6 +50,9 @@ class TestPlayerExample(PlayerElement[Player]):
         "ppm": round(element_to_test.total_points / element_to_test.now_cost, 3),
         "transfer_diff": element_to_test.transfers_in_event - element_to_test.transfers_out_event
     }
+
+    def test_in_full(self) -> None:
+        self.element_to_test.in_full()
 
 
 class TestPlayerClass(ElementClass[Player]):
