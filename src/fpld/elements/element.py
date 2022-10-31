@@ -170,7 +170,7 @@ class _Element(ABC, Generic[element]):
             All elements.
         """
         elements = cls.get_api()
-        elements_sorted = sorted([cls.from_dict(elem) for elem in elements])
+        elements_sorted = sorted([cls.from_dict(elem) for elem in elements], key=lambda p: p.unique_id)
 
         return ElementGroup[element](elements_sorted)
 
@@ -463,6 +463,10 @@ class ElementGroup(ABC, Generic[element]):
         list[element]
             `elements` sorted by `sort_by`.
         """
+
+        if self.__objects == []:
+            return ElementGroup[element](self.__objects)
+
         elements_sorted = sorted(self.__objects, key=lambda elem: getattr(
             elem, sort_by), reverse=reverse)
 

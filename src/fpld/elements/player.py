@@ -14,11 +14,7 @@ _player = TypeVar("_player", bound="_Player[Any]")
 
 
 @dataclass(frozen=True, order=True, kw_only=True)
-class _Player(_Element[_player], Generic[_player]):
-    """Player element, unlinked from other FPL elements.
-    """
-    _ATTR_FOR_STR = "web_name"
-
+class _PlayerVars:
     id: int = field(repr=False)
 
     chance_of_playing_next_round: Optional[int] = field(
@@ -93,6 +89,12 @@ class _Player(_Element[_player], Generic[_player]):
     penalties_order: Optional[int] = field(
         hash=False, repr=False, compare=False)
     penalties_text: str = field(hash=False, repr=False, compare=False)
+
+
+class _Player(_Element[_player], _PlayerVars, Generic[_player]):
+    """Player element, unlinked from other FPL elements.
+    """
+    _ATTR_FOR_STR = "web_name"
 
     @classmethod
     def __pre_init__(cls, new_instance: dict[str, Any]) -> dict[str, Any]:

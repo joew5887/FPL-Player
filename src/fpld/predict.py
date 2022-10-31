@@ -14,12 +14,12 @@ import numpy as np
 import pickle
 
 
-elem = TypeVar("elem", bound=_Element[Any])
+'''elem = TypeVar("elem", bound=_Element[Any])
 model_type = TypeVar("model_type")
-data_type = TypeVar("data_type", bound="AttributeModelData")
+data_type = TypeVar("data_type", bound="AttributeModelData")'''
 
 
-class AttributeModelData(ABC):
+'''class AttributeModelData(ABC):
     def __init__(self, events_to_use: ElementGroup[Event]):
         self._events = events_to_use
 
@@ -275,3 +275,4 @@ class FuturePointsModel():
             model_gw = max_gw
 
         return cls(model, model_gw)
+'''

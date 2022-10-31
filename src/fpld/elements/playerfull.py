@@ -13,9 +13,9 @@ _player_history = TypeVar("_player_history", bound="_PlayerHistory[Any]")
 _player_history_past = TypeVar(
     "_player_history_past", bound="_PlayerHistoryPast[Any]")
 _playerstats = TypeVar("_playerstats", bound="_PlayerStats[Any]")
+_playerstatsdataclass = TypeVar("_playerstatsdataclass", bound="_PlayerStatsDataClass[Any]")
 
 
-@dataclass(frozen=True, kw_only=True)
 class _PlayerStats(ABC, Generic[_playerstats]):
     def __iter__(self) -> Iterable[dict[str, Any]]:
         # In form: {"fixture": 1, "score": 0}, {"fixture": 2, "score": 1}
@@ -124,6 +124,12 @@ class _PlayerStats(ABC, Generic[_playerstats]):
             Name of field.
         """
         return ""
+
+
+class _PlayerStatsDataClass(_PlayerStats[_playerstatsdataclass]):
+    @classmethod
+    def all_fields(cls) -> list[Field[Any]]:
+        return list(fields(cls))
 
 
 @dataclass(frozen=True, kw_only=True)
