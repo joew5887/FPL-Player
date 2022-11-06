@@ -209,10 +209,20 @@ class BasePlayerHistory(_PlayerHistory["BasePlayerHistory"]):
     fixture: CategoricalVar[int] = field(hash=False, repr=False)
     opponent_team: CategoricalVar[int] = field(hash=False, repr=False)
 
+    @classmethod
+    def from_api(cls, api_data: list[dict[str, Any]]) -> BasePlayerHistory:
+        out: BasePlayerHistory = super().from_api(api_data)
+
+        return out
+
 
 @dataclass(frozen=True, kw_only=True)
 class BasePlayerHistoryPast(_PlayerHistoryPast["BasePlayerHistoryPast"]):
-    pass
+    @classmethod
+    def from_api(cls, api_data: list[dict[str, Any]]) -> BasePlayerHistoryPast:
+        out: BasePlayerHistoryPast = super().from_api(api_data)
+
+        return out
 
 
 class BasePlayerFull(_PlayerFull[BasePlayerHistory, BasePlayerHistoryPast]):

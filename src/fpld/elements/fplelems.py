@@ -181,10 +181,20 @@ class PlayerHistory(_PlayerHistory["PlayerHistory"]):
 
         return attr_list
 
+    @classmethod
+    def from_api(cls, api_data: list[dict[str, Any]]) -> PlayerHistory:
+        out: PlayerHistory = super().from_api(api_data)
+
+        return out
+
 
 @dataclass(frozen=True, kw_only=True)
 class PlayerHistoryPast(_PlayerHistoryPast["PlayerHistoryPast"]):
-    pass
+    @classmethod
+    def from_api(cls, api_data: list[dict[str, Any]]) -> PlayerHistoryPast:
+        out: PlayerHistoryPast = super().from_api(api_data)
+
+        return out
 
 
 class PlayerFull(_PlayerFull[PlayerHistory, PlayerHistoryPast]):

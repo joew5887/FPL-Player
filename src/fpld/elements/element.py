@@ -1,6 +1,6 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from typing import Any, Iterable, Iterator, Optional, SupportsIndex, TypeVar, Generic, Union, overload, Callable
+from typing import Any, Iterable, Iterator, Optional, SupportsIndex, Type, TypeVar, Generic, Union, overload, Callable
 from dataclasses import fields
 from attr import asdict
 from ..util.external import API
@@ -108,7 +108,7 @@ class _Element(ABC, Generic[element]):
         ...
 
     @classmethod
-    def from_dict(cls, new_instance: dict[str, Any]) -> element:
+    def from_dict(cls: Type[element], new_instance: dict[str, Any]) -> element:
         """Converts dictionary of attributes to an object of the class.
 
         Parameters
@@ -195,16 +195,6 @@ class _Element(ABC, Generic[element]):
 
         return cls._api
 
-    '''@overload
-    @classmethod
-    def get_by_id(cls, id_: int) -> Union[element, None]:
-        ...
-
-    @overload
-    @classmethod
-    def get_by_id(cls, id_: str) -> Union[element, None]:
-        ...'''
-
     @classmethod
     @cache
     def get_by_id(cls, id_: Any) -> Optional[element]:
@@ -243,6 +233,68 @@ class _Element(ABC, Generic[element]):
             Latest data for the class.
         """
         ...
+
+
+class ElementGroup2(ABC, list[element], Generic[element]):
+    def __init__(self, objects: Iterable[element]):
+        super().__init__(*objects)
+
+    def to_df(self, *attributes: str) -> pd.DataFrame:
+        """Gets a list of like elements and puts them into a dataframe.
+
+        With the chosen attributes as columns.
+
+        Returns
+        -------
+        pd.DataFrame
+            `elements` data in a dataframe.
+        """
+
+        df_rows = [[getattr(element, attr) for attr in attributes]
+                   for element in self]
+
+        df = pd.DataFrame(df_rows, index=list(
+            range(1, len(self) + 1)), columns=attributes)
+
+        return df
+
+    def to_percentile(self, attr: str) -> Percentile[element]:
+        """Ranks all elements in instance by percentile by `attr`.
+
+        Parameters
+        ----------
+        attr : str
+            Attribute to rank elements by.
+
+        Returns
+        -------
+        Percentile[element]
+           Gives each element a rank.
+
+        Raises
+        ------
+        TypeError
+            Attribute type must be int or float.
+        """
+        elements_to_attr = {elem: getattr(elem, attr) for elem in self}
+
+        for attr_value in elements_to_attr.values():
+            if not isinstance(attr_value, (int, float)):
+                raise TypeError("Must be int or float.")
+
+        return Percentile[element](elements_to_attr)
+
+    def to_string_list(self) -> list[str]:
+        """All elements in instance as their string representation.
+
+        Returns
+        -------
+        list[str]
+            All elements in instance as their string representation.
+        """
+        output = [str(elem) for elem in self]
+
+        return output
 
 
 class ElementGroup(ABC, Generic[element]):
@@ -464,11 +516,13 @@ class ElementGroup(ABC, Generic[element]):
             `elements` sorted by `sort_by`.
         """
 
+        def foo(elem: _Element[Any]) -> Any:
+            return getattr(elem, sort_by)
+
         if self.__objects == []:
             return ElementGroup[element](self.__objects)
 
-        elements_sorted = sorted(self.__objects, key=lambda elem: getattr(
-            elem, sort_by), reverse=reverse)
+        elements_sorted = sorted(self.__objects, key=foo, reverse=reverse)
 
         return ElementGroup[element](elements_sorted)
 
@@ -667,3 +721,32 @@ def _format_attr_to_value(attr_to_value: dict[str, Union[Any, tuple[Any, ...]]])
         no_elem_attr_to_value[attr] = tuple(temp)
 
     return no_elem_attr_to_value
+
+
+'''def elem_from_dict(elem_class: type[_Element], new_instance: dict[str, Any]) -> element:
+    """Converts dictionary of attributes to an object of the class.
+    Parameters
+    ----------
+    new_instance : dict[str, Any]
+        All attributes of the new object.
+    Returns
+    -------
+    element
+        Object based on attributes and values from `new_instance`.
+    Raises
+    ------
+    KeyError
+        If `new_instance` is missing attributes from class.
+    """
+    class_fields = fields(cls)  # `cls` must be a dataclass.
+    field_names = {f.name for f in class_fields}
+
+    if all_attributes_present(cls, new_instance):
+        required_attrs = {attr: new_instance[attr]
+                          for attr in field_names}
+        edited_attrs = cls.__pre_init__(required_attrs)
+
+        return cls(**edited_attrs)
+
+    raise KeyError(
+        f"Missing: {field_names.difference(set(new_instance.keys()))}")'''

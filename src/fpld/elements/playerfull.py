@@ -48,7 +48,7 @@ class _PlayerStats(ABC, Generic[_playerstats]):
         return attr_list
 
     @classmethod
-    def from_api(cls, api_data: list[dict[str, Any]]) -> _playerstats:
+    def from_api(cls, api_data: list[dict[str, Any]]) -> Any:
         """Converts data from API to a `BasePlayerStats` object.
 
         Parameters
