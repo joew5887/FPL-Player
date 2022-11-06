@@ -1,6 +1,6 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from typing import Optional, Type, TypeVar, Generic, Any, get_type_hints, Iterable
+from typing import TypeVar, Generic, Any, get_type_hints, Iterable
 from ..constants import URLS
 from ..util import API
 from ..util.attribute import CategoricalVar, ContinuousVar

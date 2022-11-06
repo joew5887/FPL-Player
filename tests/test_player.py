@@ -1,7 +1,7 @@
 import pytest
-from typing import Any, TypeVar, Union
+from typing import Any, Union
 from fpld.elements.element import ElementGroup
-from .examples import PLAYERS, TEAM_DF
+from .examples import PLAYERS
 from .test_elements import Element, ElementClass
 from fpld.elements.fplelems import Player
 from fpld.elements.player import BasePlayer
@@ -77,6 +77,9 @@ class TestPlayerClass(ElementClass[Player]):
                                  (ElementGroup[Player]([]), 0, 200, True, ElementGroup[Player]([]))
                              ]
                              )
-    def test_in_cost_range(self, player_pool: ElementGroup[Player], lower: int, upper: int, include_boundaries: bool, expected_output: ElementGroup[Player]) -> None:
+    def test_in_cost_range(
+            self, player_pool: ElementGroup[Player], lower: int, upper: int, include_boundaries: bool,
+            expected_output: ElementGroup[Player]) -> None:
+
         group = self.class_to_test.in_cost_range(player_pool, lower=lower, upper=upper, include_boundaries=include_boundaries)
         assert group.to_list() == expected_output.to_list()

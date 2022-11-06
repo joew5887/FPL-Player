@@ -1,7 +1,6 @@
 from dataclasses import fields
 from typing import Any, Generic, Iterator, Sequence, TypeVar, Union, List
 from .percent import to_percent
-from ..constants import round_value
 
 
 t = TypeVar("t")  # Attribute value

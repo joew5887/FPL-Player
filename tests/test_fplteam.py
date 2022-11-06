@@ -2,7 +2,6 @@ from copy import deepcopy
 from typing import Any
 import pytest
 import fpld
-from fpld.elements.element import ElementGroup
 from fpld.team.validation import FPLTeamVD, LPSquad
 import random
 from .examples import PLAYERS, VALID_SQUAD, INVALID_SQUAD_EXTRA_TEAM_PLAYERS, INVALID_SQUAD_NOT_ENOUGH_GROUP, LONG_BENCH_VALID_SQUAD
@@ -266,7 +265,7 @@ class TestFPLTeamConstraints:
     def test_required_player_not_in_pool(self) -> None:
         required_players = [PLAYERS["MID1"]]
         player_pool = {k: v for k, v in self.PLAYER_POOL.items() if k != PLAYERS["MID1"]}
-        assert not(PLAYERS["MID1"] in player_pool)
+        assert not (PLAYERS["MID1"] in player_pool)
 
         lp_squad = LPSquad(player_pool)
 

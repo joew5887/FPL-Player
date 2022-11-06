@@ -2,8 +2,6 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Any, Iterable, Iterator, Optional, SupportsIndex, Type, TypeVar, Generic, Union, overload, Callable
 from dataclasses import fields
-from attr import asdict
-from ..util.external import API
 from ..util import all_attributes_present, all_field_names, Percentile
 from functools import cache
 from random import choice, sample
@@ -465,7 +463,7 @@ class ElementGroup(ABC, Generic[element]):
 
             if elem_attr is None:
                 raise AttributeError(
-                    f"'{group_by_attr}' not in attributes.\nUse: {asdict(elem).keys()}")
+                    f"'{group_by_attr}' not in attributes.")
 
             if elem_attr not in groups:
                 groups[elem_attr] = [elem]  # Creates new group

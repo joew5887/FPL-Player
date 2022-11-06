@@ -1,10 +1,9 @@
 from __future__ import annotations
-from abc import ABC, abstractmethod
-from dataclasses import Field, dataclass, field, fields
-
+from abc import abstractmethod
+from dataclasses import dataclass, field
 from fpld.util.attribute import CategoricalVar
 from .element import _Element, ElementGroup
-from typing import Optional, Type, TypeVar, Generic, Any, get_type_hints, Iterable
+from typing import Optional, TypeVar, Generic, Any
 from ..util import API
 from ..constants import URLS, round_value
 from .playerfull import _PlayerFull, _PlayerHistory, _PlayerHistoryPast

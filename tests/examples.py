@@ -25,7 +25,7 @@ PLAYERS = {
 
 POSITIONS = {
     "GKP": fpld.Position.get_by_id(1), "DEF": fpld.Position.get_by_id(2),
-    "MID": fpld.Position.get_by_id(3), "MID": fpld.Position.get_by_id(4)
+    "MID": fpld.Position.get_by_id(3), "FWD": fpld.Position.get_by_id(4)
 }
 
 VALID_SQUAD: tuple[list[fpld.Player], list[fpld.Player], fpld.Player, fpld.Player] = (

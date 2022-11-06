@@ -64,14 +64,10 @@ class TestFixtureExample(FixtureElement[Fixture]):
             self.element_to_test.get_difficulty(self.team_id_not_in_fixture)
 
     def test_is_home_home_team(self) -> None:
-        assert self.element_to_test.is_home(self.element_to_test.team_h) == True
+        assert self.element_to_test.is_home(self.element_to_test.team_h) is True
 
     def test_is_home_away_team(self) -> None:
-        assert self.element_to_test.is_home(self.element_to_test.team_a) == False
-
-    def test_get_difficulty_invalid_team(self) -> None:
-        with pytest.raises(ValueError):
-            self.element_to_test.is_home(self.team_id_not_in_fixture)
+        assert self.element_to_test.is_home(self.element_to_test.team_a) is False
 
 
 class TestFixtureFutureExample(TestFixtureExample):
@@ -111,8 +107,13 @@ class TestFixtureClass(ElementClass[Fixture]):
 
     @pytest.mark.parametrize("fixture_group,expected_output",
                              [
-                                 (ElementGroup[Fixture]([Fixture.get_by_id(1), Fixture.get_by_id(380)]), {
-                                  Event.get_by_id(1): ElementGroup[Fixture]([Fixture.get_by_id(1)]), Event.get_by_id(38): ElementGroup[Fixture]([Fixture.get_by_id(380)])}),
+                                 (
+                                     ElementGroup[Fixture]([Fixture.get_by_id(1), Fixture.get_by_id(380)]),
+                                     {
+                                         Event.get_by_id(1): ElementGroup[Fixture]([Fixture.get_by_id(1)]),
+                                         Event.get_by_id(38): ElementGroup[Fixture]([Fixture.get_by_id(380)])
+                                     }
+                                 ),
                              ]
                              )
     def test_group_fixtures_by_gameweek(self, fixture_group: ElementGroup[Fixture], expected_output: dict[Event, ElementGroup[Fixture]]) -> None:
@@ -124,7 +125,10 @@ class TestFixtureClass(ElementClass[Fixture]):
                                   (ElementGroup[Fixture]([Fixture.get_by_id(1)]), ElementGroup[Fixture]([Fixture.get_by_id(380)]))),
                              ]
                              )
-    def test_split_fixtures_by_finished(self, fixture_group: ElementGroup[Fixture], expected_output: tuple[ElementGroup[Fixture], ElementGroup[Fixture]]) -> None:
+    def test_split_fixtures_by_finished(
+            self, fixture_group: ElementGroup[Fixture],
+            expected_output: tuple[ElementGroup[Fixture], ElementGroup[Fixture]]) -> None:
+
         assert Fixture.split_fixtures_by_finished(fixture_group) == expected_output
 
     @pytest.mark.parametrize("fixture_group,event,expected_output",

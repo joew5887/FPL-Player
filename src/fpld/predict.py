@@ -1,4 +1,4 @@
-from __future__ import annotations
+'''from __future__ import annotations
 from abc import ABC, abstractmethod
 from types import NoneType
 from .elements import Player, Team, Event, Fixture
@@ -11,7 +11,7 @@ from typing import Any, Optional, TypeVar, Generic, Union
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 import numpy as np
-import pickle
+import pickle'''
 
 
 '''elem = TypeVar("elem", bound=_Element[Any])

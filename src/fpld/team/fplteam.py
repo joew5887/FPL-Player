@@ -38,12 +38,12 @@ class Squad:
         -------
         ```
 
-                        'Lloris'                  
-            'Romero' 'Dunk' 'Trippier' 'Shaw'      
+                        'Lloris'
+            'Romero' 'Dunk' 'Trippier' 'Shaw'
         'De Bruyne' 'Salah' 'Phillips' 'Ward-Prowse'
-                    'Kane' 'Haaland'              
+                    'Kane' 'Haaland'
         --------------------------------------------
-            'Raya' 'Fofana' 'Harrison' 'Toney'     
+            'Raya' 'Fofana' 'Harrison' 'Toney'
         ```
         """
         temp = self.formation.as_text()

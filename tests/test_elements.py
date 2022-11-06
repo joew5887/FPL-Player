@@ -4,7 +4,7 @@ from fpld import elements as elems
 from fpld.util import Percentile
 from typing import Any, Callable, SupportsIndex, TypeVar, Generic, Union
 import pandas as pd
-from .examples import PLAYERS, TEAM_DF
+from .examples import TEAM_DF
 
 
 _element = TypeVar("_element", bound=elems.element._Element)

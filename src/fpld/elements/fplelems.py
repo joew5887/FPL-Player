@@ -1,9 +1,8 @@
 from __future__ import annotations
 import math
-from typing import Any, Optional, Type, Union
-from ..constants import URLS, datetime_to_string
+from typing import Any, Optional, Union
+from ..constants import datetime_to_string
 from ..util.percent import to_percent
-from ..util import API
 from .team import BaseTeam
 from .player import _Player
 from .playerfull import _PlayerFull, _PlayerHistory, _PlayerHistoryPast
