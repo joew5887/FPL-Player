@@ -14,12 +14,12 @@ class Position(_Element["Position"]):
     """
     _ATTR_FOR_STR = "singular_name"
 
-    id: int = field()
+    id: int = field(repr=False)
 
     plural_name: str = field(hash=False, repr=False, compare=False)
     plural_name_short: str = field(hash=False, repr=False, compare=False)
     singular_name: str = field(compare=False)
-    singular_name_short: str = field(compare=False)
+    singular_name_short: str = field(repr=False, compare=False)
     squad_select: int = field(hash=False, repr=False, compare=False)
     squad_min_play: int = field(hash=False, repr=False, compare=False)
     squad_max_play: int = field(hash=False, repr=False, compare=False)
@@ -28,18 +28,44 @@ class Position(_Element["Position"]):
     element_count: int = field(hash=False, repr=False, compare=False)
 
     @classmethod
-    @property
     def api_link(cls) -> str:
         return URLS["BOOTSTRAP-STATIC"]
 
     @classmethod
     def get_latest_api(cls) -> list[dict[str, Any]]:
-        api = super().get_latest_api()
-        api = API(cls.api_link)
-        return api.data["element_types"]
+        api = API(cls.api_link())
+
+        data_from_api: list[dict[str, Any]] = api.data["element_types"]
+
+        return data_from_api
 
     @classmethod
     def get_by_name(cls, singular_name_short: str) -> Position:
+        """Get a Position object by its singular short name.
+
+        Parameters
+        ----------
+        singular_name_short : str
+            Short name of position. Options: ['GKP', 'DEF', 'MID', 'FWD']
+
+        Returns
+        -------
+        Position
+            Position found from valid `singular_name_short`.
+
+        Raises
+        ------
+        IDMatchesZeroElements
+            If `singular_name_short` does not translate to a position.
+
+        Example
+        -------
+        ```
+        > position = Position.get_by_name("GKP")
+        > str(position)
+        Goalkeeper
+        ```
+        """
         position = cls.get(singular_name_short=singular_name_short)
 
         try:
@@ -52,6 +78,13 @@ class Position(_Element["Position"]):
 
     @classmethod
     def get_all_dict(cls) -> dict[str, Position]:
+        """Get all positions, with the keys as the `singular_name_short`.
+
+        Returns
+        -------
+        dict[str, Position]
+            ```{"GKP": Goalkeeper, ..., "FWD": Forward}```
+        """
         positions = cls.get_all()
 
         return {position.singular_name_short: position for position in positions}

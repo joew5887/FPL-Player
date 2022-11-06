@@ -1,9 +1,7 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from types import NoneType
-from typing import Any, Iterable, Iterator, SupportsIndex, TypeVar, Generic, Union, overload, Callable
+from typing import Any, Iterable, Iterator, Optional, SupportsIndex, Type, TypeVar, Generic, Union, overload, Callable
 from dataclasses import fields
-from attr import asdict
 from ..util import all_attributes_present, all_field_names, Percentile
 from functools import cache
 from random import choice, sample
@@ -19,9 +17,9 @@ class _Element(ABC, Generic[element]):
     E.g. Players, Teams, Fixtures
     """
 
-    _DEFAULT_ID = "id"
+    UNIQUE_ID_COL: str = "id"
     _api = None
-    _ATTR_FOR_STR = "name"
+    _ATTR_FOR_STR: str = "name"
 
     @classmethod
     def __pre_init__(cls, new_instance: dict[str, Any]) -> dict[str, Any]:
@@ -50,7 +48,7 @@ class _Element(ABC, Generic[element]):
         str
             Text name of element.
         """
-        return str(getattr(self, type(self)._ATTR_FOR_STR, None))
+        return str(getattr(self, type(self)._ATTR_FOR_STR))
 
     @property
     def info(self) -> str:
@@ -79,8 +77,9 @@ class _Element(ABC, Generic[element]):
         AttributeError
             If the ID cannot be found from the `unique_id_col`.
         """
-        id_col = type(self).unique_id_col
-        id_: int = getattr(self, id_col, -1)
+        id_col: str = type(self).UNIQUE_ID_COL
+        id_: int = getattr(self, id_col)
+        '''id_: int = getattr(self, id_col, -1)
 
         if id_ == -1:
             raise AttributeError(
@@ -88,39 +87,26 @@ class _Element(ABC, Generic[element]):
                     f"'{id_col}' not in object. "
                     "Unique ID could not be found."
                 )
-            )
+            )'''
 
         return id_
 
     @classmethod
-    @property
     @abstractmethod
     def api_link(cls) -> str:
         """URL of API for objects of that class.
 
-        Used in `cls.get_api` property.
+            Used in `cls.get_api` property.
 
-        Returns
-        -------
-        str
-            API URL.
-        """
-        return ""
-
-    @ classmethod
-    @ property
-    def unique_id_col(cls) -> str:
-        """Attribute name that is a unique ID for any object of that class.
-
-        Returns
-        -------
-        str
-            Attribute name.
-        """
-        return cls._DEFAULT_ID
+            Returns
+            -------
+            str
+                API URL.
+            """
+        ...
 
     @classmethod
-    def from_dict(cls, new_instance: dict[str, Any]) -> element:
+    def from_dict(cls: Type[element], new_instance: dict[str, Any]) -> element:
         """Converts dictionary of attributes to an object of the class.
 
         Parameters
@@ -182,7 +168,7 @@ class _Element(ABC, Generic[element]):
             All elements.
         """
         elements = cls.get_api()
-        elements_sorted = sorted([cls.from_dict(elem) for elem in elements])
+        elements_sorted = sorted([cls.from_dict(elem) for elem in elements], key=lambda p: p.unique_id)
 
         return ElementGroup[element](elements_sorted)
 
@@ -207,17 +193,9 @@ class _Element(ABC, Generic[element]):
 
         return cls._api
 
-    @overload
-    @classmethod
-    def get_by_id(cls, id_: int) -> Union[element, NoneType]: ...
-
-    @overload
-    @classmethod
-    def get_by_id(cls, id_: str) -> Union[element, NoneType]: ...
-
     @classmethod
     @cache
-    def get_by_id(cls, id_: Any) -> Union[element, None]:
+    def get_by_id(cls, id_: Any) -> Optional[element]:
         """Get an element by their unique id.
 
         Parameters
@@ -227,15 +205,10 @@ class _Element(ABC, Generic[element]):
 
         Returns
         -------
-        Union[element, NoneType]
+        Optional[element]
             The found element. May return None if no element has been found.
-
-        Raises
-        ------
-        Exception
-            If more than one element was found, ID should be unique.
         """
-        filter_ = {cls.unique_id_col: id_}
+        filter_ = {cls.UNIQUE_ID_COL: id_}
         element_group = cls.get(**filter_)
 
         try:
@@ -257,7 +230,69 @@ class _Element(ABC, Generic[element]):
         list[dict[str, Any]]
             Latest data for the class.
         """
-        return []
+        ...
+
+
+class ElementGroup2(ABC, list[element], Generic[element]):
+    def __init__(self, objects: Iterable[element]):
+        super().__init__(*objects)
+
+    def to_df(self, *attributes: str) -> pd.DataFrame:
+        """Gets a list of like elements and puts them into a dataframe.
+
+        With the chosen attributes as columns.
+
+        Returns
+        -------
+        pd.DataFrame
+            `elements` data in a dataframe.
+        """
+
+        df_rows = [[getattr(element, attr) for attr in attributes]
+                   for element in self]
+
+        df = pd.DataFrame(df_rows, index=list(
+            range(1, len(self) + 1)), columns=attributes)
+
+        return df
+
+    def to_percentile(self, attr: str) -> Percentile[element]:
+        """Ranks all elements in instance by percentile by `attr`.
+
+        Parameters
+        ----------
+        attr : str
+            Attribute to rank elements by.
+
+        Returns
+        -------
+        Percentile[element]
+           Gives each element a rank.
+
+        Raises
+        ------
+        TypeError
+            Attribute type must be int or float.
+        """
+        elements_to_attr = {elem: getattr(elem, attr) for elem in self}
+
+        for attr_value in elements_to_attr.values():
+            if not isinstance(attr_value, (int, float)):
+                raise TypeError("Must be int or float.")
+
+        return Percentile[element](elements_to_attr)
+
+    def to_string_list(self) -> list[str]:
+        """All elements in instance as their string representation.
+
+        Returns
+        -------
+        list[str]
+            All elements in instance as their string representation.
+        """
+        output = [str(elem) for elem in self]
+
+        return output
 
 
 class ElementGroup(ABC, Generic[element]):
@@ -268,17 +303,20 @@ class ElementGroup(ABC, Generic[element]):
         # Need to find a method of removing duplicates whilst preserving order.
         self.__objects = list(objects)
 
-    @overload
-    def __add__(self, obj: ElementGroup[element]) -> ElementGroup[element]: ...
-
-    def __add__(self, obj: Any) -> Any:
-        if isinstance(obj, ElementGroup):
-            if not self.is_compatible(obj):
-                raise Exception("ElementGroups must have same type.")
-
-            return ElementGroup[element](self.to_list() + obj.to_list())
-        else:
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, ElementGroup):
             raise NotImplementedError
+
+        return other.to_list() == self.to_list()
+
+    def __add__(self, other: ElementGroup[element]) -> ElementGroup[element]:
+        if not isinstance(other, ElementGroup):
+            raise NotImplementedError
+
+        if not self.is_compatible(other):
+            raise Exception("ElementGroups must have same type.")
+
+        return ElementGroup[element](self.to_list() + other.to_list())
 
     @overload
     def __getitem__(self, idx: SupportsIndex) -> element: ...
@@ -310,7 +348,7 @@ class ElementGroup(ABC, Generic[element]):
         """
         return f"{self.__class__.__name__} of {len(self)} elements."
 
-    def filter(self, *, method_: str = "all", **attr_to_value: Union[Any, Iterable[Any]]) -> ElementGroup[element]:
+    def filter(self, *, method_: str = "all", **attr_to_value: Union[Any, tuple[Any]]) -> ElementGroup[element]:
         """Filters an ElementGroup into a group that satisfies all the conditions passed.
 
         Parameters
@@ -372,7 +410,7 @@ class ElementGroup(ABC, Generic[element]):
         ElementGroup[element]
             Group of top elements of size `n`.
         """
-        return ElementGroup(self.sort(col_by, reverse=reverse)[:n])
+        return ElementGroup[element](self.sort(col_by, reverse=reverse)[:n])
 
     def get_random(self) -> element:
         """Gets random element from objects list.
@@ -425,7 +463,7 @@ class ElementGroup(ABC, Generic[element]):
 
             if elem_attr is None:
                 raise AttributeError(
-                    f"'{group_by_attr}' not in attributes.\nUse: {asdict(elem).keys()}")
+                    f"'{group_by_attr}' not in attributes.")
 
             if elem_attr not in groups:
                 groups[elem_attr] = [elem]  # Creates new group
@@ -475,10 +513,16 @@ class ElementGroup(ABC, Generic[element]):
         list[element]
             `elements` sorted by `sort_by`.
         """
-        elements_sorted = sorted(self.__objects, key=lambda elem: getattr(
-            elem, sort_by), reverse=reverse)
 
-        return ElementGroup(elements_sorted)
+        def foo(elem: _Element[Any]) -> Any:
+            return getattr(elem, sort_by)
+
+        if self.__objects == []:
+            return ElementGroup[element](self.__objects)
+
+        elements_sorted = sorted(self.__objects, key=foo, reverse=reverse)
+
+        return ElementGroup[element](elements_sorted)
 
     def split(self, *, method_: str = "all", **attr_to_value: Union[Any, Iterable[Any]]) -> tuple[ElementGroup[element], ElementGroup[element]]:
         """Splits an ElementGroup into two sub-groups, where one group satisfies the filters, the other does not.
@@ -603,13 +647,11 @@ def id_uniqueness_check(query_result_from_id: ElementGroup[Any]) -> None:
     if len(query_result_from_id) > 1:
         raise IDNotUnique(
             f"Expected only one element, got {len(query_result_from_id)}.")
-    elif len(query_result_from_id) == 0:
+    if len(query_result_from_id) == 0:
         raise IDMatchesZeroElements("ID matches 0 elements.")
-    else:
-        raise InvalidQueryResult("Length is less than 0.")
 
 
-def _method_choice(method_: str) -> Callable:
+def _method_choice(method_: str) -> Callable[[Iterable[bool]], bool]:
     """Checks if method choice passed from `get` is acceptable.
 
     Parameters
@@ -619,7 +661,7 @@ def _method_choice(method_: str) -> Callable:
 
     Returns
     -------
-    Callable
+    Callable[[Iterable[bool]], bool]
         Either `any()` or `all()`.
 
     Raises
@@ -640,7 +682,7 @@ def _method_choice(method_: str) -> Callable:
     return func
 
 
-def _format_attr_to_value(attr_to_value: dict[str, Union[Any, tuple[Any]]]) -> dict[str, tuple[Any]]:
+def _format_attr_to_value(attr_to_value: dict[str, Union[Any, tuple[Any, ...]]]) -> dict[str, tuple[Any, ...]]:
     """Formats query so the values are all tuples.
 
     Used by `ElementGroup.filter()`
@@ -663,10 +705,10 @@ def _format_attr_to_value(attr_to_value: dict[str, Union[Any, tuple[Any]]]) -> d
         else:
             attr_to_value[attr] = [values]
 
-    no_elem_attr_to_value: dict[str, tuple[Any]] = dict()
+    no_elem_attr_to_value: dict[str, tuple[Any, ...]] = dict()
 
     for attr, values in attr_to_value.items():
-        temp = []
+        temp: list[Any] = []
 
         for value in values:
             if isinstance(value, _Element):
@@ -677,3 +719,32 @@ def _format_attr_to_value(attr_to_value: dict[str, Union[Any, tuple[Any]]]) -> d
         no_elem_attr_to_value[attr] = tuple(temp)
 
     return no_elem_attr_to_value
+
+
+'''def elem_from_dict(elem_class: type[_Element], new_instance: dict[str, Any]) -> element:
+    """Converts dictionary of attributes to an object of the class.
+    Parameters
+    ----------
+    new_instance : dict[str, Any]
+        All attributes of the new object.
+    Returns
+    -------
+    element
+        Object based on attributes and values from `new_instance`.
+    Raises
+    ------
+    KeyError
+        If `new_instance` is missing attributes from class.
+    """
+    class_fields = fields(cls)  # `cls` must be a dataclass.
+    field_names = {f.name for f in class_fields}
+
+    if all_attributes_present(cls, new_instance):
+        required_attrs = {attr: new_instance[attr]
+                          for attr in field_names}
+        edited_attrs = cls.__pre_init__(required_attrs)
+
+        return cls(**edited_attrs)
+
+    raise KeyError(
+        f"Missing: {field_names.difference(set(new_instance.keys()))}")'''

@@ -1,14 +1,13 @@
 from __future__ import annotations
 import math
-from types import NoneType
-from typing import Any, Union
-from ..constants import URLS, datetime_to_string
-from ..util.percent import percent
-from ..util import API
+from typing import Any, Optional, Union
+from ..constants import datetime_to_string
+from ..util.percent import to_percent
 from .team import BaseTeam
-from .player import BasePlayer, BasePlayerFull, BasePlayerHistory, BasePlayerHistoryPast
-from .fixture import BaseFixture
-from .event import BaseEvent
+from .player import _Player
+from .playerfull import _PlayerFull, _PlayerHistory, _PlayerHistoryPast
+from .fixture import _Fixture
+from .event import _Event
 from .position import Position
 from .labels import Label
 from dataclasses import Field, dataclass, field
@@ -59,7 +58,7 @@ class Team(BaseTeam["Team"]):
         """
         return Player.get(team=self.unique_id)
 
-    def average_form(self) -> float:
+    '''def average_form(self) -> float:
         """Gets average form of playing players in a team.
 
         Returns
@@ -79,7 +78,7 @@ class Team(BaseTeam["Team"]):
 
         form_sum = sum(p.form for p in eligible_players)
 
-        return form_sum / len(eligible_players)
+        return form_sum / len(eligible_players)'''
 
     def get_all_fixtures(self) -> ElementGroup[Fixture]:
         """Gets all fixtures and results for a team.
@@ -106,12 +105,12 @@ class Team(BaseTeam["Team"]):
         """
         return self.players.filter(element_type=position)
 
-    def player_total(self, *cols: str, by_position: Position = None) -> float:
+    def player_total(self, *cols: str, by_position: Optional[Position] = None) -> float:
         """Total points for all the players in a team, for a given attribute.
 
         Parameters
         ----------
-        by_position : Position, optional
+        by_position : Optional[Position], optional
             Position to filter, None means all positions, by default None
 
         Returns
@@ -149,12 +148,12 @@ class Team(BaseTeam["Team"]):
 
         return total
 
-    def total_goal_contributions(self, *, by_position: Position = None) -> int:
+    def total_goal_contributions(self, *, by_position: Optional[Position] = None) -> int:
         """Total goal contributions for a team.
 
         Parameters
         ----------
-        by_position : Position, optional
+        by_position : Optional[Position], optional
             Position to filter, None means all positions, by default None
 
         Returns
@@ -168,7 +167,7 @@ class Team(BaseTeam["Team"]):
 
 
 @dataclass(frozen=True, kw_only=True)
-class PlayerHistory(BasePlayerHistory):
+class PlayerHistory(_PlayerHistory["PlayerHistory"]):
     fixture: CategoricalVar[Fixture] = field(hash=False, repr=False)
     opponent_team: CategoricalVar[Team] = field(hash=False, repr=False)
 
@@ -181,55 +180,50 @@ class PlayerHistory(BasePlayerHistory):
 
         return attr_list
 
+    @classmethod
+    def from_api(cls, api_data: list[dict[str, Any]]) -> PlayerHistory:
+        out: PlayerHistory = super().from_api(api_data)
+
+        return out
+
 
 @dataclass(frozen=True, kw_only=True)
-class PlayerHistoryPast(BasePlayerHistoryPast):
-    pass
+class PlayerHistoryPast(_PlayerHistoryPast["PlayerHistoryPast"]):
+    @classmethod
+    def from_api(cls, api_data: list[dict[str, Any]]) -> PlayerHistoryPast:
+        out: PlayerHistoryPast = super().from_api(api_data)
+
+        return out
 
 
-class PlayerFull(BasePlayerFull[PlayerHistory, PlayerHistoryPast]):
+class PlayerFull(_PlayerFull[PlayerHistory, PlayerHistoryPast]):
     """Game by game, season by season data for a player, linked to other FPL elements.
     """
 
-    def __init__(self, history: PlayerHistory, history_past: PlayerHistoryPast):
-        self._history = history
-        self._history_past = history_past
-
     @classmethod
-    def from_id(cls, player_id: int) -> PlayerFull:
-        """Takes a player ID, and returns full data for that player
+    def from_player_id(cls, player_id: int) -> PlayerFull:
+        data = cls.get_api(player_id)
 
-        Parameters
-        ----------
-        player_id : int
-            Player ID to get stats for.
+        history = PlayerHistory.from_api(data["history"])
+        history_past = PlayerHistoryPast.from_api(
+            data["history_past"])
 
-        Returns
-        -------
-        PlayerFull
-           Player stats, game by game, season by season.
-        """
-        url = URLS["ELEMENT-SUMMARY"].format(player_id)
-        api = API(url)  # Need to have offline feature
-
-        if api.data == "The game is being updated.":
-            raise ValueError("The game is being updated.")
-
-        history = PlayerHistory.from_api(api.data["history"])
-        history_past = PlayerHistoryPast.from_api(api.data["history_past"])
         return PlayerFull(history, history_past)
 
 
 @dataclass(frozen=True, order=True, kw_only=True)
-class Player(BasePlayer["Player"]):
+class Player(_Player["Player"]):
     """Player element, linked to other FPL elements.
     """
     team: Team = field(hash=False, compare=False)
+    element_type: Position = field(hash=False, compare=False)
 
     @classmethod
     def __pre_init__(cls, new_instance: dict[str, Any]) -> dict[str, Any]:
         new_instance = super().__pre_init__(new_instance)
 
+        new_instance["element_type"] = Position.get_by_id(
+            new_instance["element_type"])
         new_instance["team"] = Team.get_by_id(new_instance["team"])
 
         return new_instance
@@ -246,7 +240,7 @@ class Player(BasePlayer["Player"]):
         """
         position_total = self.team.total_goal_contributions(
             by_position=self.element_type)
-        return percent(self.goal_contributions, position_total)
+        return to_percent(self.goal_contributions, position_total)
 
     @property
     def percent_team(self) -> float:
@@ -258,9 +252,9 @@ class Player(BasePlayer["Player"]):
             player contributions / team contributions.
         """
         team_total = self.team.total_goal_contributions()
-        return percent(self.goal_contributions, team_total)
+        return to_percent(self.goal_contributions, team_total)
 
-    def attribute_in_event(self, attribute: str, event: Event) -> list[Any]:
+    '''def attribute_in_event(self, attribute: str, event: Event) -> list[Any]:
         """Gets all values of `attribute` for gameweek `event`.
 
         Parameters
@@ -295,21 +289,14 @@ class Player(BasePlayer["Player"]):
             else:
                 values.append(value)
 
-        return values
+        return values'''
 
     def in_full(self) -> PlayerFull:
-        """Game by game, season by season data for a player.
-
-        Returns
-        -------
-        PlayerFull
-            Game by game, season by season data for a player.
-        """
-        return PlayerFull.from_id(self.id)
+        return PlayerFull.from_player_id(self.id)
 
 
 @dataclass(frozen=True, order=True, kw_only=True)
-class Event(BaseEvent["Event"]):
+class Event(_Event["Event"]):
     """Event / gameweek element, linked to other FPL elements.
     """
     most_selected: Player = field(hash=False, repr=False, compare=False)
@@ -348,7 +335,7 @@ class Event(BaseEvent["Event"]):
 
 
 @dataclass(frozen=True, order=True, kw_only=True)
-class Fixture(BaseFixture["Fixture"]):
+class Fixture(_Fixture["Fixture"]):
     """Fixture / result element, linked to other FPL elements.
     """
     event: Event = field(hash=False, compare=False)

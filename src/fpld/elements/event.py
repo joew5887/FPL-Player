@@ -1,22 +1,21 @@
-from types import NoneType
 from .element import _Element, ElementGroup
 from datetime import datetime
-from typing import Generic, Optional, TypeVar, Union, Any
+from typing import Generic, TypeVar, Union, Any
 from ..util import API
 from ..constants import URLS, string_to_datetime
 from dataclasses import dataclass, field
 
 
-baseevent = TypeVar("baseevent", bound="BaseEvent")
+_event = TypeVar("_event", bound="_Event[Any]")
 
 
 @dataclass(frozen=True, order=True, kw_only=True)
-class BaseEvent(_Element[baseevent], Generic[baseevent]):
+class _Event(_Element[_event], Generic[_event]):
     """Event / Gameweek element, unlinked from other FPL elements.
     """
 
-    deadline_time: datetime = field(hash=False)
-    id: int = field()
+    deadline_time: datetime = field(repr=False, hash=False)
+    id: int = field(repr=False)
 
     name: str = field(hash=False, compare=False)
     average_entry_score: int = field(hash=False, repr=False, compare=False)
@@ -30,20 +29,21 @@ class BaseEvent(_Element[baseevent], Generic[baseevent]):
     h2h_ko_matches_created: bool = field(hash=False, repr=False, compare=False)
     chip_plays: list[dict[str, Union[str, int]]
                      ] = field(hash=False, repr=False, compare=False)
-    most_selected: int = field(hash=False, repr=False, compare=False)
-    most_transferred_in: int = field(hash=False, repr=False, compare=False)
-    top_element: int = field(hash=False, repr=False, compare=False)
-    top_element_info: dict[str, int] = field(
+    most_selected: Any = field(hash=False, repr=False, compare=False)
+    most_transferred_in: Any = field(hash=False, repr=False, compare=False)
+    top_element: Any = field(hash=False, repr=False, compare=False)
+    top_element_info: dict[str, Any] = field(
         hash=False, repr=False, compare=False)
     transfers_made: int = field(hash=False, repr=False, compare=False)
-    most_captained: int = field(hash=False, repr=False, compare=False)
-    most_vice_captained: int = field(hash=False, repr=False, compare=False)
+    most_captained: Any = field(hash=False, repr=False, compare=False)
+    most_vice_captained: Any = field(hash=False, repr=False, compare=False)
 
     @classmethod
     def __pre_init__(cls, new_instance: dict[str, Any]) -> dict[str, Any]:
         new_instance = super().__pre_init__(new_instance)
 
         # converts string datetime to datetime object
+        # TODO: regex support
         if new_instance["deadline_time"] is not None:
             new_instance["deadline_time"] = \
                 string_to_datetime(new_instance["deadline_time"])
@@ -52,7 +52,7 @@ class BaseEvent(_Element[baseevent], Generic[baseevent]):
 
         return new_instance
 
-    def __add__(self, other: int) -> Union[baseevent, NoneType]:
+    def __add__(self, other: int) -> _event:
         """Increments the event by `other` gameweeks.
 
         Parameters
@@ -62,7 +62,7 @@ class BaseEvent(_Element[baseevent], Generic[baseevent]):
 
         Returns
         -------
-        Union[baseevent, NoneType]
+        event
             Event at gameweek `self.unique_id + other`.
             May be None if outside season.
 
@@ -70,16 +70,23 @@ class BaseEvent(_Element[baseevent], Generic[baseevent]):
         ------
         NotImplementedError
             `other` must be an int.
+        Exception
+            ID added goes outside of gameweek range.
         """
-        if isinstance(other, int):
-            return type(self).get_by_id(self.unique_id + other)
+        if not isinstance(other, int):
+            raise NotImplementedError
 
-        raise NotImplementedError
+        gw = type(self).get_by_id(self.unique_id + other)
 
-    def __iadd__(self, other: int) -> Union[baseevent, NoneType]:
+        if gw is None:
+            raise Exception("No gameweek found.")
+
+        return gw
+
+    def __iadd__(self, other: int) -> _event:
         return self.__add__(other)
 
-    def __sub__(self, other: int) -> Union[baseevent, NoneType]:
+    def __sub__(self, other: int) -> _event:
         """Decrements the event by `other` gameweeks.
 
         Parameters
@@ -89,7 +96,7 @@ class BaseEvent(_Element[baseevent], Generic[baseevent]):
 
         Returns
         -------
-        Union[baseevent, NoneType]
+        event
             Event at gameweek `self.unique_id - other`.
             May be None if outside season.
 
@@ -98,12 +105,12 @@ class BaseEvent(_Element[baseevent], Generic[baseevent]):
         NotImplementedError
             `other` must be an int.
         """
-        if isinstance(other, int):
-            return type(self).get_by_id(self.unique_id - other)
+        if not isinstance(other, int):
+            raise NotImplementedError
 
-        raise NotImplementedError
+        return self.__add__((-1) * other)
 
-    def __isub__(self, other: int) -> Union[baseevent, NoneType]:
+    def __isub__(self, other: int) -> _event:
         return self.__sub__(other)
 
     @property
@@ -120,12 +127,12 @@ class BaseEvent(_Element[baseevent], Generic[baseevent]):
         return datetime.now() > self.deadline_time
 
     @classmethod
-    def range(cls, start_gw: baseevent,  start: int, end: int, step: int) -> ElementGroup[baseevent]:
+    def range(cls, start_gw: _event, start: int, end: int, step: int) -> ElementGroup[_event]:
         """Gets a range of events between two points.
 
         Parameters
         ----------
-        start_gw : baseevent
+        start_gw : _event
             Event to start list from, may be included in list if `start` = 0.
         start : int
             Where to start incrementing from.
@@ -133,71 +140,73 @@ class BaseEvent(_Element[baseevent], Generic[baseevent]):
             Where to stop incrementing.
         step : int
             How much to increment by.
-
         Returns
         -------
-        ElementGroup[baseevent]
+        ElementGroup[event]
             Events in the range.
 
         Raises
         ------
         ValueError
             If the range produces an empty list.
-        Warning
-            If the length of the range is less than the length of events.
-            Happens at each end of the season.
         """
-        group = [
-            start_gw + i for i in range(start, end, step) if start_gw + i is not None]
+        group: list[_event] = [
+            start_gw.__add__(i) for i in range(start, end, step)]
 
         if len(group) == 0:
             raise ValueError("No gameweeks found")
 
-        '''if len(group) < len(range(start, end, step)):
-            raise Warning("Gameweek range has been cut.")'''
-
-        return ElementGroup[baseevent](group)
+        return ElementGroup[_event](group)
 
     @classmethod
-    @property
     def api_link(cls) -> str:
         return URLS["BOOTSTRAP-STATIC"]
 
     @classmethod
-    def get_previous_gw(cls) -> baseevent:
+    def get_previous_gw(cls) -> _event:
         """Returns the previous gameweek at the time of program execution.
 
         Returns
         -------
-        baseevent
+        event
             The previous gameweek.
         """
         return cls.__find_until_true("is_previous")
 
     @classmethod
-    def get_current_gw(cls) -> baseevent:
+    def get_current_gw(cls) -> _event:
         """Returns current gameweek at the time of program execution.
 
         Returns
         -------
-        baseevent
+        event
             The current gameweek.
         """
         return cls.__find_until_true("is_current")
 
     @classmethod
-    def get_next_gw(cls) -> baseevent:
+    def get_next_gw(cls) -> _event:
         """Returns the next gameweek at the time of program execution.
 
         Returns
         -------
-        baseevent
+        event
             The next gameweek.
         """
         return cls.__find_until_true("is_next")
 
     @classmethod
-    def get_model_gw(cls) -> baseevent:
+    def get_model_gw(cls) -> _event:
+        """Gameweek for model.
+
+        Uses current gameweek.
+        If it has finished, the next gameweek is returned.
+
+        Returns
+        -------
+        _event
+            Model gw.
+        """
         current_gw = cls.get_current_gw()
         next_gw = cls.get_next_gw()
 
@@ -208,28 +217,28 @@ class BaseEvent(_Element[baseevent], Generic[baseevent]):
 
     @classmethod
     def get_latest_api(cls) -> list[dict[str, Any]]:
-        api = super().get_latest_api()
-        api = API(cls.api_link)
-        data: list
-        data = api.data["events"]
+        api = API(cls.api_link())
 
+        data: list[dict[str, Any]] = api.data["events"]
+
+        # none
         data.append({
             "id": 0, "name": "No Gameweek", "deadline_time": None, "average_entry_score": 0,
             "finished": False, "data_checked": False, "highest_scoring_entry": 0, "is_previous": False,
             "is_current": False, "is_next": False, "cup_leagues_created": False, "h2h_ko_matches_created": False,
-            "chip_plays": [], "most_selected": -1, "most_transferred_in": -1, "top_element": -1,
-            "top_element_info": dict(), "transfers_made": 0, "most_captained": -1, "most_vice_captained": -1
+            "chip_plays": [], "most_selected": None, "most_transferred_in": None, "top_element": None,
+            "top_element_info": dict(), "transfers_made": 0, "most_captained": None, "most_vice_captained": None
         })
 
         return data
 
     @classmethod
-    def past_and_future(cls) -> tuple[ElementGroup[baseevent], ElementGroup[baseevent]]:
+    def past_and_future(cls) -> tuple[ElementGroup[_event], ElementGroup[_event]]:
         """Splits all the gameweeks into two groups by whether they have finished.
 
         Returns
         -------
-        tuple[ElementGroup[baseevent], ElementGroup[baseevent]]
+        tuple[ElementGroup[event], ElementGroup[event]]
             The first group is the completed gameweeks, with the rest in group 2.
         """
         all_events = cls.get_scheduled_events()
@@ -237,7 +246,7 @@ class BaseEvent(_Element[baseevent], Generic[baseevent]):
         return all_events.split(finished=True)
 
     @classmethod
-    def __find_until_true(cls, attr: str) -> Optional[baseevent]:
+    def __find_until_true(cls, attr: str) -> _event:
         """Iterates through all gameweeks until the attribute is True.
 
         Parameters
@@ -247,8 +256,8 @@ class BaseEvent(_Element[baseevent], Generic[baseevent]):
 
         Returns
         -------
-        Optional[baseevent]
-            The first gameweek where the attribute is True, may be None if they are all False.
+        event
+            The first gameweek where the attribute is True, may be no gameweek if they are all False.
         """
         all_events = cls.get_all()
 
@@ -256,15 +265,43 @@ class BaseEvent(_Element[baseevent], Generic[baseevent]):
             if getattr(event, attr):
                 return event
 
-        return None
+        return cls.none()
 
     @classmethod
-    @property
-    def none(cls) -> baseevent:
-        return cls.get_by_id(0)
+    def none(cls) -> _event:
+        """Default no gameweek Event element.
+
+        Used for fixtures that have been postponed and not rearranged to another gameweek.
+
+        Returns
+        -------
+        _event
+            No gameweek event.
+        """
+        return cls.get(id=0)[0]
 
     @classmethod
-    def get_scheduled_events(cls) -> ElementGroup[baseevent]:
+    def get_scheduled_events(cls) -> ElementGroup[_event]:
+        """Get all events, except the no gameweek element.
+
+        Returns
+        -------
+        ElementGroup[_event]
+            `cls.get_all()` except `cls.none()`.
+        """
         all_events = cls.get_all()
 
-        return ElementGroup[baseevent]([event for event in all_events if event != cls.none])
+        return ElementGroup[_event]([event for event in all_events if event != cls.none()])
+
+
+@dataclass(frozen=True, order=True, kw_only=True)
+class BaseEvent(_Event["BaseEvent"]):
+    """Independent Event element, not linked to any other FPL elements.
+    """
+    most_selected: int = field(hash=False, repr=False, compare=False)
+    most_transferred_in: int = field(hash=False, repr=False, compare=False)
+    top_element: int = field(hash=False, repr=False, compare=False)
+    top_element_info: dict[str, int] = field(
+        hash=False, repr=False, compare=False)
+    most_captained: int = field(hash=False, repr=False, compare=False)
+    most_vice_captained: int = field(hash=False, repr=False, compare=False)

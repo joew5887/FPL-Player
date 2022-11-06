@@ -1,91 +1,209 @@
 from dataclasses import fields
-from typing import Any, Generic, Iterator, TypeVar, Union
+from typing import Any, Generic, Iterator, Sequence, TypeVar, Union, List
+from .percent import to_percent
 
 
-t = TypeVar("t")
-b = TypeVar("b", int, float)
-_KT = TypeVar("_KT")
+t = TypeVar("t")  # Attribute value
+_b = TypeVar("_b", int, float)  # Continuous attribute value type
+_KT = TypeVar("_KT")  # label for Percentile
 
 
 class Percentile(Generic[_KT]):
+    """For a list of named labels and their values, show the labels arranged by percentile.
+
+    The higher the value, the higher the rank and percentile.
+    """
     __name_to_value: dict[_KT, Union[int, float]]
     __name_to_percentile: dict[_KT, int]
     __name_to_rank: dict[_KT, int]
-    __rank_to_name: dict[int, _KT]
+    __rank_to_name: list[_KT]
 
-    def __init__(self, name_to_value: dict[_KT, Union[float, int]]):
+    def __init__(self, name_to_value: dict[_KT, Union[int, float]]):
         self.__set_name_to_value(name_to_value)
 
     def __str__(self) -> str:
+        """Show minimum and maximum values for Percentile object.
+
+        Returns
+        -------
+        str
+            Shows key at the minimum and maximum values as well as their values.
+
+        Example
+        -------
+        ```
+        > percentile = Percentile({"1": 0.0, "2": 0.5, "3": 0.75, "4": 1})
+        > str(percentile)
+        "Percentile(min_key=1, min_value=0, MAX_key=4, MAX_value=1)"
+        ```
+        """
         output = []
         min_key = self.name_at_rank(0)
         max_key = self.name_at_rank(self.max_rank)
-        output.append(f"Min key = {min_key}")
-        output.append(f"Min value = {self.get_value(min_key)}")
-        output.append(f"Max key = {max_key}")
-        output.append(f"Max value = {self.get_value(max_key)}")
-        output.append(f"Number of elements = {len(self)}")
+        output.append(f"min_key={min_key}")
+        output.append(f"min_value={self.get_value(min_key)}")
+        output.append(f"MAX_key={max_key}")
+        output.append(f"MAX_value={self.get_value(max_key)}")
+        output.append(f"__len__={len(self)}")
 
-        return "\n".join(output)
+        content = ", ".join(output)
+        return f"Percentile({content})"
 
     def __len__(self) -> int:
+        """Number of elements in Percentile object.
+
+        Returns
+        -------
+        int
+            Minimum of 1.
+        """
         return len(self.__name_to_value)
 
     @property
     def max_rank(self) -> int:
+        """Shows the highest rank for Percentile object.
+
+        Returns
+        -------
+        int
+            ```len(self) - 1```. Minimum of 0.
+        """
         return len(self) - 1
 
     def __set_name_to_value(self, new_name_to_value: dict[_KT, Union[int, float]]) -> None:
+        if len(new_name_to_value) <= 1:
+            raise Exception("Must be more than 1 element to compare.")
+
         self.__name_to_value = new_name_to_value
-        self.__values = list(self.__name_to_value.values())
+        # self.__values = list(self.__name_to_value.values())
         self.__update_ranks()
         self.__update_name_to_percentile()
 
     def __update_ranks(self) -> None:
         sorted_by_value = sorted(
-            self.__name_to_value, key=self.__name_to_value.get
+            self.__name_to_value, key=lambda p: self.__name_to_value[p]
         )
         self.__name_to_rank = {key: i for i, key in enumerate(sorted_by_value)}
         self.__rank_to_name = sorted_by_value
 
     def __update_name_to_percentile(self) -> None:
-        self.__name_to_percentile = {key: self.__formula(
-            rank) for key, rank in self.__name_to_rank.items()
-        }
+        self.__name_to_percentile = {key: int(to_percent(rank, len(self))) for key, rank in self.__name_to_rank.items()
+                                     }
 
-    def append(self, name, value) -> None:
+    '''def append(self, name, value) -> None:
         new_name_to_value = {**self.__name_to_value, **{name: value}}
         self.name_to_value = new_name_to_value
 
     def remove(self, name) -> None:
-        del self.name_to_value[name]
+        del self.name_to_value[name]'''
 
-    def get_rank(self, key: Any) -> int:
-        return Percentile.__get_value(key, self.__name_to_rank)
+    def get_rank(self, key: _KT) -> int:
+        """Get the rank for a key, if it exists in the Percentile object.
 
-    def get_percentile(self, key: Any) -> int:
-        return Percentile.__get_value(key, self.__name_to_percentile)
+        Parameters
+        ----------
+        key : _KT
+            Key to search rank for.
 
-    def get_value(self, key: Any) -> int:
-        return Percentile.__get_value(key, self.__name_to_value)
+        Returns
+        -------
+        int
+            Rank found.
+
+        Examples
+        ------
+        ```
+        > percentile = Percentile({"1": 0.0, "2": 0.5, "3": 0.75, "4": 1})
+        > percentile.get_rank("1")
+        0
+        > percentile.get_rank("2")
+        1
+        > percentile.get_rank("3")
+        2
+        > percentile.get_rank("4")
+        3
+        """
+        return self.__name_to_rank[key]
+
+    def get_percentile(self, key: _KT) -> int:
+        """Get percentile for a key, if it exists in the Percentile object.
+
+        Parameters
+        ----------
+        key : _KT
+            Key to search percentile for.
+
+        Returns
+        -------
+        int
+            Percentage as integer. Lower bound percentile value.
+
+        Examples
+        ------
+        ```
+        > percentile = Percentile({"1": 0.0, "2": 0.5, "3": 0.75, "4": 1})
+        > percentile.get_percentile("1")
+        0
+        > percentile.get_percentile("2")
+        25
+        > percentile.get_percentile("3")
+        50
+        > percentile.get_percentile("4")
+        75
+        """
+        return self.__name_to_percentile[key]
+
+    def get_value(self, key: _KT) -> Union[int, float]:
+        """Get value for a key, if it exists in the Percentile object.
+
+        Parameters
+        ----------
+        key : _KT
+            Key to search value for.
+
+        Returns
+        -------
+        Union[int, float]
+            Value for the key.
+
+        Examples
+        ------
+        ```
+        > percentile = Percentile({"1": 0.0, "2": 0.5, "3": 0.75, "4": 1})
+        > percentile.get_value("1")
+        0.0
+        > percentile.get_value("2")
+        0.5
+        """
+        return self.__name_to_value[key]
 
     def name_at_rank(self, rank: int) -> _KT:
+        """Get key label at rank.
+
+        Parameters
+        ----------
+        rank : int
+            Rank to find key for.
+
+        Returns
+        -------
+        _KT
+            Key at rank passed.
+
+        Raises
+        ------
+        IndexError
+            If rank is not within the range of elements in Percentile object.
+        """
         try:
             name = self.__rank_to_name[rank]
-
         except IndexError:
             rank_range = f"Rank goes from 0-{self.max_rank}"
             raise IndexError(f"{rank_range}. Rank passed was '{rank}'.")
-
         else:
             return name
 
-    def __formula(self, rank: int) -> int:
-        percentile = (rank / len(self)) * 100
-
-        return round(percentile)
-
-    def x_axis_data(self) -> list[Union[int, float]]:
+    '''def x_axis_data(self) -> list[Union[int, float]]:
         ub = int(max(self.__values) + 1)
         lb = int(min(self.__values) - 1)
 
@@ -93,7 +211,7 @@ class Percentile(Generic[_KT]):
 
     def y_axis_data(self) -> list[int]:
         x = self.x_axis_data()
-        y = [0] * len(x)
+        y = [0 for _ in range(len(x))]
 
         for value in self.__values:
             for i in range(len(x)-1):
@@ -106,27 +224,42 @@ class Percentile(Generic[_KT]):
         x = self.x_axis_data()
         y = self.y_axis_data()
 
-        return x, y
-
-    @staticmethod
-    def __get_value(key: Any, name_to_value: dict) -> _KT:
-        try:
-            value = name_to_value[key]
-        except KeyError:
-            raise KeyError(f"'{key}' not in names.")
-        else:
-            return value
+        return x, y'''
 
 
 class Attribute(Generic[t]):
-    def __init__(self, values: list[t], attr_name: str):
-        self.values = values
+    """Stores values related to an attribute by its name.
+    """
+
+    def __init__(self, values: Sequence[t], attr_name: str):
+        self.values = list(values)
         self.__attr_name = attr_name
 
     def __str__(self) -> str:
+        """Show attribute name and values present.
+
+        Returns
+        -------
+        str
+            Shows attribute name and values, separated by colon.
+
+        Example
+        -------
+        ```
+        > attribute = Attribute([1, 2, 3, 4, 5], "foo")
+        > str(attribute)
+        "foo - [1, 2, 3, 4, 5]"
+        """
         return f"{self.__attr_name} - {self.__values}"
 
     def __len__(self) -> int:
+        """Number of values in Attribute object.
+
+        Returns
+        -------
+        int
+            Length of `self.values`.
+        """
         return len(self.values)
 
     def __iter__(self) -> Iterator[t]:
@@ -134,31 +267,54 @@ class Attribute(Generic[t]):
 
     @property
     def values(self) -> list[t]:
+        """Values stored under attribute name.
+
+        Returns
+        -------
+        list[t]
+            Unordered list of values.
+        """
         return self.__values
 
     @values.setter
-    def values(self, new_values: list[t]) -> None:
-        self.__values = new_values
-        self.__edit_values()
+    def values(self, new_values: List[t]) -> None:
+        if len(new_values) == 0:  # Empty list check.
+            raise Exception("Empty list passed!")
 
-    def __edit_values(self) -> None:
-        pass
+        self.__values = new_values
+        # self.__edit_values()
+
+    '''def __edit_values(self) -> None:
+        pass'''
 
 
 class CategoricalVar(Attribute[t]):
-    def __init__(self, values: list[t], attr_name: str):
+    """For attributes with categorical data values.
+    """
+
+    def __init__(self, values: Sequence[t], attr_name: str):
         super().__init__(values, attr_name)
 
 
-class ContinuousVar(Attribute[b]):
-    def __init__(self, values: list[b], attr_name: str):
+class ContinuousVar(Attribute[float]):
+    """For attributes with continuous data values.
+    """
+
+    def __init__(self, values: Sequence[float], attr_name: str):
         super().__init__(values, attr_name)
 
-    def __edit_values(self) -> None:
-        super().__edit_values()
+    '''def __edit_values(self) -> None:
+        super().__edit_values()'''
 
     @property
     def average(self) -> float:
+        """Average value of all values in object.
+
+        Returns
+        -------
+        float
+            Total of all values divided by number of values.
+        """
         return sum(self.values) / len(self.values)
 
 

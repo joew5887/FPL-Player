@@ -78,3 +78,7 @@ def string_to_datetime(str_date: str, format: str = __STR_TO_DATETIME) -> dateti
         Datetime object from `str_date`.
     """
     return datetime.strptime(str_date, format)
+
+
+def round_value(value: float, round_by: int = 3) -> float:
+    return round(value, round_by)

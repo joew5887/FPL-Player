@@ -1,12 +1,10 @@
 from typing import Any
-from requests import get
+import requests
 from json import loads
 import pandas as pd
 
 
 class API:
-    __data: dict[str, Any]
-
     def __init__(self, url_link: str):
         self.__url_link = url_link
         self.__set_data()
@@ -15,11 +13,11 @@ class API:
         return str(self.data)
 
     @property
-    def data(self) -> dict[str, Any]:
+    def data(self) -> Any:
         return self.__data
 
     def __set_data(self) -> None:
-        response = get(self.__url_link)
+        response = requests.get(self.__url_link)
         utf8 = response.text.encode("utf8")
         json_data = utf8.decode("unicode_escape")
         self.__data = loads(json_data)
