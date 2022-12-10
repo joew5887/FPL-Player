@@ -22,30 +22,33 @@ Run these two commands:
 
 ## Example
 ```
+# Graph to show points of every team for each position in a bar graph
+import fpld
+import matplotlib.pyplot as plt
+import numpy as np
+
 teams = fpld.Team.get_all()
 
-labels = [team.short_name for team in teams]
-gk_points = [sum([p.total_points for p in team.players_by_pos(
-    fpld.Position.get_by_id(1))]) for team in teams]
+gk_points = [sum([p.total_points for p in team.players_by_pos(fpld.Position.get_by_name("GKP"))]) for team in teams]
 def_points = [sum([p.total_points for p in team.players_by_pos(
-    fpld.Position.get_by_id(2))]) for team in teams]
+    fpld.Position.get_by_name("DEF"))]) for team in teams]
 mid_points = [sum([p.total_points for p in team.players_by_pos(
-    fpld.Position.get_by_id(3))]) for team in teams]
+    fpld.Position.get_by_name("MID"))]) for team in teams]
 fwd_points = [sum([p.total_points for p in team.players_by_pos(
-    fpld.Position.get_by_id(4))]) for team in teams]
+    fpld.Position.get_by_name("FWD"))]) for team in teams]
 
+labels = [team.short_name for team in teams]
 labels_x = np.arange(len(labels))
 
 fig, ax = plt.subplots()
-width = 0.1
+WIDTH = 0.1
 
-rects1 = ax.bar(labels_x - (3 / 2) * width,
-                gk_points, width, label="GK")
-rects2 = ax.bar(labels_x - (1 / 2) * width, def_points, width,label="DEF")
-rects3 = ax.bar(labels_x + (1 / 2) * width, mid_points, width,label="MID")
-rects4 = ax.bar(labels_x + (3 / 2) * width,
-                fwd_points, width, label="FWD")
+rects1 = ax.bar(labels_x - (3 / 2) * WIDTH, gk_points, WIDTH, label="GKP")
+rects2 = ax.bar(labels_x - (1 / 2) * WIDTH, def_points, WIDTH,label="DEF")
+rects3 = ax.bar(labels_x + (1 / 2) * WIDTH, mid_points, WIDTH,label="MID")
+rects4 = ax.bar(labels_x + (3 / 2) * WIDTH, fwd_points, WIDTH,label="FWD")
 
+# Add some text for labels, title and custom x-axis tick labels
 ax.set_ylabel("Total Points")
 ax.set_title("Team total points by position")
 ax.set_xticks(labels_x, labels)
@@ -57,9 +60,12 @@ ax.bar_label(rects3, padding=3)
 ax.bar_label(rects4, padding=3)
 
 fig.tight_layout()
+
 plt.show()
 ```
 
 Outputs
 
 ![Graph](graph.png)
+
+This is as of 10/12/2022 at 13:52.

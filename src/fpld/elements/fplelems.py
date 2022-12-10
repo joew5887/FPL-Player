@@ -5,13 +5,12 @@ from ..constants import datetime_to_string
 from ..util.percent import to_percent
 from .team import BaseTeam
 from .player import _Player
-from .playerfull import _PlayerFull, _PlayerHistory, _PlayerHistoryPast
+from .playerfull import _PlayerFull, _PlayerHistoryDf, _PlayerHistoryPastDf
 from .fixture import _Fixture
 from .event import _Event
 from .position import Position
 from .labels import Label
-from dataclasses import Field, dataclass, field
-from ..util.attribute import CategoricalVar
+from dataclasses import dataclass, field
 from .element import ElementGroup
 import pandas as pd
 
@@ -166,49 +165,44 @@ class Team(BaseTeam["Team"]):
         return int(self.player_total(*cols, by_position=by_position))
 
 
-@dataclass(frozen=True, kw_only=True)
-class PlayerHistory(_PlayerHistory["PlayerHistory"]):
-    fixture: CategoricalVar[Fixture] = field(hash=False, repr=False)
-    opponent_team: CategoricalVar[Team] = field(hash=False, repr=False)
-
+class PlayerHistoryDf(_PlayerHistoryDf):
     @classmethod
-    def _edit_stat_from_api(cls, field: Field[Any], attr_list: list[Any]) -> list[Any]:
-        if field.name == "fixture":
+    def _edit_stat_from_api(cls, field: str, attr_list: list[Any]) -> list[Any]:
+        if field == "fixture":
             attr_list = [Fixture.get_by_id(id_) for id_ in attr_list]
-        elif field.name == "opponent_team":
+        elif field == "opponent_team":
             attr_list = [Team.get_by_id(id_) for id_ in attr_list]
 
         return attr_list
 
     @classmethod
-    def from_api(cls, api_data: list[dict[str, Any]]) -> PlayerHistory:
-        out: PlayerHistory = super().from_api(api_data)
+    def from_api(cls, api_data: list[dict[str, Any]]) -> PlayerHistoryDf:
+        out: PlayerHistoryDf = super().from_api(api_data)
 
         return out
 
 
-@dataclass(frozen=True, kw_only=True)
-class PlayerHistoryPast(_PlayerHistoryPast["PlayerHistoryPast"]):
+class PlayerHistoryPastDf(_PlayerHistoryPastDf):
     @classmethod
-    def from_api(cls, api_data: list[dict[str, Any]]) -> PlayerHistoryPast:
-        out: PlayerHistoryPast = super().from_api(api_data)
+    def from_api(cls, api_data: list[dict[str, Any]]) -> PlayerHistoryPastDf:
+        out: PlayerHistoryPastDf = super().from_api(api_data)
 
         return out
 
 
-class PlayerFull(_PlayerFull[PlayerHistory, PlayerHistoryPast]):
+class PlayerFullDf(_PlayerFull[PlayerHistoryDf, PlayerHistoryPastDf]):
     """Game by game, season by season data for a player, linked to other FPL elements.
     """
 
     @classmethod
-    def from_player_id(cls, player_id: int) -> PlayerFull:
+    def from_player_id(cls, player_id: int) -> PlayerFullDf:
         data = cls.get_api(player_id)
 
-        history = PlayerHistory.from_api(data["history"])
-        history_past = PlayerHistoryPast.from_api(
+        history = PlayerHistoryDf.from_api(data["history"])
+        history_past = PlayerHistoryPastDf.from_api(
             data["history_past"])
 
-        return PlayerFull(history, history_past)
+        return PlayerFullDf(history, history_past)
 
 
 @dataclass(frozen=True, order=True, kw_only=True)
@@ -291,8 +285,8 @@ class Player(_Player["Player"]):
 
         return values'''
 
-    def in_full(self) -> PlayerFull:
-        return PlayerFull.from_player_id(self.id)
+    def in_full(self) -> PlayerFullDf:
+        return PlayerFullDf.from_player_id(self.id)
 
 
 @dataclass(frozen=True, order=True, kw_only=True)

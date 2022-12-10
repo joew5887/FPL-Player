@@ -1,12 +1,11 @@
 from __future__ import annotations
 from abc import abstractmethod
 from dataclasses import dataclass, field
-from fpld.util.attribute import CategoricalVar
 from .element import _Element, ElementGroup
 from typing import Optional, TypeVar, Generic, Any
 from ..util import API
 from ..constants import URLS, round_value
-from .playerfull import _PlayerFull, _PlayerHistory, _PlayerHistoryPast
+from .playerfull import _PlayerFull, _PlayerHistoryDf, _PlayerHistoryPastDf
 
 
 _player = TypeVar("_player", bound="_Player[Any]")
@@ -199,38 +198,33 @@ class BasePlayer(_Player["BasePlayer"]):
     team: int = field(hash=False, compare=False)
     element_type: int = field(hash=False, compare=False)
 
-    def in_full(self) -> BasePlayerFull:
-        return BasePlayerFull.from_player_id(self.id)
+    def in_full(self) -> BasePlayerFullDf:
+        return BasePlayerFullDf.from_player_id(self.id)
 
 
-@dataclass(frozen=True, kw_only=True)
-class BasePlayerHistory(_PlayerHistory["BasePlayerHistory"]):
-    fixture: CategoricalVar[int] = field(hash=False, repr=False)
-    opponent_team: CategoricalVar[int] = field(hash=False, repr=False)
-
+class BasePlayerHistoryDf(_PlayerHistoryDf):
     @classmethod
-    def from_api(cls, api_data: list[dict[str, Any]]) -> BasePlayerHistory:
-        out: BasePlayerHistory = super().from_api(api_data)
+    def from_api(cls, api_data: list[dict[str, Any]]) -> BasePlayerHistoryDf:
+        out: BasePlayerHistoryDf = super().from_api(api_data)
 
         return out
 
 
-@dataclass(frozen=True, kw_only=True)
-class BasePlayerHistoryPast(_PlayerHistoryPast["BasePlayerHistoryPast"]):
+class BasePlayerHistoryPastDf(_PlayerHistoryPastDf):
     @classmethod
-    def from_api(cls, api_data: list[dict[str, Any]]) -> BasePlayerHistoryPast:
-        out: BasePlayerHistoryPast = super().from_api(api_data)
+    def from_api(cls, api_data: list[dict[str, Any]]) -> BasePlayerHistoryPastDf:
+        out: BasePlayerHistoryPastDf = super().from_api(api_data)
 
         return out
 
 
-class BasePlayerFull(_PlayerFull[BasePlayerHistory, BasePlayerHistoryPast]):
+class BasePlayerFullDf(_PlayerFull[BasePlayerHistoryDf, BasePlayerHistoryPastDf]):
     @classmethod
-    def from_player_id(cls, player_id: int) -> BasePlayerFull:
+    def from_player_id(cls, player_id: int) -> BasePlayerFullDf:
         data = cls.get_api(player_id)
 
-        history = BasePlayerHistory.from_api(data["history"])
-        history_past = BasePlayerHistoryPast.from_api(
+        history = BasePlayerHistoryDf.from_api(data["history"])
+        history_past = BasePlayerHistoryPastDf.from_api(
             data["history_past"])
 
-        return BasePlayerFull(history, history_past)
+        return BasePlayerFullDf(history, history_past)
